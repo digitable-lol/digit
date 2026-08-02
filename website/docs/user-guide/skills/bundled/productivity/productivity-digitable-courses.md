@@ -1,0 +1,62 @@
+---
+title: "Digitable Courses — Use when finding or planning Digitable courses"
+sidebar_label: "Digitable Courses"
+description: "Use when finding or planning Digitable courses"
+---
+
+{/* This page is auto-generated from the skill's SKILL.md by website/scripts/generate-skill-docs.py. Edit the source SKILL.md, not this page. */}
+
+# Digitable Courses
+
+Use when finding or planning Digitable courses.
+
+## Skill metadata
+
+| | |
+|---|---|
+| Source | Bundled (installed by default) |
+| Path | `skills/productivity/digitable-courses` |
+| Version | `1.0.0` |
+| Author | Digitable |
+| License | MIT |
+| Platforms | linux, macos, windows |
+| Tags | `digitable`, `courses`, `learning`, `curriculum`, `russian` |
+| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools) |
+
+## Reference: full SKILL.md
+
+:::info
+The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+:::
+
+# Digitable Courses
+
+## Overview
+
+`courses.digitable.life` is the canonical open learning portal. Use its current course pages to build study paths rather than copying the full curriculum into memory.
+
+## Curriculum map
+
+The portal spans five broad layers: computer-science foundations; programming languages and platforms; architecture and system design; data, machine learning, and neural networks; product, project, and engineering practice. Current tracks and lesson order must be verified on the live course index.
+
+## Workflow
+
+1. Ask or infer the learner's goal, current level, preferred language, available time, and target deadline.
+2. Inspect `https://courses.digitable.life/courses/` and the relevant current track pages.
+3. Build the shortest prerequisite chain that reaches the goal; distinguish required material from optional depth.
+4. Link each recommended step to its canonical page.
+5. Use `digitable-tools` for exercises requiring conversion, formatting, hashing, networking, regex, or related deterministic utilities.
+6. End with a checkable milestone or small project, not only a reading list.
+
+## Safety and accuracy
+
+- Treat payment, access, schedule, and completion state as live account data.
+- Do not claim certification or enrollment unless a canonical page or authenticated account confirms it.
+- Quote sparingly; summarize course material and link to the original.
+
+## Verification checklist
+
+- [ ] Current course pages inspected.
+- [ ] Prerequisites are ordered.
+- [ ] Required and optional steps are separated.
+- [ ] A concrete milestone closes the plan.

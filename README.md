@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Hermes Agent" width="100%">
+  <img src="apps/desktop/public/digitable-logo.svg" alt="Digit by Digitable" width="96">
 </p>
 
-# Hermes Agent ☤
+# Digit ◇
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/">Hermes Agent</a> | <a href="https://hermes-agent.nousresearch.com/">Hermes Desktop</a>
+  <a href="https://digitable.life/">Digitable</a> · <a href="https://courses.digitable.life/">Courses</a> · <a href="https://tools.digitable.life/">Tools</a>
 </p>
 <p align="center">
   <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
@@ -16,9 +16,13 @@
   <a href="README.es.md"><img src="https://img.shields.io/badge/Lang-Español-orange?style=for-the-badge" alt="Español"></a>
 </p>
 
-**The self-improving AI agent built by [Nous Research](https://nousresearch.com).** It's the only agent with a built-in learning loop — it creates skills from experience, improves them during use, nudges itself to persist knowledge, searches its own past conversations, and builds a deepening model of who you are across sessions. Run it on a $5 VPS, a GPU cluster, or serverless infrastructure that costs nearly nothing when idle. It's not tied to your laptop — talk to it from Telegram while it works on a cloud VM.
+**Digit is Digitable's portal-aware, self-improving AI agent.** It speaks Russian and English, knows how to navigate Digitable courses and developer utilities, and is designed to run both with cloud models and private local models on Apple Silicon.
 
-Use any model you want — [Nous Portal](https://portal.nousresearch.com), OpenRouter, OpenAI, your own endpoint, and [many others](https://hermes-agent.nousresearch.com/docs/integrations/providers). Switch with `hermes model` — no code changes, no lock-in.
+Digit is a public distribution of [Hermes Agent](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com), kept compatible with the upstream MIT-licensed agent. The original learning loop, memory, tools, gateways, ACP server, Desktop app, and provider support remain intact.
+
+See the [Digit distribution guide](docs/digitable/README.md), [Apple Silicon model matrix](docs/digitable/models.md), and [Workbench integration contract](docs/digitable/workbench.md).
+
+Use any model you want — a local Ollama/LM Studio/MLX endpoint, [Nous Portal](https://portal.nousresearch.com), OpenRouter, OpenAI, or [many others](https://hermes-agent.nousresearch.com/docs/integrations/providers). Switch with `digit model` — no code changes, no lock-in. The original `hermes` commands remain available for compatibility.
 
 <table>
 <tr><td><b>A real terminal interface</b></td><td>Full TUI with multiline editing, slash-command autocomplete, conversation history, interrupt-and-redirect, and streaming tool output.</td></tr>

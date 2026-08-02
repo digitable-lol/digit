@@ -344,7 +344,23 @@ class DirectAlias(NamedTuple):
 
 
 # Built-in direct aliases (can be extended via config.yaml model_aliases:)
-_BUILTIN_DIRECT_ALIASES: dict[str, DirectAlias] = {}
+_BUILTIN_DIRECT_ALIASES: dict[str, DirectAlias] = {
+    # Digit's local-first Apple Silicon presets. The aliases deliberately point
+    # at Ollama's OpenAI-compatible local endpoint and never download weights
+    # or start a server implicitly.
+    "digit-local-small": DirectAlias(
+        model="qwen3.5:2b", provider="custom", base_url="http://localhost:11434/v1"
+    ),
+    "digit-local": DirectAlias(
+        model="qwen3.5:4b", provider="custom", base_url="http://localhost:11434/v1"
+    ),
+    "digit-local-plus": DirectAlias(
+        model="qwen3.5:9b", provider="custom", base_url="http://localhost:11434/v1"
+    ),
+    "digit-gemma": DirectAlias(
+        model="gemma3:4b", provider="custom", base_url="http://localhost:11434/v1"
+    ),
+}
 
 # Merged dict (builtins + user config); populated by _load_direct_aliases()
 DIRECT_ALIASES: dict[str, DirectAlias] = {}
