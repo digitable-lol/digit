@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [digitable, portal, navigation, products]
-    related_skills: [digit, digitable-courses, digitable-tools, digitable-workbench]
+    related_skills: [digit, digitable-courses, digitable-tools, digitable-workbench, fts]
 ---
 
 # Digitable Portal
@@ -23,12 +23,13 @@ Use this skill as a routing map for Digitable. Canonical web pages remain the so
 |---|---|
 | Digitable overview and product navigation | `https://digitable.life/` |
 | Open learning portal and course map | `https://courses.digitable.life/` |
+| FTS language, course, and case catalog | `https://courses.digitable.life/fts/` |
 | Browser-based developer utilities | `https://tools.digitable.life/` |
 | Chat product | `https://chat.digitable.life/` |
 
 ## Workflow
 
-1. Identify whether the request is navigation, learning, a deterministic transformation, chat, or agent work.
+1. Identify whether the request is navigation, learning, an FTS specification, a deterministic transformation, chat, or agent work.
 2. Load the matching related skill before giving detailed instructions.
 3. Verify availability and current wording from the canonical URL when network access exists.
 4. Link directly to the deepest useful page, not just the homepage.

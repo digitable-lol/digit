@@ -16,7 +16,7 @@
   <a href="README.es.md"><img src="https://img.shields.io/badge/Lang-Español-orange?style=for-the-badge" alt="Español"></a>
 </p>
 
-**Digit is Digitable's portal-aware, self-improving AI agent.** It speaks Russian and English, knows how to navigate Digitable courses and developer utilities, and is designed to run both with cloud models and private local models on Apple Silicon.
+**Digit is Digitable's portal-aware, self-improving AI agent.** It speaks Russian and English, knows how to navigate Digitable courses and developer utilities, and can create and verify executable FTS specifications through the CLI or FTS MCP server. It is designed to run both with cloud models and private local models on Apple Silicon.
 
 Digit is a public distribution of [Hermes Agent](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com), kept compatible with the upstream MIT-licensed agent. The original learning loop, memory, tools, gateways, ACP server, Desktop app, and provider support remain intact.
 

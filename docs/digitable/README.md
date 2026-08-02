@@ -27,6 +27,7 @@ Digit is the Digitable distribution of Hermes Agent. It keeps upstream compatibi
 - `digitable-courses`: course discovery and learning-path guidance.
 - `digitable-tools`: deterministic routing to every browser utility.
 - `digitable-workbench`: ACP/MCP integration and hand-off rules.
+- `fts`: executable domain specifications, generated utilities, tests, and verified agent guards.
 
 ## Upstream sync policy
 
