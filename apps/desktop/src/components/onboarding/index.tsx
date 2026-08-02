@@ -32,6 +32,7 @@ import { DocsLink, FlowPanel, Status } from './flow'
 import {
   FeaturedProviderRow,
   FireworksProviderRow,
+  isDigitVisibleProvider,
   OpenRouterProviderRow,
   ProviderRow,
   sortProviders
@@ -43,6 +44,7 @@ export {
   KeyProviderRow,
   OpenRouterProviderRow,
   ProviderRow,
+  isDigitVisibleProvider,
   providerTitle,
   sortProviders
 } from './providers'
@@ -64,8 +66,7 @@ export interface ApiKeyOption {
   short?: string
 }
 
-// Curated order mirrors CANONICAL_PROVIDERS: Fireworks sits #2 overall (after
-// Nous Portal OAuth), ahead of OpenRouter and the rest of the key catalog.
+// Curated order mirrors the visible Digit provider catalog.
 const API_KEY_OPTIONS: ApiKeyOption[] = [
   {
     id: 'fireworks',
@@ -433,7 +434,10 @@ export function Picker({ ctx }: { ctx: OnboardingContext }) {
     setOnboardingMode('apikey')
   }
 
-  const ordered = useMemo(() => (providers ? sortProviders(providers) : []), [providers])
+  const ordered = useMemo(
+    () => (providers ? sortProviders(providers.filter(isDigitVisibleProvider)) : []),
+    [providers]
+  )
   const hasOauth = ordered.length > 0
   const apiKeyOptions = useApiKeyCatalog()
 
@@ -467,8 +471,7 @@ export function Picker({ ctx }: { ctx: OnboardingContext }) {
   const select = (p: OAuthProvider) => void startProviderOAuth(p, ctx)
   const featured = ordered.find(p => p.id === FEATURED_ID) ?? null
   const rest = featured ? ordered.filter(p => p.id !== FEATURED_ID) : ordered
-  // Collapse the secondary providers behind a disclosure only when Nous
-  // Portal is present to anchor the choice — otherwise show the full list.
+  // Collapse secondary providers only when a featured provider is present.
   const collapsible = Boolean(featured) && rest.length > 0
   const showRest = !collapsible || showAll
 
@@ -476,7 +479,7 @@ export function Picker({ ctx }: { ctx: OnboardingContext }) {
     <div className="grid gap-2">
       <div className="grid max-h-[60dvh] gap-2 overflow-y-auto p-1">
         {featured ? <FeaturedProviderRow onSelect={select} provider={featured} /> : null}
-        {/* Slot #2 — always visible, matching CANONICAL_PROVIDERS (Nous → Fireworks). */}
+        {/* Fireworks remains a visible quick-key route for Digit. */}
         <FireworksProviderRow onClick={() => openKeyForm('FIREWORKS_API_KEY')} />
         {showRest ? (
           <>

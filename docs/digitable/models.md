@@ -9,7 +9,7 @@ Digit ships four Ollama aliases: `/model digit-local-small` (Qwen3.5 2B), `/mode
 1. **Ollama** — default local setup and the least-friction OpenAI-compatible endpoint at `http://localhost:11434/v1`.
 2. **LM Studio** — visual model management and a first-class Hermes provider.
 3. **MLX / MLX-VLM server** — performance-oriented Apple Silicon path for text and multimodal models.
-4. **Cloud provider** — automatic fallback when the local model lacks context, vision, or reliable tool calling.
+4. **Bring-your-own endpoint** — an optional user-configured fallback when the local model lacks context, vision, or reliable tool calling.
 
 ## Recommended presets
 
@@ -22,7 +22,7 @@ The memory bands below are conservative engineering starting points for 4-bit we
 | 24–32 GB M1 Pro/Max+ | 8B–14B instruct, 4-bit | Qwen3.5 9B or Gemma 3 12B | stronger coding, vision, longer sessions |
 | 48–64 GB+ | 14B–32B instruct, quantized | Qwen3.5 27B or Gemma 3 27B where supported | heavier agent and document work |
 
-Start with **Qwen3.5 4B** for an Apache-2.0 multimodal preset, or **Gemma 3 4B** when its license fits the distribution. Both accept images; Qwen3.5 is explicitly trained as a unified vision-language model and reports agent/tool-use evaluations. Keep a stronger cloud fallback for consequential actions and difficult code changes. **Qwen3-VL 4B** remains a useful compatibility preset where a runtime has not yet added Qwen3.5.
+Start with **Qwen3.5 4B** for an Apache-2.0 multimodal preset, or **Gemma 3 4B** when its license fits the distribution. Both accept images; Qwen3.5 is explicitly trained as a unified vision-language model and reports agent/tool-use evaluations. For consequential actions and difficult code changes, optionally configure a stronger endpoint you control. **Qwen3-VL 4B** remains a useful compatibility preset where a runtime has not yet added Qwen3.5.
 
 ## Local endpoint setup
 
