@@ -3950,22 +3950,30 @@ def _build_compact_banner() -> str:
     if skin_name == "default":
         line1 = "⚕ NOUS HERMES - AI Agent Framework"
         tiny_line = "⚕ NOUS HERMES"
+        byline = "Nous Research"
     else:
         agent_name = _skin.get_branding("agent_name", "Hermes Agent") if _skin else "Hermes Agent"
-        line1 = f"{agent_name} - AI Agent Framework"
+        if skin_name == "digitable":
+            from hermes_cli.digit_ui import digit_ui_text
+
+            line1 = digit_ui_text("compact_title")
+        else:
+            line1 = f"{agent_name} - AI Agent Framework"
         tiny_line = agent_name
+        byline = _skin.get_branding("byline", "") if _skin else ""
 
     if os.environ.get("HERMES_FAST_STARTUP_BANNER") == "1":
         from hermes_cli import __release_date__ as _release_date
         from hermes_cli import __version__ as _version
 
-        version_line = f"Hermes Agent v{_version} ({_release_date})"
+        version_line = f"Digit v{_version} ({_release_date})" if skin_name == "digitable" else f"Hermes Agent v{_version} ({_release_date})"
     else:
         version_line = format_banner_version_label()
 
     w = min(shutil.get_terminal_size().columns - 2, 88)
     if w < 30:
-        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]- Nous Research[/]\n"
+        suffix = f" - {byline}" if byline else ""
+        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]{suffix}[/]\n"
 
     inner = w - 2  # inside the box border
     bar = "═" * w
@@ -5891,6 +5899,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         """Return a compact one-line session status string for the TUI footer."""
         try:
             snapshot = self._get_status_bar_snapshot()
+            brand_symbol = self._get_brand_status_symbol()
             if width is None:
                 width = self._get_tui_terminal_width()
             percent = snapshot["context_percent"]
@@ -5903,7 +5912,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             yolo_active = self._is_session_yolo_active()
             goal_segment = self._status_bar_goal_segment(snapshot)
             if width < 52:
-                text = f"{battery_prefix}⚕ {snapshot['model_short']} · {duration_label}"
+                text = f"{battery_prefix}{brand_symbol} {snapshot['model_short']} · {duration_label}"
                 if goal_segment:
                     text += f" · {goal_segment}"
                 if focus_label:
@@ -5912,7 +5921,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     text += " · ⚠ YOLO"
                 return self._trim_status_bar_text(text, width)
             if width < 76:
-                parts = [f"⚕ {snapshot['model_short']}", percent_label]
+                parts = [f"{brand_symbol} {snapshot['model_short']}", percent_label]
                 if battery_label:
                     parts.insert(0, battery_label)
                 compressions = snapshot.get("compressions", 0)
@@ -5944,7 +5953,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 context_label = "ctx --"
 
             compressions = snapshot.get("compressions", 0)
-            parts = [f"⚕ {snapshot['model_short']}", context_label, percent_label]
+            parts = [f"{brand_symbol} {snapshot['model_short']}", context_label, percent_label]
             if battery_label:
                 parts.insert(0, battery_label)
             if compressions:
@@ -5973,13 +5982,25 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 parts.append("⚠ YOLO")
             return self._trim_status_bar_text(" │ ".join(parts), width)
         except Exception:
-            return f"⚕ {self.model if getattr(self, 'model', None) else 'Hermes'}"
+            symbol = self._get_brand_status_symbol()
+            return f"{symbol} {self.model if getattr(self, 'model', None) else 'Digit'}"
+
+    @staticmethod
+    def _get_brand_status_symbol() -> str:
+        """Return the active skin's compact identity mark."""
+        try:
+            from hermes_cli.skin_engine import get_active_skin
+
+            return str(get_active_skin().get_branding("status_symbol", "⚕") or "⚕")
+        except Exception:
+            return "⚕"
 
     def _get_status_bar_fragments(self):
         if not self._status_bar_visible or getattr(self, '_model_picker_state', None):
             return []
         try:
             snapshot = self._get_status_bar_snapshot()
+            brand_symbol = self._get_brand_status_symbol()
             # Use prompt_toolkit's own terminal width when running inside the
             # TUI — shutil.get_terminal_size() can return stale or fallback
             # values (especially on SSH) that differ from what prompt_toolkit
@@ -5995,7 +6016,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
 
             if width < 52:
                 frags = [
-                    ("class:status-bar", " ⚕ "),
+                    ("class:status-bar", f" {brand_symbol} "),
                     ("class:status-bar-strong", snapshot["model_short"]),
                     ("class:status-bar-dim", " · "),
                     ("class:status-bar-dim", duration_label),
@@ -6019,7 +6040,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     bg_proc_count = snapshot.get("active_background_processes", 0)
                     bg_subagent_count = snapshot.get("active_background_subagents", 0)
                     frags = [
-                        ("class:status-bar", " ⚕ "),
+                        ("class:status-bar", f" {brand_symbol} "),
                         ("class:status-bar-strong", snapshot["model_short"]),
                         ("class:status-bar-dim", " · "),
                         (self._status_bar_context_style(percent), percent_label),
@@ -6064,7 +6085,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     bg_proc_count = snapshot.get("active_background_processes", 0)
                     bg_subagent_count = snapshot.get("active_background_subagents", 0)
                     frags = [
-                        ("class:status-bar", " ⚕ "),
+                        ("class:status-bar", f" {brand_symbol} "),
                         ("class:status-bar-strong", snapshot["model_short"]),
                         ("class:status-bar-dim", " │ "),
                         ("class:status-bar-dim", context_label),
@@ -6134,7 +6155,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                     frags.append(("class:status-bar-strong", stash_indicator))
 
             # Battery is the first status-bar element when enabled: prepend it
-            # ahead of the leading ⚕ marker in whichever width tier ran above.
+            # ahead of the leading brand marker in whichever width tier ran above.
             if battery_label:
                 frags[0:0] = [
                     ("class:status-bar", " "),
@@ -6768,12 +6789,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 return
             self._stream_box_opened = True
             try:
-                from hermes_cli.skin_engine import get_active_skin
+                from hermes_cli.skin_engine import get_active_response_label, get_active_skin
                 _skin = get_active_skin()
-                label = _skin.get_branding("response_label", "⚕ Hermes")
+                label = get_active_response_label()
                 _text_hex = _skin.get_color("banner_text", "#FFF8DC")
             except Exception:
-                label = "⚕ Hermes"
+                label = "◇ Digit"
                 _text_hex = "#FFF8DC"
             # Build a true-color ANSI escape for the response text color
             # so streamed content matches the Rich Panel appearance.
@@ -8343,7 +8364,13 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 }, f, indent=2, ensure_ascii=False)
             print(f"(^_^)v Conversation snapshot saved to: {path}")
             if self.session_id:
-                print(f"       Resume the live session with: hermes --resume {self.session_id}")
+                try:
+                    from hermes_cli.skin_engine import get_active_command_name
+
+                    _save_command = get_active_command_name()
+                except Exception:
+                    _save_command = "digit"
+                print(f"       Resume the live session with: {_save_command} --resume {self.session_id}")
         except Exception as e:
             print(f"(x_x) Failed to save: {e}")
     
@@ -13781,7 +13808,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                         if not _streaming_box_opened:
                             _streaming_box_opened = True
                             w = self._scrollback_box_width(getattr(self.console, "width", 80))
-                            label = " ⚕ Hermes "
+                            try:
+                                from hermes_cli.skin_engine import get_active_response_label
+
+                                label = f" {get_active_response_label().strip()} "
+                            except Exception:
+                                label = " ◇ Digit "
                             if self.show_timestamps:
                                 label = f"{label}{datetime.now().strftime(getattr(self, 'timestamp_format', '%H:%M'))} "
                             fill = w - 2 - HermesCLI._status_bar_display_width(label)
@@ -14236,13 +14268,13 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             if response and not response_previewed:
                 # Use skin engine for label/color with fallback
                 try:
-                    from hermes_cli.skin_engine import get_active_skin
+                    from hermes_cli.skin_engine import get_active_response_label, get_active_skin
                     _skin = get_active_skin()
-                    label = _skin.get_branding("response_label", "⚕ Hermes")
+                    label = get_active_response_label()
                     _resp_color = _maybe_remap_for_light_mode(_skin.get_color("response_border", "#CD7F32"))
                     _resp_text = _maybe_remap_for_light_mode(_skin.get_color("banner_text", "#FFF8DC"))
                 except Exception:
-                    label = "⚕ Hermes"
+                    label = "◇ Digit"
                     _resp_color = _maybe_remap_for_light_mode("#CD7F32")
                     _resp_text = _maybe_remap_for_light_mode("#FFF8DC")
 
@@ -14543,6 +14575,15 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             # skipping silently when there's no real console.
             self._clear_terminal_on_exit()
         print()
+        try:
+            from hermes_cli.skin_engine import get_active_command_name, get_active_skin
+
+            _exit_skin = get_active_skin()
+            _is_digit_exit = _exit_skin.name == "digitable"
+            _command_name = get_active_command_name()
+        except Exception:
+            _is_digit_exit = True
+            _command_name = "digit"
         msg_count = len(self.conversation_history)
         if msg_count > 0:
             user_msgs = len([m for m in self.conversation_history if m.get("role") == "user"])
@@ -14551,11 +14592,23 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
             minutes, seconds = divmod(remainder, 60)
             if hours > 0:
+                duration_key = "duration_hms"
                 duration_str = f"{hours}h {minutes}m {seconds}s"
             elif minutes > 0:
+                duration_key = "duration_ms"
                 duration_str = f"{minutes}m {seconds}s"
             else:
+                duration_key = "duration_s"
                 duration_str = f"{seconds}s"
+            if _is_digit_exit:
+                from hermes_cli.digit_ui import digit_ui_text
+
+                duration_str = digit_ui_text(
+                    duration_key,
+                    hours=hours,
+                    minutes=minutes,
+                    seconds=seconds,
+                )
             
             # Look up session title for resume-by-name hint
             session_title = None
@@ -14565,7 +14618,8 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 except Exception:
                     pass
 
-            print("Resume this session with:")
+            resume_title = digit_ui_text("resume_title") if _is_digit_exit else "Resume this session with:"
+            print(resume_title)
             # Session IDs are profile-constrained, so the resume hint must
             # include `-p <profile>` for non-default profiles. Without this,
             # copying the hint from a non-default profile fails to find the
@@ -14579,15 +14633,25 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             profile_flag = (
                 "" if _active_profile in ("default", "custom") else f" -p {_active_profile}"
             )
-            print(f"  hermes --resume {self.session_id}{profile_flag}")
+            print(f"  {_command_name} --resume {self.session_id}{profile_flag}")
             if session_title:
-                print(f"  hermes -c \"{session_title}\"{profile_flag}")
+                print(f"  {_command_name} -c \"{session_title}\"{profile_flag}")
             print()
-            print(f"Session:        {self.session_id}")
+            session_label = digit_ui_text("session_label") if _is_digit_exit else "Session:"
+            title_label = digit_ui_text("title_label") if _is_digit_exit else "Title:"
+            duration_label = digit_ui_text("duration_label") if _is_digit_exit else "Duration:"
+            messages_label = digit_ui_text("messages_label") if _is_digit_exit else "Messages:"
+            print(f"{session_label:<16}{self.session_id}")
             if session_title:
-                print(f"Title:          {session_title}")
-            print(f"Duration:       {duration_str}")
-            print(f"Messages:       {msg_count} ({user_msgs} user, {tool_calls} tool calls)")
+                print(f"{title_label:<16}{session_title}")
+            print(f"{duration_label:<16}{duration_str}")
+            if _is_digit_exit:
+                counts = digit_ui_text(
+                    "message_counts", messages=msg_count, users=user_msgs, tools=tool_calls
+                )
+            else:
+                counts = f"{msg_count} ({user_msgs} user, {tool_calls} tool calls)"
+            print(f"{messages_label:<16}{counts}")
         else:
             try:
                 from hermes_cli.skin_engine import get_active_goodbye
@@ -14682,7 +14746,7 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         if self._command_running:
             return _state_fragment("class:prompt-working", self._command_spinner_frame())
         if self._agent_running:
-            return _state_fragment("class:prompt-working", "⚕")
+            return _state_fragment("class:prompt-working", self._get_brand_status_symbol())
         if self._voice_mode:
             return _state_fragment("class:voice-prompt", "🎤")
         return [("class:prompt", symbol)]
@@ -14867,7 +14931,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         try:
             from hermes_cli.skin_engine import get_active_skin
             _welcome_skin = get_active_skin()
-            _welcome_text = _welcome_skin.get_branding("welcome", "Welcome to Hermes Agent! Type your message or /help for commands.")
+            if getattr(_welcome_skin, "name", "") == "digitable":
+                from hermes_cli.digit_ui import digit_ui_text
+
+                _welcome_text = digit_ui_text("welcome")
+            else:
+                _welcome_text = _welcome_skin.get_branding("welcome", "Welcome to Hermes Agent! Type your message or /help for commands.")
             _welcome_color = _welcome_skin.get_color("banner_text", "#FFF8DC")
         except Exception:
             _welcome_text = "Welcome to Hermes Agent! Type your message or /help for commands."
@@ -14935,7 +15004,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 mark_seen,
                 openclaw_residue_hint_cli,
             )
-            if not is_seen(self.config, OPENCLAW_RESIDUE_FLAG) and detect_openclaw_residue():
+            _is_digitable = getattr(_welcome_skin, "name", "") == "digitable"
+            if (
+                not _is_digitable
+                and not is_seen(self.config, OPENCLAW_RESIDUE_FLAG)
+                and detect_openclaw_residue()
+            ):
                 try:
                     _resid_color = _welcome_skin.get_color("banner_dim", "#B8860B")
                 except Exception:
@@ -14950,13 +15024,16 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             pass  # banner is non-critical — never break startup
         # Show a random tip to help users discover features
         try:
+            if getattr(_welcome_skin, "name", "") == "digitable":
+                raise LookupError("Digit startup guidance is already shown in the banner")
             from hermes_cli.tips import get_random_tip
             _tip = get_random_tip()
             try:
                 _tip_color = _welcome_skin.get_color("banner_dim", "#B8860B")
             except Exception:
                 _tip_color = "#B8860B"
-            self._console_print(f"[dim {_tip_color}]✦ Tip: {_tip}[/]")
+            _tip_label = "Tip"
+            self._console_print(f"[dim {_tip_color}]✦ {_tip_label}: {_tip}[/]")
         except Exception:
             pass  # Tips are non-critical — never break startup
 

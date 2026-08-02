@@ -51,12 +51,17 @@ def get_hermes_home_override() -> str | None:
 
 
 def _get_platform_default_hermes_home() -> Path:
-    """Return the platform-native default Hermes home path."""
+    """Return the platform-native default Digit home path.
+
+    The internal ``HERMES_HOME`` name is retained as an upstream-compatibility
+    boundary, while the Digitable distribution keeps its data separate from an
+    existing Hermes installation.
+    """
     if sys.platform == "win32":
         local_appdata = os.environ.get("LOCALAPPDATA", "").strip()
         base = Path(local_appdata) if local_appdata else Path.home() / "AppData" / "Local"
-        return base / "hermes"
-    return Path.home() / ".hermes"
+        return base / "digit"
+    return Path.home() / ".digit"
 
 
 def _hermes_home_from_env() -> Path:
@@ -161,16 +166,16 @@ def get_process_hermes_home() -> Path:
 def get_default_hermes_root() -> Path:
     """Return the root Hermes directory for profile-level operations.
 
-    In standard deployments this is the platform-native Hermes home
-    (``~/.hermes`` on POSIX, ``%LOCALAPPDATA%\\hermes`` on native Windows).
+    In standard Digit deployments this is the platform-native data home
+    (``~/.digit`` on POSIX, ``%LOCALAPPDATA%\\digit`` on native Windows).
 
     In Docker or custom deployments where ``HERMES_HOME`` points outside
-    ``~/.hermes`` (e.g. ``/opt/data``), returns ``HERMES_HOME`` directly
+    ``~/.digit`` (e.g. ``/opt/data``), returns ``HERMES_HOME`` directly
     — that IS the root.
 
     In profile mode where ``HERMES_HOME`` is ``<root>/profiles/<name>``,
     returns ``<root>`` so that ``profile list`` can see all profiles.
-    Works both for standard (``~/.hermes/profiles/coder``) and Docker
+    Works both for standard (``~/.digit/profiles/coder``) and Docker
     (``/opt/data/profiles/coder``) layouts.
 
     Import-safe — no dependencies beyond stdlib.
@@ -182,7 +187,7 @@ def get_default_hermes_root() -> Path:
     env_path = Path(env_home)
     try:
         env_path.resolve().relative_to(native_home.resolve())
-        # HERMES_HOME is under ~/.hermes (normal or profile mode)
+        # HERMES_HOME is under ~/.digit (normal or profile mode)
         return native_home
     except ValueError:
         pass
@@ -781,12 +786,12 @@ def display_hermes_home() -> str:
 
     Uses ``~/`` shorthand for readability::
 
-        default:  ``~/.hermes``
-        profile:  ``~/.hermes/profiles/coder``
+        default:  ``~/.digit``
+        profile:  ``~/.digit/profiles/coder``
         custom:   ``/opt/hermes-custom``
 
     Use this in **user-facing** print/log messages instead of hardcoding
-    ``~/.hermes``.  For code that needs a real ``Path``, use
+    ``~/.digit``.  For code that needs a real ``Path``, use
     :func:`get_hermes_home` instead.
     """
     home = get_hermes_home()
@@ -1477,5 +1482,5 @@ def partial_update_hint(exc: BaseException) -> list[str]:
         "and a related one was not.",
         "Re-run the update to bring the whole tree to the same version:",
         "    hermes update",
-        "If that also fails, reinstall: https://hermes-agent.nousresearch.com",
+        "If that also fails, reinstall: https://github.com/digitable-lol/digit#установка",
     ]

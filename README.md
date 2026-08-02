@@ -1,268 +1,179 @@
-<p align="center">
-  <img src="apps/desktop/public/digitable-logo.svg" alt="Digit by Digitable" width="96">
-</p>
+# Digit
 
-# Digit ◇
-<p align="center">
-  <a href="https://digitable.life/">Digitable</a> · <a href="https://courses.digitable.life/">Courses</a> · <a href="https://tools.digitable.life/">Tools</a>
-</p>
-<p align="center">
-  <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
-  <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/NousResearch/hermes-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://nousresearch.com"><img src="https://img.shields.io/badge/Built%20by-Nous%20Research-blueviolet?style=for-the-badge" alt="Built by Nous Research"></a>
-  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
-  <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
-  <a href="README.es.md"><img src="https://img.shields.io/badge/Lang-Español-orange?style=for-the-badge" alt="Español"></a>
-</p>
+**Digit** — открытый локальный ИИ-агент Digitable для терминала, Desktop,
+мессенджеров и ACP-совместимых редакторов. Он говорит по-русски и по-английски,
+знает структуру портала Digitable, курсов, Workbench и утилит
+[`tools.digitable.life`](https://tools.digitable.life/).
 
-**Digit is Digitable's portal-aware, self-improving AI agent.** It speaks Russian and English, knows how to navigate Digitable courses and developer utilities, and can create and verify executable FTS specifications through the CLI or FTS MCP server. It is designed to run both with cloud models and private local models on Apple Silicon.
+[Сайт](https://courses.digitable.life/digit/) ·
+[Курсы](https://courses.digitable.life/courses/) ·
+[Workbench](https://courses.digitable.life/workbench/) ·
+[Issues](https://github.com/digitable-lol/digit/issues)
 
-Digit is a public distribution of [Hermes Agent](https://github.com/NousResearch/hermes-agent) by [Nous Research](https://nousresearch.com), kept compatible with the upstream MIT-licensed agent. The original learning loop, memory, tools, gateways, ACP server, Desktop app, and provider support remain intact.
+## Что отличает Digit
 
-See the [Digit distribution guide](docs/digitable/README.md), [Apple Silicon model matrix](docs/digitable/models.md), and [Workbench integration contract](docs/digitable/workbench.md).
+- знания о Digitable поставляются как отдельные проверяемые skills;
+- создаёт и проверяет исполняемые FTS-спецификации через CLI или MCP;
+- по умолчанию используется фирменная тема Digitable и идентичность Digit;
+- локальные пресеты рассчитаны на Ollama, LM Studio и Apple Silicon;
+- данные, память, ключи и профили лежат отдельно в `~/.digit`;
+- команды `digit`, `digit-agent` и `digit-acp` являются основными;
+- обновление идёт из [`digitable-lol/digit`](https://github.com/digitable-lol/digit),
+  а не из чужого installer/update-канала.
 
-Use any model you want — a local Ollama/LM Studio/MLX endpoint, [Nous Portal](https://portal.nousresearch.com), OpenRouter, OpenAI, or [many others](https://hermes-agent.nousresearch.com/docs/integrations/providers). Switch with `digit model` — no code changes, no lock-in. The original `hermes` commands remain available for compatibility.
+Digit основан на MIT-лицензированном
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) и сохраняет
+совместимость с его ядром. Старые команды `hermes`, `hermes-agent` и
+`hermes-acp` пока остаются алиасами, чтобы существующие сценарии не ломались.
 
-<table>
-<tr><td><b>A real terminal interface</b></td><td>Full TUI with multiline editing, slash-command autocomplete, conversation history, interrupt-and-redirect, and streaming tool output.</td></tr>
-<tr><td><b>Lives where you do</b></td><td>Telegram, Discord, Slack, WhatsApp, Signal, and CLI — all from a single gateway process. Voice memo transcription, cross-platform conversation continuity.</td></tr>
-<tr><td><b>A closed learning loop</b></td><td>Agent-curated memory with periodic nudges. Autonomous skill creation after complex tasks. Skills self-improve during use. FTS5 session search with LLM summarization for cross-session recall. <a href="https://github.com/plastic-labs/honcho">Honcho</a> dialectic user modeling. Compatible with the <a href="https://agentskills.io">agentskills.io</a> open standard.</td></tr>
-<tr><td><b>Scheduled automations</b></td><td>Built-in cron scheduler with delivery to any platform. Daily reports, nightly backups, weekly audits — all in natural language, running unattended.</td></tr>
-<tr><td><b>Delegates and parallelizes</b></td><td>Spawn isolated subagents for parallel workstreams. Write Python scripts that call tools via RPC, collapsing multi-step pipelines into zero-context-cost turns.</td></tr>
-<tr><td><b>Runs anywhere, not just your laptop</b></td><td>Seven terminal backends — local, Docker, SSH, Singularity, Modal, Daytona, and Vercel Sandbox. Daytona and Modal offer serverless persistence — your agent's environment hibernates when idle and wakes on demand, costing nearly nothing between sessions. Run it on a $5 VPS or a GPU cluster.</td></tr>
-<tr><td><b>Research-ready</b></td><td>Batch trajectory generation, trajectory compression for training the next generation of tool-calling models.</td></tr>
-</table>
+## Установка
 
----
-
-## Quick Install
-
-### Linux, macOS, WSL2, Termux
+macOS через Homebrew:
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+brew install digitable-lol/tap/digit
 ```
 
-### Windows (native, PowerShell)
+macOS, Linux и WSL:
 
-> **Heads up:** Native Windows runs Hermes without WSL — CLI, gateway, TUI, and tools all work natively. If you'd rather use WSL2, the Linux/macOS one-liner above works there too. Found a bug? Please [file issues](https://github.com/NousResearch/hermes-agent/issues).
+```bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
+```
 
-Run this in PowerShell:
+Windows PowerShell:
 
 ```powershell
-iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+iex (irm https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.ps1)
 ```
 
-The installer handles everything: uv, Python 3.11, Node.js, ripgrep, ffmpeg, **and a portable Git Bash** (MinGit, unpacked to `%LOCALAPPDATA%\hermes\git` — no admin required, completely isolated from any system Git install). Hermes uses this bundled Git Bash to run shell commands.
-
-If you already have Git installed, the installer detects it and uses that instead. Otherwise a ~45MB MinGit download is all you need — it won't touch or interfere with any system Git.
-
-> **Android / Termux:** The tested manual path is documented in the [Termux guide](https://hermes-agent.nousresearch.com/docs/getting-started/termux). On Termux, Hermes installs a curated `.[termux]` extra because the full `.[all]` extra currently pulls Android-incompatible voice dependencies.
->
-> **Windows:** Native Windows is fully supported — the PowerShell one-liner above installs everything. If you'd rather use WSL2, the Linux command works there too. Native Windows install lives under `%LOCALAPPDATA%\hermes`; WSL2 installs under `~/.hermes` as on Linux.
-
-After installation:
+После установки:
 
 ```bash
-source ~/.bashrc    # reload shell (or: source ~/.zshrc)
-hermes              # start chatting!
+digit setup
+digit
 ```
 
-### Troubleshooting
+`digit setup` сначала предлагает русский или английский язык. Рекомендуемый
+сценарий настраивает локальную Qwen3.5 4B через Ollama без аккаунта, API-ключа
+и облачного провайдера. Язык можно выбрать сразу командой
+`digit setup --language ru` или `digit setup --language en`; расширенные
+провайдеры остаются в отдельном сценарии настройки.
 
-#### Windows Defender or antivirus flags `uv.exe` as malware
+Установщик клонирует официальный репозиторий Digit, создаёт изолированное
+окружение и добавляет команды в пользовательский `PATH`. Повторный запуск
+обновляет существующую установку без перезаписи пользовательских настроек.
 
-If your antivirus (Bitdefender, Windows Defender, etc.) quarantines `uv.exe` from the Hermes `bin` folder (`%LOCALAPPDATA%\hermes\bin\uv.exe`), this is a **false positive**. The file is Astral's `uv` — the Rust Python package manager Hermes bundles to manage its Python environment. ML-based antivirus engines commonly flag unsigned Rust binaries that download and install packages.
+## Модели
 
-**To verify your copy is authentic:**
-
-```powershell
-# Install GitHub CLI if needed
-winget install --id GitHub.cli
-
-# Login to GitHub
-gh auth login
-
-# Run verification
-$uv = "$env:LOCALAPPDATA\hermes\bin\uv.exe"
-$ver = (& $uv --version).Split(' ')[1]
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$zip = "$env:TEMP\uv.zip"
-Invoke-WebRequest "https://github.com/astral-sh/uv/releases/download/$ver/uv-x86_64-pc-windows-msvc.zip" -OutFile $zip -UseBasicParsing
-gh attestation verify $zip --repo astral-sh/uv
-Expand-Archive $zip "$env:TEMP\uv_x" -Force
-(Get-FileHash "$env:TEMP\uv_x\uv.exe").Hash -eq (Get-FileHash $uv).Hash
-```
-
-If attestation says "Verification succeeded" and the last line prints `True`, you're good.
-
-**To whitelist Hermes:**
-- **Windows Defender:** Run PowerShell as Admin → `Add-MpPreference -ExclusionPath "$env:LOCALAPPDATA\hermes\bin"`
-- **Bitdefender:** Add an exception in the Bitdefender console (Protection > Antivirus > Settings > Manage Exceptions)
-- Whitelist the **folder**, not the file hash — Hermes updates `uv` and the hash changes every version
-
-For more context, see the upstream Astral reports: [astral-sh/uv#13553](https://github.com/astral-sh/uv/issues/13553), [astral-sh/uv#15011](https://github.com/astral-sh/uv/issues/15011), [astral-sh/uv#10079](https://github.com/astral-sh/uv/issues/10079).
-
----
-
-## Getting Started
+Digit не требует облачного аккаунта конкретного вендора. Базовый путь —
+локальная модель:
 
 ```bash
-hermes              # Interactive CLI — start a conversation
-hermes model        # Choose your LLM provider and model
-hermes tools        # Configure which tools are enabled
-hermes config set   # Set individual config values
-hermes config get   # Print individual config values
-hermes gateway      # Start the messaging gateway (Telegram, Discord, etc.)
-hermes setup        # Run the full setup wizard (configures everything at once)
-hermes claw migrate # Migrate from OpenClaw (if coming from OpenClaw)
-hermes update       # Update to the latest version
-hermes doctor       # Diagnose any issues
+# Сначала установите Ollama: https://ollama.com/
+ollama pull qwen3.5:4b
+digit model digit-local
 ```
 
-📖 **[Full documentation →](https://hermes-agent.nousresearch.com/docs/)**
+Готовые локальные пресеты:
 
----
+| Пресет | Модель | Для чего |
+| --- | --- | --- |
+| `digit-local-small` | Qwen3.5 2B | 8 ГБ памяти, быстрые короткие задачи |
+| `digit-local` | Qwen3.5 4B | основной вариант для M1/M2/M3/M4 |
+| `digit-local-plus` | Qwen3.5 9B | более сильное рассуждение при 16+ ГБ |
+| `digit-gemma` | Gemma 3 4B | альтернативная мультимодальная модель |
 
-## Skip the API-key collection — Nous Portal
+Можно подключить любой свой OpenAI-совместимый endpoint или API-провайдер через
+`digit model`. Готовый аккаунт у стороннего hosted-сервиса не требуется и не
+показывается как рекомендуемая интеграция.
 
-Hermes works with whatever provider you want — that's not changing. But if you'd rather not collect five separate API keys for the model, web search, image generation, TTS, and a cloud browser, **[Nous Portal](https://portal.nousresearch.com)** covers all of them under one subscription:
+Подробнее: [выбор моделей](docs/digitable/models.md).
 
-- **300+ models** — pick any of them with `/model <name>`
-- **Tool Gateway** — web search (Firecrawl), image generation (FAL), text-to-speech (OpenAI), cloud browser (Browser Use), all routed through your sub. No extra accounts.
-
-One command from a fresh install:
+## Где работает
 
 ```bash
-hermes setup --portal
+digit                         # интерактивный CLI
+digit --tui                   # полноэкранный терминальный интерфейс
+digit desktop                 # Desktop
+digit gateway                 # Telegram, Discord, Slack и другие каналы
+digit-acp                      # Zed, JetBrains и другие ACP-клиенты
+digit dashboard               # локальная web-панель
 ```
 
-That logs you in via OAuth, sets Nous as your provider, and turns on the Tool Gateway. Check what's wired up any time with `hermes portal info`. Full details on the [Tool Gateway docs page](https://hermes-agent.nousresearch.com/docs/user-guide/features/tool-gateway).
+Skills с картой экосистемы находятся в репозитории:
 
-You can still bring your own keys per-tool whenever you want — the gateway is per-backend, not all-or-nothing.
+- `digit` — идентичность, язык, приватность и маршрутизация;
+- `digitable-portal` — сервисы и домены Digitable;
+- `digitable-courses` — учебные маршруты и материалы;
+- `digitable-tools` — каталог утилит `tools.digitable.life`;
+- `digitable-workbench` — темы, шаблоны и инженерный процесс.
 
----
+## Workbench
 
-## CLI vs Messaging Quick Reference
+Бесплатная инструкция подключения Digit опубликована в
+[каталоге интеграций Workbench](https://courses.digitable.life/workbench/integrations/#integration-digit).
+Покупка Workbench для установки или запуска Digit не нужна. Платный пакет
+добавляет темы, Compendium и расширенные инженерные шаблоны.
 
-Hermes has two entry points: start the terminal UI with `hermes`, or run the gateway and talk to it from Telegram, Discord, Slack, WhatsApp, Signal, or Email. Once you're in a conversation, many slash commands are shared across both interfaces.
+## Хранилище и миграция
 
-| Action                         | CLI                                           | Messaging platforms                                                              |
-| ------------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------- |
-| Start chatting                 | `hermes`                                      | Run `hermes gateway setup` + `hermes gateway start`, then send the bot a message |
-| Start fresh conversation       | `/new` or `/reset`                            | `/new` or `/reset`                                                               |
-| Change model                   | `/model [provider:model]`                     | `/model [provider:model]`                                                        |
-| Set a personality              | `/personality [name]`                         | `/personality [name]`                                                            |
-| Retry or undo the last turn    | `/retry`, `/undo`                             | `/retry`, `/undo`                                                                |
-| Compress context / check usage | `/compress`, `/usage`, `/insights [--days N]` | `/compress`, `/usage`, `/insights [days]`                                        |
-| Browse skills                  | `/skills` or `/<skill-name>`                  | `/<skill-name>`                                                                  |
-| Interrupt current work         | `Ctrl+C` or send a new message                | `/stop` or send a new message                                                    |
-| Platform-specific status       | `/platforms`                                  | `/status`, `/sethome`                                                            |
+Новая установка использует:
 
-For the full command lists, see the [CLI guide](https://hermes-agent.nousresearch.com/docs/user-guide/cli) and the [Messaging Gateway guide](https://hermes-agent.nousresearch.com/docs/user-guide/messaging).
+```text
+~/.digit/
+├── config.yaml
+├── .env
+├── SOUL.md
+├── memories/
+├── sessions/
+├── skills/
+└── digit/
+```
 
----
-
-## Documentation
-
-All documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)**:
-
-| Section                                                                                             | What's Covered                                             |
-| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [Quickstart](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart)                 | Install → setup → first conversation in 2 minutes          |
-| [CLI Usage](https://hermes-agent.nousresearch.com/docs/user-guide/cli)                              | Commands, keybindings, personalities, sessions             |
-| [Configuration](https://hermes-agent.nousresearch.com/docs/user-guide/configuration)                | Config file, providers, models, all options                |
-| [Messaging Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging)                | Telegram, Discord, Slack, WhatsApp, Signal, Home Assistant |
-| [Security](https://hermes-agent.nousresearch.com/docs/user-guide/security)                          | Command approval, DM pairing, container isolation          |
-| [Tools & Toolsets](https://hermes-agent.nousresearch.com/docs/user-guide/features/tools)            | 40+ tools, toolset system, terminal backends               |
-| [Skills System](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)              | Procedural memory, Skills Hub, creating skills             |
-| [Memory](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory)                     | Persistent memory, user profiles, best practices           |
-| [MCP Integration](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp)               | Connect any MCP server for extended capabilities           |
-| [Cron Scheduling](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)              | Scheduled tasks with platform delivery                     |
-| [Context Files](https://hermes-agent.nousresearch.com/docs/user-guide/features/context-files)       | Project context that shapes every conversation             |
-| [Architecture](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture)             | Project structure, agent loop, key classes                 |
-| [Contributing](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing)             | Development setup, PR process, code style                  |
-| [CLI Reference](https://hermes-agent.nousresearch.com/docs/reference/cli-commands)                  | All commands and flags                                     |
-| [Environment Variables](https://hermes-agent.nousresearch.com/docs/reference/environment-variables) | Complete env var reference                                 |
-
----
-
-## Migrating from OpenClaw
-
-If you're coming from OpenClaw, Hermes can automatically import your settings, memories, skills, and API keys.
-
-**During first-time setup:** The setup wizard (`hermes setup`) automatically detects `~/.openclaw` and offers to migrate before configuration begins.
-
-**Anytime after install:**
+Digit намеренно не импортирует `~/.hermes` автоматически: там могут находиться
+секреты и память другого агента. Если вы раньше запускали Digit поверх старого
+каталога и хотите перенести данные, сначала закройте оба агента, затем выполните:
 
 ```bash
-hermes claw migrate              # Interactive migration (full preset)
-hermes claw migrate --dry-run    # Preview what would be migrated
-hermes claw migrate --preset user-data   # Migrate without secrets
-hermes claw migrate --overwrite  # Overwrite existing conflicts
+mkdir -p ~/.digit
+cp -a ~/.hermes/. ~/.digit/
 ```
 
-What gets imported:
+Проверьте `~/.digit/.env` и `~/.digit/config.yaml`, после чего запустите
+`digit doctor`. Для Docker и нестандартных установок совместимый override
+`HERMES_HOME` продолжает работать.
 
-- **SOUL.md** — persona file
-- **Memories** — MEMORY.md and USER.md entries
-- **Skills** — user-created skills → `~/.hermes/skills/openclaw-imports/`
-- **Command allowlist** — approval patterns
-- **Messaging settings** — platform configs, allowed users, working directory
-- **API keys** — allowlisted secrets (Telegram, OpenRouter, OpenAI, Anthropic, ElevenLabs)
-- **TTS assets** — workspace audio files
-- **Workspace instructions** — AGENTS.md (with `--workspace-target`)
+## Обновление и разработка
 
-See `hermes claw migrate --help` for all options, or use the `openclaw-migration` skill for an interactive agent-guided migration with dry-run previews.
-
----
-
-## Contributing
-
-We welcome contributions! See the [Contributing Guide](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing) for development setup, code style, and PR process.
-
-Quick start for contributors — use the standard installer, then work from the
-full git checkout it creates at `$HERMES_HOME/hermes-agent` (usually
-`~/.hermes/hermes-agent`). This matches the layout used by `hermes update`, the
-managed venv, lazy dependencies, gateway, and docs tooling.
+Установка через Homebrew обновляется вместе с остальными пакетами:
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-cd "${HERMES_HOME:-$HOME/.hermes}/hermes-agent"
-uv pip install -e ".[all,dev]"
-scripts/run_tests.sh
+brew upgrade digitable-lol/tap/digit
 ```
 
-Manual clone fallback (for throwaway clones/CI where you intentionally do not
-want the managed install layout):
-
-Create the venv outside the cloned source tree — a venv inside the directory
-the agent operates from can be wiped by a relative-path command the agent runs
-against its own checkout, destroying the running runtime mid-session.
+Для установки через скрипт используйте встроенное обновление:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv ~/.hermes/venvs/hermes-dev --python 3.11
-source ~/.hermes/venvs/hermes-dev/bin/activate
-uv pip install -e ".[all,dev]"
-scripts/run_tests.sh
+digit update
 ```
 
----
+Установка из исходников:
 
-## Community
+```bash
+git clone https://github.com/digitable-lol/digit.git
+cd digit
+uv venv venv --python 3.11
+uv pip install --python venv/bin/python -e '.[all]'
+venv/bin/digit
+```
 
-- 💬 [Discord](https://discord.gg/NousResearch)
-- 📚 [Skills Hub](https://agentskills.io)
-- 🐛 [Issues](https://github.com/NousResearch/hermes-agent/issues)
-- 🔌 [computer-use-linux](https://github.com/avifenesh/computer-use-linux) — Linux desktop-control MCP server for Hermes and other MCP hosts, with AT-SPI accessibility trees, Wayland/X11 input, screenshots, and compositor window targeting.
-- 🔌 [HermesClaw](https://github.com/AaronWong1999/hermesclaw) — Community WeChat bridge: Run Hermes Agent and OpenClaw on the same WeChat account.
+Тесты запускаются через репозиторный wrapper:
 
----
+```bash
+scripts/run_tests.sh tests/test_digit_home.py tests/skills/test_digit_distribution.py -q
+```
 
-## License
+## Лицензия
 
-MIT — see [LICENSE](LICENSE).
-
-Built by [Nous Research](https://nousresearch.com).
+[MIT](LICENSE). Изменения Digitable и исходный upstream сохраняют атрибуцию,
+указанную в истории Git и лицензии проекта.

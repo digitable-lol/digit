@@ -391,7 +391,7 @@ def _read_openai_version_fast() -> str | None:
 def _print_fast_version_info() -> None:
     from hermes_cli import __release_date__, __version__
 
-    print(f"Hermes Agent v{__version__} ({__release_date__})")
+    print(f"Digit v{__version__} ({__release_date__})")
     print(f"Install directory: {PROJECT_ROOT}")
 
     print(f"Python: {sys.version.split()[0]}")
@@ -1573,21 +1573,46 @@ def _print_tui_exit_summary(
         if db is not None:
             db.close()
 
+    try:
+        from hermes_cli.skin_engine import get_active_command_name, get_active_skin
+
+        _summary_digit = get_active_skin().name == "digitable"
+        _summary_command = get_active_command_name()
+    except Exception:
+        _summary_digit = True
+        _summary_command = "digit"
+    if _summary_digit:
+        from hermes_cli.digit_ui import digit_ui_text
+
     print()
-    print("Resume this session with:")
-    print(f"  hermes --tui --resume {target}")
+    print(digit_ui_text("resume_title") if _summary_digit else "Resume this session with:")
+    print(f"  {_summary_command} --tui --resume {target}")
     if title:
-        print(f'  hermes --tui -c "{title}"')
+        print(f'  {_summary_command} --tui -c "{title}"')
     print()
-    print(f"Session:        {target}")
+    session_label = digit_ui_text("session_label") if _summary_digit else "Session:"
+    title_label = digit_ui_text("title_label") if _summary_digit else "Title:"
+    messages_label = digit_ui_text("messages_label") if _summary_digit else "Messages:"
+    tokens_label = digit_ui_text("tokens_label") if _summary_digit else "Tokens:"
+    print(f"{session_label:<16}{target}")
     if title:
-        print(f"Title:          {title}")
-    print(f"Messages:       {message_count}")
-    print(
-        "Tokens:         "
-        f"{total_tokens} (in {input_tokens}, out {output_tokens}, "
-        f"cache {cache_read_tokens + cache_write_tokens}, reasoning {reasoning_tokens})"
-    )
+        print(f"{title_label:<16}{title}")
+    print(f"{messages_label:<16}{message_count}")
+    if _summary_digit:
+        token_counts = digit_ui_text(
+            "token_counts",
+            total=total_tokens,
+            input=input_tokens,
+            output=output_tokens,
+            cache=cache_read_tokens + cache_write_tokens,
+            reasoning=reasoning_tokens,
+        )
+    else:
+        token_counts = (
+            f"{total_tokens} (in {input_tokens}, out {output_tokens}, "
+            f"cache {cache_read_tokens + cache_write_tokens}, reasoning {reasoning_tokens})"
+        )
+    print(f"{tokens_label:<16}{token_counts}")
 
 
 _NPM_LOCK_RUNTIME_KEYS = frozenset({"ideallyInert", "peer"})
@@ -2959,6 +2984,14 @@ def cmd_whatsapp(args):
     # ── Step 7: Post-pairing ─────────────────────────────────────────────
     print()
     if (session_dir / "creds.json").exists():
+        try:
+            from hermes_cli.skin_engine import get_active_command_name, get_active_response_label
+
+            _wa_command = get_active_command_name()
+            _wa_label = get_active_response_label().strip()
+        except Exception:
+            _wa_command = "digit"
+            _wa_label = "◇ Digit"
         # Only enable WhatsApp now that pairing actually succeeded.  If the
         # user Ctrl+C'd at any earlier step, WHATSAPP_ENABLED stays unset
         # and `hermes gateway` skips it cleanly instead of paying a 30s
@@ -2968,21 +3001,21 @@ def cmd_whatsapp(args):
         print()
         if wa_mode == "bot":
             print("  Next steps:")
-            print("    1. Start the gateway:  hermes gateway")
+            print(f"    1. Start the gateway:  {_wa_command} gateway")
             print("    2. Send a message to the bot's WhatsApp number")
             print("    3. The agent will reply automatically")
             print()
-            print("  Tip: Agent responses are prefixed with '⚕ Hermes Agent'")
+            print(f"  Tip: Agent responses are prefixed with '{_wa_label}'")
         else:
             print("  Next steps:")
-            print("    1. Start the gateway:  hermes gateway")
+            print(f"    1. Start the gateway:  {_wa_command} gateway")
             print("    2. Open WhatsApp → Message Yourself")
             print("    3. Type a message — the agent will reply")
             print()
-            print("  Tip: Agent responses are prefixed with '⚕ Hermes Agent'")
+            print(f"  Tip: Agent responses are prefixed with '{_wa_label}'")
             print("  so you can tell them apart from your own messages.")
         print()
-        print("  Or install as a service: hermes gateway install")
+        print(f"  Or install as a service: {_wa_command} gateway install")
     else:
         print("⚠ Pairing may not have completed. Run 'hermes whatsapp' to try again.")
 
@@ -9091,7 +9124,7 @@ def cmd_update(args):
         print(format_docker_update_message())
         sys.exit(1)
 
-    if install_method in {"nix", "nixos"}:
+    if install_method in {"homebrew", "nix", "nixos"}:
         print(recommended_update_command_for_method(install_method))
         sys.exit(1)
 

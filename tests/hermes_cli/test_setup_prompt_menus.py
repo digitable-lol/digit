@@ -22,3 +22,23 @@ def test_prompt_choice_uses_curses_helper(monkeypatch):
     assert idx == 1
 
 
+def test_prompt_choice_russian_fallback_has_no_english_controls(monkeypatch, capsys):
+    prompts = []
+    monkeypatch.setattr(setup_mod, "_curses_prompt_choice", lambda *args, **kwargs: -1)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda prompt="": prompts.append(prompt) or "",
+    )
+
+    idx = setup_mod.prompt_choice(
+        "Как настроить Digit?",
+        ["Локально", "Расширенно"],
+        default=0,
+        language="ru",
+    )
+
+    assert idx == 0
+    assert "Enter — вариант по умолчанию" in capsys.readouterr().out
+    assert "Выбор [1-2]" in prompts[0]
+    assert "Select" not in prompts[0]
+

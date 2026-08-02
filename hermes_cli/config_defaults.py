@@ -2344,6 +2344,9 @@ DEFAULT_CONFIG = {
     "model_catalog": {
         "enabled": True,
         "url": "https://hermes-agent.nousresearch.com/docs/api/model-catalog.json",
+        # Digit does not surface the upstream vendor cloud in provider pickers.
+        # Existing explicit configs remain loadable for compatibility.
+        "excluded_providers": ["nous"],
         # Disk cache TTL in hours.  Beyond this, the CLI refetches on the
         # next /model or `hermes model` invocation; network failures
         # silently fall back to the stale cache.
@@ -3073,7 +3076,7 @@ DEFAULT_CONFIG = {
     },
 
     # Config schema version - bump this when adding new required fields
-    "_config_version": 33,
+    "_config_version": 34,
 }
 
 # Optional environment variables that enhance functionality

@@ -40,27 +40,20 @@ export const CONTROL_TEXT = 'text-xs'
 
 export const PROVIDER_GROUPS: ProviderPrefix[] = [
   {
-    prefix: 'NOUS_',
-    name: 'Nous Portal',
-    description: 'Hosted Hermes & Nous-trained models',
-    docsUrl: 'https://portal.nousresearch.com',
-    priority: 0
-  },
-  {
     prefix: 'FIREWORKS_',
     name: 'Fireworks AI',
     description: 'OpenAI-compatible direct model API',
     docsUrl: 'https://app.fireworks.ai/settings/users/api-keys',
-    // Slot #2 — mirrors CANONICAL_PROVIDERS (after Nous, ahead of OpenRouter).
+    // First visible hosted provider in the Digit distribution.
     // Same numeric priority as OpenRouter; name sort puts Fireworks first.
-    priority: 1
+    priority: 0
   },
   {
     prefix: 'OPENROUTER_',
     name: 'OpenRouter',
     description: 'Aggregator for hundreds of frontier models',
     docsUrl: 'https://openrouter.ai/keys',
-    priority: 1
+    priority: 0
   },
   {
     prefix: 'ANTHROPIC_',

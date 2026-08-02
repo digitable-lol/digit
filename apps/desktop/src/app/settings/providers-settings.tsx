@@ -9,6 +9,7 @@ import {
   FireworksProviderRow,
   OpenRouterProviderRow,
   ProviderRow,
+  isDigitVisibleProvider,
   providerTitle,
   sortProviders
 } from '@/components/onboarding'
@@ -72,6 +73,10 @@ function buildProviderKeyGroups(vars: Record<string, EnvVarInfo>): ProviderKeyGr
     // Prefer the backend-supplied provider label/id so the Keys tab groups by
     // the same identity the CLI picker uses; fall back to the prefix guess.
     const name = info.provider_label?.trim() || info.provider?.trim() || providerGroup(key)
+
+    if (info.provider?.trim().toLowerCase() === 'nous' || name.toLowerCase() === 'nous portal') {
+      continue
+    }
 
     if (name === 'Other') {
       continue
@@ -139,7 +144,7 @@ function OAuthPicker({
   const { t } = useI18n()
   const p = t.settings.providers
   const [showAll, setShowAll] = useState(false)
-  const ordered = useMemo(() => sortProviders(providers), [providers])
+  const ordered = useMemo(() => sortProviders(providers.filter(isDigitVisibleProvider)), [providers])
 
   if (ordered.length === 0) {
     return null
@@ -353,7 +358,7 @@ export function ProvidersSettings({
   const refreshOAuthProviders = useCallback(async () => {
     // OAuth providers are best-effort — a failure here just hides the panel.
     const { providers } = await listOAuthProviders()
-    setOauthProviders(providers)
+    setOauthProviders(providers.filter(isDigitVisibleProvider))
   }, [])
 
   useEffect(() => {
@@ -368,7 +373,7 @@ export function ProvidersSettings({
         const { providers } = await listOAuthProviders()
 
         if (!cancelled) {
-          setOauthProviders(providers)
+          setOauthProviders(providers.filter(isDigitVisibleProvider))
         }
       } catch {
         // Ignore — the OAuth panel just won't render.

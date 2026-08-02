@@ -2,7 +2,7 @@
 
 [project]
 name = "hermes-agent"
-version = "0.19.1"
+version = "0.19.8"
 description = "Digit by Digitable — a portal-aware, self-improving AI agent built on Hermes Agent"
 readme = "README.md"
 # Upper bound is load-bearing, not cosmetic. uv resolves the project's

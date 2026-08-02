@@ -11,7 +11,9 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
-def _build_artifact(kind: str, tmp_path, *, nix_build: bool) -> subprocess.CompletedProcess[str]:
+def _build_artifact(
+    kind: str, tmp_path, *, package_build: str | None
+) -> subprocess.CompletedProcess[str]:
     """Invoke the real PEP 517 hook (build_sdist / build_wheel) as a subprocess.
 
     The wheel and sdist guards live in SEPARATE cmdclass entries in setup.py
@@ -23,10 +25,12 @@ def _build_artifact(kind: str, tmp_path, *, nix_build: bool) -> subprocess.Compl
     # nix develop exports this too, so it must not grant permission to build
     # a distributable artifact.
     env["NIX_BUILD_TOP"] = "/build/devshell"
-    if nix_build:
+    env.pop("HERMES_NIX_BUILD", None)
+    env.pop("DIGIT_HOMEBREW_BUILD", None)
+    if package_build == "nix":
         env["HERMES_NIX_BUILD"] = "1"
-    else:
-        env.pop("HERMES_NIX_BUILD", None)
+    elif package_build == "homebrew":
+        env["DIGIT_HOMEBREW_BUILD"] = "1"
     # Redirect setuptools' scratch dirs (build/, *.egg-info) into tmp_path so
     # the allowed-marker build doesn't litter the real worktree.
     scratch = tmp_path / "scratch"
@@ -55,10 +59,10 @@ def _build_artifact(kind: str, tmp_path, *, nix_build: bool) -> subprocess.Compl
 
 @pytest.mark.parametrize("kind", ["sdist", "wheel"])
 def test_artifact_build_rejects_nix_development_shell_environment(kind, tmp_path):
-    result = _build_artifact(kind, tmp_path, nix_build=False)
+    result = _build_artifact(kind, tmp_path, package_build=None)
 
     assert result.returncode != 0
-    assert "Building wheels or sdists for hermes-agent is not supported" in result.stderr
+    assert "outside an approved package build is not supported" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -66,7 +70,18 @@ def test_artifact_build_rejects_nix_development_shell_environment(kind, tmp_path
     [("sdist", "hermes_agent-*.tar.gz"), ("wheel", "hermes_agent-*.whl")],
 )
 def test_artifact_build_allows_explicit_nix_package_build_marker(kind, artifact_glob, tmp_path):
-    result = _build_artifact(kind, tmp_path, nix_build=True)
+    result = _build_artifact(kind, tmp_path, package_build="nix")
+
+    assert result.returncode == 0, result.stderr
+    assert list(tmp_path.glob(artifact_glob))
+
+
+@pytest.mark.parametrize(
+    ("kind", "artifact_glob"),
+    [("sdist", "hermes_agent-*.tar.gz"), ("wheel", "hermes_agent-*.whl")],
+)
+def test_artifact_build_allows_official_homebrew_marker(kind, artifact_glob, tmp_path):
+    result = _build_artifact(kind, tmp_path, package_build="homebrew")
 
     assert result.returncode == 0, result.stderr
     assert list(tmp_path.glob(artifact_glob))

@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import copy
 from pathlib import Path
@@ -31,6 +32,106 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 
 _DOCS_BASE = "https://hermes-agent.nousresearch.com/docs"
+
+_SETUP_COPY = {
+    "en": {
+        "wizard_title": "Digit setup",
+        "wizard_intro": "Let's get Digit ready. You can change every choice later.",
+        "wizard_exit": "Press Ctrl+C at any time to exit without finishing.",
+        "mode_question": "How would you like to set up Digit?",
+        "mode_local": "Simple local setup — Ollama on this computer, no account or API key (recommended)",
+        "mode_full": "Advanced setup — connect your own API or server and configure every option",
+        "mode_blank": "Blank slate — only the minimum; enable capabilities later",
+        "local_title": "Simple local setup",
+        "local_saved": "Digit is configured for a local Qwen3.5 4B model through Ollama.",
+        "local_private": "Requests stay on this computer; no cloud account is configured.",
+        "local_next": "Two commands remain before the first chat:",
+        "local_install": "If Ollama is not installed, get it from https://ollama.com/download",
+        "local_ready": "Ollama is installed.",
+        "local_model_ready": "The local model is ready.",
+        "local_downloading": "Downloading Qwen3.5 4B now. Digit will wait until it is ready…",
+        "local_pull_failed": "The model download did not finish. Digit was not pointed at a missing model.",
+        "local_finish": "Setup is complete. Run `digit`.",
+        "defaults_title": "Applied beginner-friendly defaults:",
+        "defaults_iterations": "  Up to 150 agent steps per request",
+        "defaults_progress": "  Show tool progress",
+        "defaults_compression": "  Keep long conversations manageable automatically",
+        "defaults_reset": "  Never erase a session automatically",
+        "defaults_later": "  Change advanced settings later with `digit setup agent`.",
+    },
+    "ru": {
+        "wizard_title": "Настройка Digit",
+        "wizard_intro": "Подготовим Digit к работе. Любой выбор можно изменить позже.",
+        "wizard_exit": "Ctrl+C — выйти, не завершая настройку.",
+        "mode_question": "Как настроить Digit?",
+        "mode_local": "Простая локальная установка — Ollama на этом компьютере, без аккаунта и API-ключа (рекомендуется)",
+        "mode_full": "Расширенная настройка — подключить свой API или сервер и выбрать все параметры",
+        "mode_blank": "Минимальная установка — только необходимое, остальное включить позже",
+        "local_title": "Простая локальная установка",
+        "local_saved": "Digit настроен на локальную модель Qwen3.5 4B через Ollama.",
+        "local_private": "Запросы остаются на этом компьютере; облачный аккаунт не подключён.",
+        "local_next": "До первого диалога осталось выполнить две команды:",
+        "local_install": "Если Ollama ещё не установлен: https://ollama.com/download",
+        "local_ready": "Ollama уже установлен.",
+        "local_model_ready": "Локальная модель готова.",
+        "local_downloading": "Загружаю Qwen3.5 4B. Digit дождётся полной готовности модели…",
+        "local_pull_failed": "Модель не загрузилась. Digit не будет настроен на отсутствующую модель.",
+        "local_finish": "Настройка завершена. Запустите `digit`.",
+        "defaults_title": "Включены понятные настройки для начала:",
+        "defaults_iterations": "  До 150 шагов агента на один запрос",
+        "defaults_progress": "  Показывать ход выполнения инструментов",
+        "defaults_compression": "  Автоматически уплотнять длинные диалоги",
+        "defaults_reset": "  Никогда не стирать сессию автоматически",
+        "defaults_later": "  Расширенные настройки: `digit setup agent`.",
+    },
+}
+
+
+def _setup_text(language: str, key: str) -> str:
+    """Return onboarding copy in one of Digit's supported setup languages."""
+    return _SETUP_COPY.get(language, _SETUP_COPY["en"])[key]
+
+
+def _default_setup_language(config: dict) -> str:
+    """Choose a stable RU/EN default from saved config, then the host locale."""
+    saved = str((config.get("display") or {}).get("language") or "").lower()
+    if saved in {"ru", "en"}:
+        return saved
+    for variable in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        value = os.environ.get(variable, "").strip().lower()
+        if value.startswith("ru"):
+            return "ru"
+    return "en"
+
+
+def _choose_setup_language(config: dict, requested: str | None = None) -> str:
+    """Prompt once for RU/EN and persist the choice as the UI language."""
+    default_language = _default_setup_language(config)
+    if requested in {"ru", "en"}:
+        language = requested
+    else:
+        languages = ["Русский", "English"]
+        default_index = 0 if default_language == "ru" else 1
+        selected = prompt_choice(
+            "Выберите язык / Choose language",
+            languages,
+            default_index,
+            announce_default=False,
+            language="bilingual",
+        )
+        language = "ru" if selected == 0 else "en"
+
+    display = config.setdefault("display", {})
+    display["language"] = language
+    display["skin"] = "digitable"
+    save_config(config)
+    try:
+        from agent.i18n import reset_language_cache
+
+        reset_language_cache()
+    except Exception:
+        pass
+    return language
 
 
 def _model_config_dict(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -229,22 +330,52 @@ def _sanitize_pasted_input(value: str) -> str:
     return _BRACKETED_PASTE_PATTERN.sub("", value)
 
 
-def _curses_prompt_choice(question: str, choices: list, default: int = 0, description: str | None = None) -> int:
+def _curses_prompt_choice(
+    question: str,
+    choices: list,
+    default: int = 0,
+    description: str | None = None,
+    language: str = "en",
+) -> int:
     """Single-select menu using curses. Delegates to curses_radiolist."""
     from hermes_cli.curses_ui import curses_radiolist
-    return curses_radiolist(question, choices, selected=default, cancel_returns=-1, description=description)
+    return curses_radiolist(
+        question,
+        choices,
+        selected=default,
+        cancel_returns=-1,
+        description=description,
+        language=language,
+    )
 
 
 
-def prompt_choice(question: str, choices: list, default: int = 0, description: str | None = None) -> int:
+def prompt_choice(
+    question: str,
+    choices: list,
+    default: int = 0,
+    description: str | None = None,
+    *,
+    announce_default: bool = True,
+    language: str | None = None,
+) -> int:
     """Prompt for a choice from a list with arrow key navigation.
 
     Escape keeps the current default (skips the question).
     Ctrl+C exits the wizard.
     """
-    idx = _curses_prompt_choice(question, choices, default, description=description)
+    if language is None:
+        idx = _curses_prompt_choice(question, choices, default, description=description)
+    else:
+        idx = _curses_prompt_choice(
+            question,
+            choices,
+            default,
+            description=description,
+            language=language,
+        )
     if idx >= 0:
-        if idx == default:
+        if idx == default and announce_default:
             print_info("  Skipped (keeping current)")
             print()
             return default
@@ -259,21 +390,35 @@ def prompt_choice(question: str, choices: list, default: int = 0, description: s
         else:
             print(f"  {marker} {choice}")
 
-    print_info(f"  Enter for default ({default + 1})  Ctrl+C to exit")
+    if language == "ru":
+        print_info(f"  Enter — вариант по умолчанию ({default + 1})  Ctrl+C — выход")
+        select_prompt = f"  Выбор [1-{len(choices)}] ({default + 1}): "
+        range_error = f"Введите число от 1 до {len(choices)}"
+        number_error = "Введите число"
+    elif language == "bilingual":
+        print_info(
+            f"  Enter — по умолчанию / default ({default + 1})  Ctrl+C — выход / exit"
+        )
+        select_prompt = f"  Выбор / Select [1-{len(choices)}] ({default + 1}): "
+        range_error = f"Введите число / Enter a number from 1 to {len(choices)}"
+        number_error = "Введите число / Enter a number"
+    else:
+        print_info(f"  Enter for default ({default + 1})  Ctrl+C to exit")
+        select_prompt = f"  Select [1-{len(choices)}] ({default + 1}): "
+        range_error = f"Please enter a number between 1 and {len(choices)}"
+        number_error = "Please enter a number"
 
     while True:
         try:
-            value = input(
-                color(f"  Select [1-{len(choices)}] ({default + 1}): ", Colors.DIM)
-            )
+            value = input(color(select_prompt, Colors.DIM))
             if not value:
                 return default
             idx = int(value) - 1
             if 0 <= idx < len(choices):
                 return idx
-            print_error(f"Please enter a number between 1 and {len(choices)}")
+            print_error(range_error)
         except ValueError:
-            print_error("Please enter a number")
+            print_error(number_error)
         except (KeyboardInterrupt, EOFError):
             print()
             sys.exit(1)
@@ -1657,7 +1802,7 @@ def setup_terminal_backend(config: dict):
 # =============================================================================
 
 
-def _apply_default_agent_settings(config: dict):
+def _apply_default_agent_settings(config: dict, language: str = "en"):
     """Apply recommended defaults for all agent settings without prompting."""
     config.setdefault("agent", {})["max_turns"] = 150
     # config.yaml is the authoritative source for max_turns; the gateway
@@ -1677,12 +1822,12 @@ def _apply_default_agent_settings(config: dict):
     config.setdefault("session_reset", {})["mode"] = "none"
 
     save_config(config)
-    print_success("Applied recommended defaults:")
-    print_info("  Max iterations: 150")
-    print_info("  Tool progress: all")
-    print_info("  Compression threshold: 0.50")
-    print_info("  Session reset: never (use /reset or compression)")
-    print_info("  Run `hermes setup agent` later to customize.")
+    print_success(_setup_text(language, "defaults_title"))
+    print_info(_setup_text(language, "defaults_iterations"))
+    print_info(_setup_text(language, "defaults_progress"))
+    print_info(_setup_text(language, "defaults_compression"))
+    print_info(_setup_text(language, "defaults_reset"))
+    print_info(_setup_text(language, "defaults_later"))
 
 
 def setup_agent_settings(config: dict):
@@ -2938,14 +3083,14 @@ def run_setup_wizard(args):
     """Run the interactive setup wizard.
 
     Supports full, quick, and section-specific setup:
-      hermes setup           — full or quick (auto-detected)
-      hermes setup model     — just model/provider
-      hermes setup tts       — just text-to-speech
-      hermes setup terminal  — just terminal backend
-      hermes setup gateway   — just messaging platforms
-      hermes setup tools     — just tool configuration
-      hermes setup telemetry — just local shared metrics
-      hermes setup agent     — just agent settings
+      digit setup           — full or quick (auto-detected)
+      digit setup model     — just model/provider
+      digit setup tts       — just text-to-speech
+      digit setup terminal  — just terminal backend
+      digit setup gateway   — just messaging platforms
+      digit setup tools     — just tool configuration
+      digit setup telemetry — just local shared metrics
+      digit setup agent     — just agent settings
     """
     from hermes_cli.config import is_managed, managed_error
     if is_managed():
@@ -3007,7 +3152,7 @@ def run_setup_wizard(args):
                         Colors.MAGENTA,
                     )
                 )
-                print(color(f"│     ⚕ Hermes Setup — {label:<34s} │", Colors.MAGENTA))
+                print(color(f"│      Digit Setup — {label:<35s} │", Colors.MAGENTA))
                 print(
                     color(
                         "└─────────────────────────────────────────────────────────┘",
@@ -3034,40 +3179,16 @@ def run_setup_wizard(args):
         or active_provider is not None
     )
 
+    requested_language = getattr(args, "language", None)
+    if is_existing and requested_language is None:
+        setup_language = _default_setup_language(config)
+    else:
+        setup_language = _choose_setup_language(config, requested_language)
+
     print()
-    print(
-        color(
-            "┌─────────────────────────────────────────────────────────┐",
-            Colors.MAGENTA,
-        )
-    )
-    print(
-        color(
-            "│             ⚕ Hermes Agent Setup Wizard                │", Colors.MAGENTA
-        )
-    )
-    print(
-        color(
-            "├─────────────────────────────────────────────────────────┤",
-            Colors.MAGENTA,
-        )
-    )
-    print(
-        color(
-            "│  Let's configure your Hermes Agent installation.       │", Colors.MAGENTA
-        )
-    )
-    print(
-        color(
-            "│  Press Ctrl+C at any time to exit.                     │", Colors.MAGENTA
-        )
-    )
-    print(
-        color(
-            "└─────────────────────────────────────────────────────────┘",
-            Colors.MAGENTA,
-        )
-    )
+    print_header(_setup_text(setup_language, "wizard_title"))
+    print_info(_setup_text(setup_language, "wizard_intro"))
+    print_info(_setup_text(setup_language, "wizard_exit"))
 
     migration_ran = False
 
@@ -3102,27 +3223,32 @@ def run_setup_wizard(args):
             print_info("No existing configuration found — running first-time setup.")
             print()
 
-        # Offer OpenClaw migration before configuration begins
-        migration_ran = _offer_openclaw_migration(hermes_home)
-        if migration_ran:
-            config = load_config()
-
         setup_mode = prompt_choice(
-            "How would you like to set up Hermes?",
+            _setup_text(setup_language, "mode_question"),
             [
-                "Quick Setup (Nous Portal) — free OAuth login, no API keys, model + tools (recommended)",
-                "Full setup — configure every provider, tool & option yourself (bring your own keys)",
-                "Blank Slate — everything off except the bare minimum; opt in to each capability",
+                _setup_text(setup_language, "mode_local"),
+                _setup_text(setup_language, "mode_full"),
+                _setup_text(setup_language, "mode_blank"),
             ],
             0,
+            announce_default=False,
+            language=setup_language,
         )
 
         if setup_mode == 0:
-            _run_first_time_quick_setup(config, hermes_home, is_existing)
+            _run_first_time_local_setup(config, hermes_home, setup_language)
             return
         if setup_mode == 2:
             _run_blank_slate_setup(config, hermes_home, is_existing)
             return
+
+        # Migration is an advanced concern. Keep it out of the simple local
+        # and blank-slate paths so first-time users see only the choices they
+        # asked for (and never encounter upstream Hermes copy before Digit is
+        # configured).
+        migration_ran = _offer_openclaw_migration(hermes_home)
+        if migration_ran:
+            config = load_config()
 
     # ── Full Setup — run all sections ──
     print_header("Configuration Location")
@@ -3151,7 +3277,7 @@ def run_setup_wizard(args):
     # recommended defaults silently; existing installs keep whatever they have.
     # Tune later with `hermes setup agent`.
     if not is_existing:
-        _apply_default_agent_settings(config)
+        _apply_default_agent_settings(config, setup_language)
 
     # Section 4: Messaging Platforms
     if not (migration_ran and _skip_configured_section(config, "gateway", "Messaging Platforms")):
@@ -3168,6 +3294,91 @@ def run_setup_wizard(args):
         print_info("If setup changed a value you customized, restore it with:")
         print_info(f"  cp {_backup_path} {config_path}")
     _print_setup_summary(config, hermes_home)
+
+
+def _ollama_model_is_ready(executable: str, model: str) -> bool:
+    """Return whether Ollama can resolve *model* right now."""
+    try:
+        result = subprocess.run(
+            [executable, "show", model],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0
+
+
+def _ensure_local_ollama_model(executable: str, model: str, language: str) -> bool:
+    """Download the beginner model synchronously so first launch cannot 404."""
+    if _ollama_model_is_ready(executable, model):
+        print_success(_setup_text(language, "local_model_ready"))
+        return True
+
+    print_info(_setup_text(language, "local_downloading"))
+    try:
+        result = subprocess.run([executable, "pull", model], check=False)
+    except OSError as exc:
+        logger.debug("Could not start Ollama model download: %s", exc)
+        result = None
+
+    if result is not None and result.returncode == 0 and _ollama_model_is_ready(executable, model):
+        print_success(_setup_text(language, "local_model_ready"))
+        return True
+
+    print_error(_setup_text(language, "local_pull_failed"))
+    print_info(f"  {executable} pull {model}")
+    return False
+
+
+def _run_first_time_local_setup(config: dict, hermes_home, language: str) -> bool:
+    """Configure a private Ollama-backed Digit without accounts or API keys."""
+    print()
+    print_header(_setup_text(language, "local_title"))
+
+    ollama = shutil.which("ollama")
+    if not ollama:
+        print_info(_setup_text(language, "local_install"))
+        print_info("  ollama pull qwen3.5:4b")
+        return False
+
+    print_success(_setup_text(language, "local_ready"))
+    if not _ensure_local_ollama_model(ollama, "qwen3.5:4b", language):
+        return False
+
+    model = _model_config_dict(config)
+    model.update(
+        {
+            "provider": "custom",
+            "default": "qwen3.5:4b",
+            "base_url": "http://localhost:11434/v1",
+            "api_mode": "chat_completions",
+        }
+    )
+    model.pop("api_key", None)
+    config["model"] = model
+
+    terminal = config.setdefault("terminal", {})
+    terminal["backend"] = "local"
+    terminal.setdefault("cwd", str(Path.home()))
+    save_env_value("TERMINAL_ENV", "local")
+
+    display = config.setdefault("display", {})
+    display["language"] = language
+    display["skin"] = "digitable"
+
+    _apply_default_agent_settings(config, language)
+    save_config(config)
+
+    print()
+    print_success(_setup_text(language, "local_saved"))
+    print_info(_setup_text(language, "local_private"))
+    print()
+    print(color("  digit", Colors.CYAN, Colors.BOLD))
+    print_info(_setup_text(language, "local_finish"))
+    return True
 
 
 def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):

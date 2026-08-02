@@ -437,7 +437,7 @@ def get_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]:
     return {"upstream": upstream, "local": local, "ahead": max(ahead, 0)}
 
 
-_RELEASE_URL_BASE = "https://github.com/NousResearch/hermes-agent/releases/tag"
+_RELEASE_URL_BASE = "https://github.com/digitable-lol/digit/releases/tag"
 _latest_release_cache: Optional[tuple] = None  # (tag, url) once resolved
 
 
@@ -445,8 +445,8 @@ def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:
     """Return ``(tag, release_url)`` for the latest git tag, or None.
 
     Local-only — runs ``git describe --tags --abbrev=0`` against the
-    Hermes checkout. Cached per-process. Release URL always points at the
-    canonical NousResearch/hermes-agent repo (forks don't get a link).
+    Digit checkout. Cached per-process. Release links point at Digit's
+    public release page.
     """
     global _latest_release_cache
     if _latest_release_cache is not None:
@@ -487,7 +487,14 @@ def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:
 
 def format_banner_version_label() -> str:
     """Return the version label shown in the startup banner title."""
-    base = f"Hermes Agent v{VERSION} ({RELEASE_DATE})"
+    base = f"Digit v{VERSION} ({RELEASE_DATE})"
+    try:
+        from hermes_cli.skin_engine import get_active_skin
+
+        if get_active_skin().name == "digitable":
+            return base
+    except Exception:
+        pass
     state = get_git_banner_state()
     if not state:
         return base
@@ -635,7 +642,16 @@ def build_welcome_banner(console: "Console", model: str, cwd: str,
     except Exception:
         _bskin = None
         _hero = HERMES_CADUCEUS
+    _is_digitable = getattr(_bskin, "name", "") == "digitable"
+    _byline = _bskin.get_branding("byline", "Nous Research") if _bskin else "Nous Research"
+    _command_name = _bskin.get_branding("command_name", "hermes") if _bskin else "hermes"
     left_lines = ["", _hero, ""]
+    if _is_digitable:
+        from hermes_cli.digit_ui import digit_ui_text
+
+        _source_label = (provider or "Digit").replace("_", " ").strip().title()
+    else:
+        _source_label = _byline
     if (provider or "").strip().lower() == "moa":
         # MoA virtual provider: ``model`` is a preset name. Show the preset and
         # its aggregator so the banner is meaningful instead of a bare slug.
@@ -656,31 +672,49 @@ def build_welcome_banner(console: "Console", model: str, cwd: str,
         if len(preset_name) > 28:
             preset_name = preset_name[:25] + "..."
         agg_str = f" [dim {dim}]·[/] [dim {dim}]agg {agg_label}[/]" if agg_label else ""
-        ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_format_context_length(context_length)} context[/]" if context_length else ""
-        left_lines.append(f"[{accent}]MoA: {preset_name}[/]{agg_str}{ctx_str} [dim {dim}]·[/] [dim {dim}]Nous Research[/]")
+        if context_length and _is_digitable:
+            _ctx_label = digit_ui_text("context", context=_format_context_length(context_length))
+            ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_ctx_label}[/]"
+        else:
+            ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_format_context_length(context_length)} context[/]" if context_length else ""
+        left_lines.append(
+            f"[{accent}]MoA: {preset_name}[/]{agg_str}{ctx_str} "
+            f"[dim {dim}]·[/] [dim {dim}]{_source_label}[/]"
+        )
     else:
         if not (model or "").strip() or (model or "").strip().lower() == "unknown":
             # Unconfigured install: say so in red instead of a blank/"unknown"
             # slug — this is the single clearest place to tell the user what
             # is wrong and how to fix it.
-            left_lines.append(
-                f"[bold red]no model configured[/] "
-                f"[dim {dim}]— run /model or hermes setup[/]"
-            )
+            if _is_digitable:
+                from hermes_cli.digit_ui import digit_ui_text
+
+                missing_model = digit_ui_text("model_missing")
+            else:
+                missing_model = f"no model configured — run /model or {_command_name} setup"
+            left_lines.append(f"[bold red]{missing_model}[/]")
         else:
             model_short = model.split("/")[-1] if "/" in model else model
             if model_short.endswith(".gguf"):
                 model_short = model_short[:-5]
             if len(model_short) > 28:
                 model_short = model_short[:25] + "..."
-            ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_format_context_length(context_length)} context[/]" if context_length else ""
-            left_lines.append(f"[{accent}]{model_short}[/]{ctx_str} [dim {dim}]·[/] [dim {dim}]Nous Research[/]")
+            if context_length and _is_digitable:
+                _ctx_label = digit_ui_text("context", context=_format_context_length(context_length))
+                ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_ctx_label}[/]"
+            else:
+                ctx_str = f" [dim {dim}]·[/] [dim {dim}]{_format_context_length(context_length)} context[/]" if context_length else ""
+            left_lines.append(
+                f"[{accent}]{model_short}[/]{ctx_str} "
+                f"[dim {dim}]·[/] [dim {dim}]{_source_label}[/]"
+            )
 
     if os.getenv("HERMES_YOLO_MODE"):
         left_lines.append(f"[bold red]⚠ YOLO mode[/] [dim {dim}]— all approval prompts bypassed[/]")
     left_lines.append(f"[dim {dim}]{cwd}[/]")
     if session_id:
-        left_lines.append(f"[dim {session_color}]Session: {session_id}[/]")
+        session_label = digit_ui_text("session", session=session_id) if _is_digitable else f"Session: {session_id}"
+        left_lines.append(f"[dim {session_color}]{session_label}[/]")
     left_content = "\n".join(left_lines)
 
     right_lines = [f"[bold {accent}]Available Tools[/]"]
@@ -832,6 +866,36 @@ def build_welcome_banner(console: "Console", model: str, cwd: str,
     if mcp_connected:
         summary_parts.append(f"{mcp_connected} MCP servers")
     summary_parts.append("/help for commands")
+    if _is_digitable:
+        from hermes_cli.digit_ui import digit_ui_text
+
+        available_sets = {name.lower() for name in toolsets_dict}
+        right_lines = [f"[bold {accent}]{digit_ui_text('capabilities_title')}[/]"]
+        if available_sets & {"file", "terminal", "code_execution", "code-execution"}:
+            right_lines.append(f"[{text}]• {digit_ui_text('capability_code')}[/]")
+        if available_sets & {"web", "browser"}:
+            right_lines.append(f"[{text}]• {digit_ui_text('capability_web')}[/]")
+        if available_sets & {"delegation", "cronjob", "cron"}:
+            right_lines.append(f"[{text}]• {digit_ui_text('capability_tasks')}[/]")
+        if available_sets & {"vision", "image", "image_gen", "image-generation"}:
+            right_lines.append(f"[{text}]• {digit_ui_text('capability_media')}[/]")
+        _skill_names = {
+            name
+            for names in skills_by_category.values()
+            for name in names
+        }
+        if any(name.startswith("digitable-") for name in _skill_names):
+            right_lines.append(f"[{text}]• {digit_ui_text('capability_digitable')}[/]")
+        right_lines.extend(
+            [
+                "",
+                f"[bold {accent}]{digit_ui_text('start_title')}[/]",
+                f"[{text}]{digit_ui_text('start_prompt')}[/]",
+                f"[dim {dim}]{digit_ui_text('start_commands')}[/]",
+                "",
+                f"[dim {dim}]{digit_ui_text('summary', tools=len(tools), skills=total_skills)}[/]",
+            ]
+        )
     # Indicate when the codex_app_server runtime is active so users
     # understand why tool counts may not match what's actually reachable
     # (codex builds its own tool list inside the spawned subprocess).
@@ -854,7 +918,8 @@ def build_welcome_banner(console: "Console", model: str, cwd: str,
     except Exception:
         pass  # Never break the banner over a profiles.py bug
 
-    right_lines.append(f"[dim {dim}]{' · '.join(summary_parts)}[/]")
+    if not _is_digitable:
+        right_lines.append(f"[dim {dim}]{' · '.join(summary_parts)}[/]")
 
     # Update check — use prefetched result if available
     try:

@@ -37,7 +37,12 @@ class TestDoctorPlatformHints:
     def test_sqlite_upgrade_hint_keeps_git_runtime_repair(self):
         hint = doctor._sqlite_upgrade_hint("git")
 
-        assert "run `hermes update`" in hint
+        assert "run `digit update`" in hint
+
+    def test_sqlite_upgrade_hint_uses_homebrew(self):
+        hint = doctor._sqlite_upgrade_hint("homebrew")
+
+        assert "brew upgrade digitable-lol/tap/digit" in hint
 
 
 class TestProviderEnvDetection:

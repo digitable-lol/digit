@@ -15,6 +15,32 @@ from hermes_cli.colors import Colors, color
 RadioItem = Union[str, Sequence[Tuple[str, Optional[str]]]]
 
 
+def _radio_copy(language: str, key: str, **values) -> str:
+    """Return localized control copy for a radio list."""
+    copy = {
+        "en": {
+            "hint": "  ↑↓ navigate  ENTER/SPACE select  ESC cancel",
+            "hint_search": "  ↑↓ navigate  ENTER/SPACE select  / search  ESC cancel",
+            "numbered": "  Select by number, Enter to confirm.\n",
+            "choice": "  Choice [default {default}]: ",
+        },
+        "ru": {
+            "hint": "  ↑↓ перемещение  ENTER/ПРОБЕЛ выбрать  ESC отмена",
+            "hint_search": "  ↑↓ перемещение  ENTER/ПРОБЕЛ выбрать  / поиск  ESC отмена",
+            "numbered": "  Выберите номер и нажмите Enter.\n",
+            "choice": "  Выбор [по умолчанию {default}]: ",
+        },
+        "bilingual": {
+            "hint": "  ↑↓ выбор / navigate  ENTER выбрать / select  ESC отмена / cancel",
+            "hint_search": "  ↑↓ выбор / navigate  ENTER выбрать / select  / поиск / search  ESC отмена / cancel",
+            "numbered": "  Выберите номер / Select by number; Enter — подтвердить / confirm.\n",
+            "choice": "  Выбор / Choice [по умолчанию / default {default}]: ",
+        },
+    }
+    selected = copy.get(language, copy["en"])
+    return selected[key].format(**values)
+
+
 def radio_item_plain(item: RadioItem) -> str:
     """Flatten a radiolist item to searchable/plain display text."""
     if isinstance(item, str):
@@ -724,6 +750,7 @@ def curses_radiolist(
     description: str | None = None,
     searchable: bool = False,
     search_labels: List[str] | None = None,
+    language: str = "en",
 ) -> int:
     """Curses single-select radio list. Returns the selected index.
 
@@ -744,6 +771,7 @@ def curses_radiolist(
             row position.
         search_labels: Optional haystacks for type-to-filter (length must
             match ``items``). Defaults to the display labels when omitted.
+        language: Control-copy language: ``en``, ``ru``, or ``bilingual``.
     """
     if cancel_returns is None:
         cancel_returns = selected
@@ -774,9 +802,9 @@ def curses_radiolist(
             if searchable and search is not None and search.active:
                 hint = f"  Search: {search.query}\u258e  BACKSPACE edit  Ctrl+U clear  ESC stop"
             elif searchable:
-                hint = "  \u2191\u2193 navigate  ENTER/SPACE select  / search  ESC cancel"
+                hint = _radio_copy(language, "hint_search")
             else:
-                hint = "  \u2191\u2193 navigate  ENTER/SPACE select  ESC cancel"
+                hint = _radio_copy(language, "hint")
             stdscr.addnstr(row, 0, hint, max_x - 1, curses.A_DIM)
             row += 1
         except curses.error:
@@ -812,7 +840,9 @@ def curses_radiolist(
         reserve_bottom=1,
         # Dim gray (pair 3) for unselected "was …" sale chrome.
         extra_color_pairs=True,
-        fallback=lambda: _radio_numbered_fallback(title, items, selected, cancel_returns),
+        fallback=lambda: _radio_numbered_fallback(
+            title, items, selected, cancel_returns, language=language
+        ),
         cancel_value=cancel_returns,
         searchable=searchable,
         search_labels=(
@@ -843,17 +873,24 @@ def _radio_numbered_fallback(
     items: List[RadioItem],
     selected: int,
     cancel_returns: int,
+    *,
+    language: str = "en",
 ) -> int:
     """Text-based numbered fallback for radio selection."""
     print(color(f"\n  {title}", Colors.YELLOW))
-    print(color("  Select by number, Enter to confirm.\n", Colors.DIM))
+    print(color(_radio_copy(language, "numbered"), Colors.DIM))
 
     for i, label in enumerate(items):
         marker = color("(\u25cf)", Colors.GREEN) if i == selected else "(\u25cb)"
         print(f"  {marker} {i + 1:>2}. {format_radio_item_ansi(label)}")
     print()
     try:
-        val = input(color(f"  Choice [default {selected + 1}]: ", Colors.DIM)).strip()
+        val = input(
+            color(
+                _radio_copy(language, "choice", default=selected + 1),
+                Colors.DIM,
+            )
+        ).strip()
         if not val:
             return selected
         idx = int(val) - 1

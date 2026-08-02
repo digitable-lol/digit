@@ -47,6 +47,17 @@ def test_stamp_install_method_writes_code_scoped(tmp_path):
     assert not (home / ".install_method").exists()
 
 
+def test_homebrew_code_scoped_stamp_is_recognized(tmp_path):
+    code = tmp_path / "code"
+    code.mkdir()
+    (code / ".install_method").write_text("homebrew\n")
+
+    with patch("hermes_cli.config.get_managed_system", return_value=None):
+        from hermes_cli.config import detect_install_method
+
+        assert detect_install_method(project_root=code) == "homebrew"
+
+
 def test_container_without_stamp_is_not_docker(tmp_path):
     """An unstamped install in a generic container must NOT be flagged as docker.
 
@@ -64,7 +75,6 @@ def test_container_without_stamp_is_not_docker(tmp_path):
          patch("hermes_constants.is_container", return_value=True):
         from hermes_cli.config import detect_install_method
         assert detect_install_method(project_root=tmp_path) == "git"
-
 
 
 
