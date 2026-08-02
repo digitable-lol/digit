@@ -6789,12 +6789,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 return
             self._stream_box_opened = True
             try:
-                from hermes_cli.skin_engine import get_active_skin
+                from hermes_cli.skin_engine import get_active_response_label, get_active_skin
                 _skin = get_active_skin()
-                label = _skin.get_branding("response_label", "⚕ Hermes")
+                label = get_active_response_label()
                 _text_hex = _skin.get_color("banner_text", "#FFF8DC")
             except Exception:
-                label = "⚕ Hermes"
+                label = "◇ Digit"
                 _text_hex = "#FFF8DC"
             # Build a true-color ANSI escape for the response text color
             # so streamed content matches the Rich Panel appearance.
@@ -8364,7 +8364,13 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 }, f, indent=2, ensure_ascii=False)
             print(f"(^_^)v Conversation snapshot saved to: {path}")
             if self.session_id:
-                print(f"       Resume the live session with: hermes --resume {self.session_id}")
+                try:
+                    from hermes_cli.skin_engine import get_active_command_name
+
+                    _save_command = get_active_command_name()
+                except Exception:
+                    _save_command = "digit"
+                print(f"       Resume the live session with: {_save_command} --resume {self.session_id}")
         except Exception as e:
             print(f"(x_x) Failed to save: {e}")
     
@@ -13802,7 +13808,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                         if not _streaming_box_opened:
                             _streaming_box_opened = True
                             w = self._scrollback_box_width(getattr(self.console, "width", 80))
-                            label = " ⚕ Hermes "
+                            try:
+                                from hermes_cli.skin_engine import get_active_response_label
+
+                                label = f" {get_active_response_label().strip()} "
+                            except Exception:
+                                label = " ◇ Digit "
                             if self.show_timestamps:
                                 label = f"{label}{datetime.now().strftime(getattr(self, 'timestamp_format', '%H:%M'))} "
                             fill = w - 2 - HermesCLI._status_bar_display_width(label)
@@ -14257,13 +14268,13 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             if response and not response_previewed:
                 # Use skin engine for label/color with fallback
                 try:
-                    from hermes_cli.skin_engine import get_active_skin
+                    from hermes_cli.skin_engine import get_active_response_label, get_active_skin
                     _skin = get_active_skin()
-                    label = _skin.get_branding("response_label", "⚕ Hermes")
+                    label = get_active_response_label()
                     _resp_color = _maybe_remap_for_light_mode(_skin.get_color("response_border", "#CD7F32"))
                     _resp_text = _maybe_remap_for_light_mode(_skin.get_color("banner_text", "#FFF8DC"))
                 except Exception:
-                    label = "⚕ Hermes"
+                    label = "◇ Digit"
                     _resp_color = _maybe_remap_for_light_mode("#CD7F32")
                     _resp_text = _maybe_remap_for_light_mode("#FFF8DC")
 
@@ -14564,6 +14575,15 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             # skipping silently when there's no real console.
             self._clear_terminal_on_exit()
         print()
+        try:
+            from hermes_cli.skin_engine import get_active_command_name, get_active_skin
+
+            _exit_skin = get_active_skin()
+            _is_digit_exit = _exit_skin.name == "digitable"
+            _command_name = get_active_command_name()
+        except Exception:
+            _is_digit_exit = True
+            _command_name = "digit"
         msg_count = len(self.conversation_history)
         if msg_count > 0:
             user_msgs = len([m for m in self.conversation_history if m.get("role") == "user"])
@@ -14572,11 +14592,23 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             hours, remainder = divmod(int(elapsed.total_seconds()), 3600)
             minutes, seconds = divmod(remainder, 60)
             if hours > 0:
+                duration_key = "duration_hms"
                 duration_str = f"{hours}h {minutes}m {seconds}s"
             elif minutes > 0:
+                duration_key = "duration_ms"
                 duration_str = f"{minutes}m {seconds}s"
             else:
+                duration_key = "duration_s"
                 duration_str = f"{seconds}s"
+            if _is_digit_exit:
+                from hermes_cli.digit_ui import digit_ui_text
+
+                duration_str = digit_ui_text(
+                    duration_key,
+                    hours=hours,
+                    minutes=minutes,
+                    seconds=seconds,
+                )
             
             # Look up session title for resume-by-name hint
             session_title = None
@@ -14586,7 +14618,8 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 except Exception:
                     pass
 
-            print("Resume this session with:")
+            resume_title = digit_ui_text("resume_title") if _is_digit_exit else "Resume this session with:"
+            print(resume_title)
             # Session IDs are profile-constrained, so the resume hint must
             # include `-p <profile>` for non-default profiles. Without this,
             # copying the hint from a non-default profile fails to find the
@@ -14600,15 +14633,25 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             profile_flag = (
                 "" if _active_profile in ("default", "custom") else f" -p {_active_profile}"
             )
-            print(f"  hermes --resume {self.session_id}{profile_flag}")
+            print(f"  {_command_name} --resume {self.session_id}{profile_flag}")
             if session_title:
-                print(f"  hermes -c \"{session_title}\"{profile_flag}")
+                print(f"  {_command_name} -c \"{session_title}\"{profile_flag}")
             print()
-            print(f"Session:        {self.session_id}")
+            session_label = digit_ui_text("session_label") if _is_digit_exit else "Session:"
+            title_label = digit_ui_text("title_label") if _is_digit_exit else "Title:"
+            duration_label = digit_ui_text("duration_label") if _is_digit_exit else "Duration:"
+            messages_label = digit_ui_text("messages_label") if _is_digit_exit else "Messages:"
+            print(f"{session_label:<16}{self.session_id}")
             if session_title:
-                print(f"Title:          {session_title}")
-            print(f"Duration:       {duration_str}")
-            print(f"Messages:       {msg_count} ({user_msgs} user, {tool_calls} tool calls)")
+                print(f"{title_label:<16}{session_title}")
+            print(f"{duration_label:<16}{duration_str}")
+            if _is_digit_exit:
+                counts = digit_ui_text(
+                    "message_counts", messages=msg_count, users=user_msgs, tools=tool_calls
+                )
+            else:
+                counts = f"{msg_count} ({user_msgs} user, {tool_calls} tool calls)"
+            print(f"{messages_label:<16}{counts}")
         else:
             try:
                 from hermes_cli.skin_engine import get_active_goodbye

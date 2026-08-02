@@ -280,6 +280,7 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
             "response_label": " ⚕ Hermes ",
             "prompt_symbol": "❯",
             "help_header": "(^_^)? Available Commands",
+            "command_name": "hermes",
         },
         "tool_prefix": "┊",
     },
@@ -1076,6 +1077,22 @@ def get_active_goodbye(fallback: str = "Goodbye! ⚕") -> str:
     """Get the goodbye line from the active skin."""
     try:
         return get_active_skin().get_branding("goodbye", fallback)
+    except Exception:
+        return fallback
+
+
+def get_active_response_label(fallback: str = "◇ Digit") -> str:
+    """Get the response-panel identity without leaking upstream branding."""
+    try:
+        return get_active_skin().get_branding("response_label", fallback)
+    except Exception:
+        return fallback
+
+
+def get_active_command_name(fallback: str = "digit") -> str:
+    """Get the executable name used in user-facing command hints."""
+    try:
+        return get_active_skin().get_branding("command_name", fallback)
     except Exception:
         return fallback
 

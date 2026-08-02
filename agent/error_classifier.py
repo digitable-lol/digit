@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import enum
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -338,6 +339,16 @@ _MODEL_NOT_FOUND_PATTERNS = [
     # instead of automatically failing over.  See PR #58446.
     "no endpoints found that support tool use",
 ]
+
+
+def _has_named_model_not_found(error_msg: str) -> bool:
+    """Match Ollama/OpenAI wording such as ``model 'qwen:4b' not found``."""
+    return bool(
+        re.search(
+            r"\bmodel\s+(?:['\"`][^'\"`]+['\"`]|\S+)\s+not\s+found\b",
+            error_msg,
+        )
+    )
 
 # Malformed-message-array 400s.  Deterministic request-shape rejections that
 # describe the *transcript* being invalid, not a parameter.  The canonical
@@ -1055,7 +1066,7 @@ def _classify_by_status(
                 retryable=False,
                 should_fallback=False,
             )
-        if any(p in error_msg for p in _MODEL_NOT_FOUND_PATTERNS):
+        if any(p in error_msg for p in _MODEL_NOT_FOUND_PATTERNS) or _has_named_model_not_found(error_msg):
             return result_fn(
                 FailoverReason.model_not_found,
                 retryable=False,

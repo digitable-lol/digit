@@ -360,6 +360,13 @@ class TestClassifyApiError:
         assert result.should_fallback is True
         assert result.retryable is False
 
+    def test_ollama_named_model_not_found_is_not_retried(self):
+        e = MockAPIError("model 'qwen3.5:4b' not found", status_code=404)
+        result = classify_api_error(e, provider="custom")
+        assert result.reason == FailoverReason.model_not_found
+        assert result.retryable is False
+        assert result.should_fallback is True
+
     def test_404_generic(self):
         # Generic 404 with no "model not found" signal — common for local
         # llama.cpp/Ollama/vLLM endpoints with slightly wrong paths.  Treat
@@ -1047,6 +1054,5 @@ class TestExpandedOverflowPatterns:
         )
         result = classify_api_error(e, provider="openrouter", model="m")
         assert result.reason == FailoverReason.context_overflow
-
 
 
