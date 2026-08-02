@@ -3178,11 +3178,6 @@ def run_setup_wizard(args):
             print_info("No existing configuration found — running first-time setup.")
             print()
 
-        # Offer OpenClaw migration before configuration begins
-        migration_ran = _offer_openclaw_migration(hermes_home)
-        if migration_ran:
-            config = load_config()
-
         setup_mode = prompt_choice(
             _setup_text(setup_language, "mode_question"),
             [
@@ -3200,6 +3195,14 @@ def run_setup_wizard(args):
         if setup_mode == 2:
             _run_blank_slate_setup(config, hermes_home, is_existing)
             return
+
+        # Migration is an advanced concern. Keep it out of the simple local
+        # and blank-slate paths so first-time users see only the choices they
+        # asked for (and never encounter upstream Hermes copy before Digit is
+        # configured).
+        migration_ran = _offer_openclaw_migration(hermes_home)
+        if migration_ran:
+            config = load_config()
 
     # ── Full Setup — run all sections ──
     print_header("Configuration Location")
