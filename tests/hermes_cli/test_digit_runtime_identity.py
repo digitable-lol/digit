@@ -1,6 +1,7 @@
 """Regression contracts for Digit's first-run and returning-user identity."""
 
 import os
+from datetime import datetime
 from unittest.mock import patch
 
 import yaml
@@ -50,6 +51,41 @@ def test_digit_status_bar_uses_its_own_identity_mark():
         assert "⚕" not in rendered
     finally:
         set_active_skin(previous_skin)
+
+
+def test_digit_error_identity_and_russian_exit_summary(monkeypatch, capsys):
+    from cli import HermesCLI
+    from hermes_cli.skin_engine import get_active_response_label
+
+    previous_skin = get_active_skin_name()
+    monkeypatch.setenv("HERMES_LANGUAGE", "ru")
+    set_active_skin("digitable")
+    runtime = object.__new__(HermesCLI)
+    runtime.conversation_history = [{"role": "user", "content": "проверка"}]
+    runtime.session_id = "20260802_182549_8feaf1"
+    runtime.session_start = datetime.now()
+    runtime._session_db = None
+    runtime._clear_terminal_on_exit = lambda: None
+    try:
+        assert get_active_response_label().strip() == "◇ Digit"
+        runtime._print_exit_summary(clear_screen=False)
+        output = capsys.readouterr().out
+    finally:
+        set_active_skin(previous_skin)
+
+    assert "Продолжить этот сеанс" in output
+    assert "digit --resume 20260802_182549_8feaf1" in output
+    assert "Сеанс:" in output
+    assert "Сообщения:" in output
+    assert "Hermes" not in output
+    assert "hermes --resume" not in output
+
+
+def test_digit_response_label_fallback_never_leaks_hermes():
+    from hermes_cli import skin_engine
+
+    with patch.object(skin_engine, "get_active_skin", side_effect=RuntimeError("broken skin")):
+        assert skin_engine.get_active_response_label() == "◇ Digit"
 
 
 def test_v34_migrates_the_persisted_upstream_skin(tmp_path):

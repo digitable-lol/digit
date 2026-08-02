@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import copy
 from pathlib import Path
@@ -47,7 +48,10 @@ _SETUP_COPY = {
         "local_next": "Two commands remain before the first chat:",
         "local_install": "If Ollama is not installed, get it from https://ollama.com/download",
         "local_ready": "Ollama is installed.",
-        "local_finish": "After the model download finishes, run `digit`.",
+        "local_model_ready": "The local model is ready.",
+        "local_downloading": "Downloading Qwen3.5 4B now. Digit will wait until it is ready…",
+        "local_pull_failed": "The model download did not finish. Digit was not pointed at a missing model.",
+        "local_finish": "Setup is complete. Run `digit`.",
         "defaults_title": "Applied beginner-friendly defaults:",
         "defaults_iterations": "  Up to 150 agent steps per request",
         "defaults_progress": "  Show tool progress",
@@ -69,7 +73,10 @@ _SETUP_COPY = {
         "local_next": "До первого диалога осталось выполнить две команды:",
         "local_install": "Если Ollama ещё не установлен: https://ollama.com/download",
         "local_ready": "Ollama уже установлен.",
-        "local_finish": "Когда модель загрузится, запустите `digit`.",
+        "local_model_ready": "Локальная модель готова.",
+        "local_downloading": "Загружаю Qwen3.5 4B. Digit дождётся полной готовности модели…",
+        "local_pull_failed": "Модель не загрузилась. Digit не будет настроен на отсутствующую модель.",
+        "local_finish": "Настройка завершена. Запустите `digit`.",
         "defaults_title": "Включены понятные настройки для начала:",
         "defaults_iterations": "  До 150 шагов агента на один запрос",
         "defaults_progress": "  Показывать ход выполнения инструментов",
@@ -3289,10 +3296,57 @@ def run_setup_wizard(args):
     _print_setup_summary(config, hermes_home)
 
 
-def _run_first_time_local_setup(config: dict, hermes_home, language: str) -> None:
+def _ollama_model_is_ready(executable: str, model: str) -> bool:
+    """Return whether Ollama can resolve *model* right now."""
+    try:
+        result = subprocess.run(
+            [executable, "show", model],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0
+
+
+def _ensure_local_ollama_model(executable: str, model: str, language: str) -> bool:
+    """Download the beginner model synchronously so first launch cannot 404."""
+    if _ollama_model_is_ready(executable, model):
+        print_success(_setup_text(language, "local_model_ready"))
+        return True
+
+    print_info(_setup_text(language, "local_downloading"))
+    try:
+        result = subprocess.run([executable, "pull", model], check=False)
+    except OSError as exc:
+        logger.debug("Could not start Ollama model download: %s", exc)
+        result = None
+
+    if result is not None and result.returncode == 0 and _ollama_model_is_ready(executable, model):
+        print_success(_setup_text(language, "local_model_ready"))
+        return True
+
+    print_error(_setup_text(language, "local_pull_failed"))
+    print_info(f"  {executable} pull {model}")
+    return False
+
+
+def _run_first_time_local_setup(config: dict, hermes_home, language: str) -> bool:
     """Configure a private Ollama-backed Digit without accounts or API keys."""
     print()
     print_header(_setup_text(language, "local_title"))
+
+    ollama = shutil.which("ollama")
+    if not ollama:
+        print_info(_setup_text(language, "local_install"))
+        print_info("  ollama pull qwen3.5:4b")
+        return False
+
+    print_success(_setup_text(language, "local_ready"))
+    if not _ensure_local_ollama_model(ollama, "qwen3.5:4b", language):
+        return False
 
     model = _model_config_dict(config)
     model.update(
@@ -3321,15 +3375,10 @@ def _run_first_time_local_setup(config: dict, hermes_home, language: str) -> Non
     print()
     print_success(_setup_text(language, "local_saved"))
     print_info(_setup_text(language, "local_private"))
-    if shutil.which("ollama"):
-        print_success(_setup_text(language, "local_ready"))
-    else:
-        print_info(_setup_text(language, "local_install"))
     print()
-    print_info(_setup_text(language, "local_next"))
-    print(color("  ollama pull qwen3.5:4b", Colors.CYAN, Colors.BOLD))
     print(color("  digit", Colors.CYAN, Colors.BOLD))
     print_info(_setup_text(language, "local_finish"))
+    return True
 
 
 def _run_first_time_quick_setup(config: dict, hermes_home, is_existing: bool):

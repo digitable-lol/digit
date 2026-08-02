@@ -5147,6 +5147,23 @@ def run_conversation(
                             final_response=_policy_response,
                             error_detail=_nonretryable_summary,
                         )
+                    if (
+                        classified.reason == FailoverReason.model_not_found
+                        and any(host in str(_base).lower() for host in ("localhost", "127.0.0.1", "[::1]"))
+                    ):
+                        from hermes_cli.digit_ui import digit_ui_text
+
+                        _local_missing = digit_ui_text("local_model_missing", model=_model)
+                        agent._vprint(f"{agent.log_prefix}💡 {_local_missing}", force=True)
+                        return {
+                            "final_response": _local_missing,
+                            "messages": messages,
+                            "api_calls": api_call_count,
+                            "completed": False,
+                            "failed": True,
+                            "error": _nonretryable_summary,
+                            "failure_reason": classified.reason.value,
+                        }
                     # Billing walls are the common non-retryable abort: enrich
                     # the result with the same structured recovery descriptor as
                     # the max-retries path so every surface (CLI, TUI, desktop)
