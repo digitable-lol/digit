@@ -110,6 +110,7 @@ def _choose_setup_language(config: dict, requested: str | None = None) -> str:
             languages,
             default_index,
             announce_default=False,
+            language="bilingual",
         )
         language = "ru" if selected == 0 else "en"
 
@@ -322,10 +323,23 @@ def _sanitize_pasted_input(value: str) -> str:
     return _BRACKETED_PASTE_PATTERN.sub("", value)
 
 
-def _curses_prompt_choice(question: str, choices: list, default: int = 0, description: str | None = None) -> int:
+def _curses_prompt_choice(
+    question: str,
+    choices: list,
+    default: int = 0,
+    description: str | None = None,
+    language: str = "en",
+) -> int:
     """Single-select menu using curses. Delegates to curses_radiolist."""
     from hermes_cli.curses_ui import curses_radiolist
-    return curses_radiolist(question, choices, selected=default, cancel_returns=-1, description=description)
+    return curses_radiolist(
+        question,
+        choices,
+        selected=default,
+        cancel_returns=-1,
+        description=description,
+        language=language,
+    )
 
 
 
@@ -336,13 +350,23 @@ def prompt_choice(
     description: str | None = None,
     *,
     announce_default: bool = True,
+    language: str | None = None,
 ) -> int:
     """Prompt for a choice from a list with arrow key navigation.
 
     Escape keeps the current default (skips the question).
     Ctrl+C exits the wizard.
     """
-    idx = _curses_prompt_choice(question, choices, default, description=description)
+    if language is None:
+        idx = _curses_prompt_choice(question, choices, default, description=description)
+    else:
+        idx = _curses_prompt_choice(
+            question,
+            choices,
+            default,
+            description=description,
+            language=language,
+        )
     if idx >= 0:
         if idx == default and announce_default:
             print_info("  Skipped (keeping current)")
@@ -359,21 +383,35 @@ def prompt_choice(
         else:
             print(f"  {marker} {choice}")
 
-    print_info(f"  Enter for default ({default + 1})  Ctrl+C to exit")
+    if language == "ru":
+        print_info(f"  Enter — вариант по умолчанию ({default + 1})  Ctrl+C — выход")
+        select_prompt = f"  Выбор [1-{len(choices)}] ({default + 1}): "
+        range_error = f"Введите число от 1 до {len(choices)}"
+        number_error = "Введите число"
+    elif language == "bilingual":
+        print_info(
+            f"  Enter — по умолчанию / default ({default + 1})  Ctrl+C — выход / exit"
+        )
+        select_prompt = f"  Выбор / Select [1-{len(choices)}] ({default + 1}): "
+        range_error = f"Введите число / Enter a number from 1 to {len(choices)}"
+        number_error = "Введите число / Enter a number"
+    else:
+        print_info(f"  Enter for default ({default + 1})  Ctrl+C to exit")
+        select_prompt = f"  Select [1-{len(choices)}] ({default + 1}): "
+        range_error = f"Please enter a number between 1 and {len(choices)}"
+        number_error = "Please enter a number"
 
     while True:
         try:
-            value = input(
-                color(f"  Select [1-{len(choices)}] ({default + 1}): ", Colors.DIM)
-            )
+            value = input(color(select_prompt, Colors.DIM))
             if not value:
                 return default
             idx = int(value) - 1
             if 0 <= idx < len(choices):
                 return idx
-            print_error(f"Please enter a number between 1 and {len(choices)}")
+            print_error(range_error)
         except ValueError:
-            print_error("Please enter a number")
+            print_error(number_error)
         except (KeyboardInterrupt, EOFError):
             print()
             sys.exit(1)
@@ -3187,6 +3225,7 @@ def run_setup_wizard(args):
             ],
             0,
             announce_default=False,
+            language=setup_language,
         )
 
         if setup_mode == 0:
