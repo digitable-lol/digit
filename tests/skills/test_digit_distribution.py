@@ -25,6 +25,7 @@ def test_digitable_skin_uses_canonical_brand_tokens():
     assert skin.get_branding("agent_name") == "Digit"
     assert skin.get_branding("byline") == "Digitable"
     assert skin.get_branding("command_name") == "digit"
+    assert skin.get_branding("status_symbol") == "◇"
     assert skin.colors["ui_accent"] == "#00E5E5"
     assert skin.colors["status_bar_bg"] == "#071018"
 
