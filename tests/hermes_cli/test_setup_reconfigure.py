@@ -24,6 +24,7 @@ def _make_setup_args(**overrides):
         reset=overrides.get("reset", False),
         reconfigure=overrides.get("reconfigure", False),
         quick=overrides.get("quick", False),
+        language=overrides.get("language", None),
     )
 
 
@@ -170,7 +171,8 @@ class TestFreshInstall:
             m = _enter_fresh_install_patches(
                 stack,
                 prompt=("hermes_cli.setup.prompt_choice", {"return_value": 0}),
-                first="hermes_cli.setup._run_first_time_quick_setup",
+                language=("hermes_cli.setup._choose_setup_language", {"return_value": "en"}),
+                first="hermes_cli.setup._run_first_time_local_setup",
             )
             from hermes_cli.setup import run_setup_wizard
             run_setup_wizard(args)
@@ -199,4 +201,19 @@ class TestArgparse:
         assert captured["args"].reconfigure is True
         assert captured["args"].quick is False
 
+    def test_language_flag_reaches_cmd_setup(self, monkeypatch):
+        import sys
+        from hermes_cli.main import main
+
+        captured = {}
+        monkeypatch.setattr(
+            "hermes_cli.setup.run_setup_wizard",
+            lambda args: captured.setdefault("args", args),
+        )
+        monkeypatch.setattr(sys, "argv", ["digit", "setup", "--language", "ru"])
+        try:
+            main()
+        except SystemExit:
+            pass
+        assert captured["args"].language == "ru"
 
