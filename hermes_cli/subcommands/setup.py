@@ -1,4 +1,4 @@
-"""``hermes setup`` subcommand parser.
+"""``digit setup`` subcommand parser.
 
 Extracted verbatim from ``hermes_cli/main.py:main()`` (god-file Phase 2).
 Handler injected to avoid importing ``main``.
@@ -17,9 +17,9 @@ def build_setup_parser(subparsers, *, cmd_setup: Callable) -> None:
     setup_parser = subparsers.add_parser(
         "setup",
         help="Interactive setup wizard",
-        description="Configure Hermes Agent with an interactive wizard. "
+        description="Configure Digit with an interactive RU/EN wizard. "
         "Run a specific section: "
-        "hermes setup model|tts|terminal|gateway|tools|telemetry|agent",
+        "digit setup model|tts|terminal|gateway|tools|telemetry|agent",
     )
     setup_parser.add_argument(
         "section",
@@ -37,6 +37,11 @@ def build_setup_parser(subparsers, *, cmd_setup: Callable) -> None:
         help="Run a specific setup section instead of the full wizard",
     )
     setup_parser.add_argument(
+        "--language",
+        choices=["ru", "en"],
+        help="Setup and Digit interface language / Язык установки и интерфейса",
+    )
+    setup_parser.add_argument(
         "--non-interactive",
         action="store_true",
         help="Non-interactive mode (use defaults/env vars)",
@@ -49,7 +54,7 @@ def build_setup_parser(subparsers, *, cmd_setup: Callable) -> None:
         action="store_true",
         help="(Default on existing installs.) Re-run the full wizard, "
         "showing current values as defaults. Kept for backwards "
-        "compatibility — a bare 'hermes setup' now does this.",
+        "compatibility — a bare 'digit setup' now does this.",
     )
     setup_parser.add_argument(
         "--quick",
