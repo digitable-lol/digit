@@ -362,6 +362,8 @@ _BUILTIN_SKINS: Dict[str, Dict[str, Any]] = {
             "response_label": " ◇ Digit ",
             "prompt_symbol": "›",
             "help_header": "◇ Digit commands",
+            "byline": "Digitable",
+            "command_name": "digit",
         },
         "tool_prefix": "│",
         "banner_logo": """[bold #00E5E5]██████╗ ██╗ ██████╗ ██╗████████╗[/]
