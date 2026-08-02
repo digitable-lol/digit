@@ -20,6 +20,38 @@ def test_digit_startup_copy_supports_russian_and_english():
     assert "обычными словами" in digit_ui_text("welcome", language="ru")
 
 
+def test_digit_status_bar_uses_its_own_identity_mark():
+    from cli import HermesCLI
+
+    previous_skin = get_active_skin_name()
+    set_active_skin("digitable")
+    try:
+        assert HermesCLI._get_brand_status_symbol() == "◇"
+        runtime = object.__new__(HermesCLI)
+        runtime._get_status_bar_snapshot = lambda: {
+            "model_short": "qwen3.5:4b",
+            "context_percent": None,
+            "context_length": None,
+            "context_tokens": 0,
+            "duration": "1s",
+            "battery_label": "",
+            "focus_label": "",
+            "goal_active": False,
+            "compressions": 0,
+            "active_background_tasks": 0,
+            "active_background_processes": 0,
+            "active_background_subagents": 0,
+            "prompt_elapsed": None,
+            "idle_since": None,
+        }
+        runtime._is_session_yolo_active = lambda: False
+        rendered = runtime._build_status_bar_text(width=100)
+        assert rendered.startswith("◇ qwen3.5:4b")
+        assert "⚕" not in rendered
+    finally:
+        set_active_skin(previous_skin)
+
+
 def test_v34_migrates_the_persisted_upstream_skin(tmp_path):
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
