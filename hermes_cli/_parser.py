@@ -39,46 +39,46 @@ def _inherited_flag(parser, *args, **kwargs):
 
 _EPILOGUE = """
 Examples:
-    hermes                        Start interactive chat
-    hermes chat -q "Hello"        Single query mode
-    hermes --tui                  Launch the modern TUI (or set display.interface: tui)
-    hermes --cli                  Force the classic REPL (overrides display.interface: tui)
-    hermes -c                     Resume the most recent session
-    hermes -c "my project"        Resume a session by name (latest in lineage)
-    hermes --resume <session_id>  Resume a specific session by ID
-    hermes setup                  Run setup wizard
-    hermes logout                 Clear stored authentication
-    hermes auth add <provider>    Add a pooled credential
-    hermes auth list              List pooled credentials
-    hermes auth remove <p> <t>    Remove pooled credential by index, id, or label
-    hermes auth reset <provider>  Clear exhaustion status for a provider
-    hermes model                  Select default model
-    hermes fallback [list]        Show fallback provider chain
-    hermes fallback add           Add a fallback provider (same picker as `hermes model`)
-    hermes fallback remove        Remove a fallback provider from the chain
-    hermes config                 View configuration
-    hermes config edit            Edit config in $EDITOR
-    hermes config set model gpt-4 Set a config value
-    hermes gateway                Run messaging gateway
-    hermes -s hermes-agent-dev,github-auth
-    hermes -w                     Start in isolated git worktree
-    hermes gateway install        Install gateway background service
-    hermes sessions list          List past sessions
-    hermes sessions browse        Interactive session picker
-    hermes sessions rename ID T   Rename/title a session
-    hermes logs                   View agent.log (last 50 lines)
-    hermes logs -f                Follow agent.log in real time
-    hermes logs errors            View errors.log
-    hermes logs --since 1h        Lines from the last hour
-    hermes debug share             Upload debug report for support
-    hermes console                Open the safe Hermes command console
-    hermes update                 Update to latest version
-    hermes dashboard              Start web UI dashboard (port 9119)
-    hermes dashboard --stop       Stop running dashboard processes
-    hermes dashboard --status     List running dashboard processes
+    digit                         Start interactive chat
+    digit chat -q "Hello"         Single query mode
+    digit --tui                   Launch the modern TUI (or set display.interface: tui)
+    digit --cli                   Force the classic REPL (overrides display.interface: tui)
+    digit -c                      Resume the most recent session
+    digit -c "my project"         Resume a session by name (latest in lineage)
+    digit --resume <session_id>   Resume a specific session by ID
+    digit setup                   Run setup wizard
+    digit logout                  Clear stored authentication
+    digit auth add <provider>     Add a pooled credential
+    digit auth list               List pooled credentials
+    digit auth remove <p> <t>     Remove pooled credential by index, id, or label
+    digit auth reset <provider>   Clear exhaustion status for a provider
+    digit model                   Select default model
+    digit fallback [list]         Show fallback provider chain
+    digit fallback add            Add a fallback provider (same picker as `digit model`)
+    digit fallback remove         Remove a fallback provider from the chain
+    digit config                  View configuration
+    digit config edit             Edit config in $EDITOR
+    digit config set model gpt-4  Set a config value
+    digit gateway                 Run messaging gateway
+    digit -s hermes-agent-dev,github-auth
+    digit -w                      Start in isolated git worktree
+    digit gateway install         Install gateway background service
+    digit sessions list           List past sessions
+    digit sessions browse         Interactive session picker
+    digit sessions rename ID T    Rename/title a session
+    digit logs                    View agent.log (last 50 lines)
+    digit logs -f                 Follow agent.log in real time
+    digit logs errors             View errors.log
+    digit logs --since 1h         Lines from the last hour
+    digit debug share             Upload debug report for support
+    digit console                 Open the safe command console
+    digit update                  Update to latest version
+    digit dashboard               Start web UI dashboard (port 9119)
+    digit dashboard --stop        Stop running dashboard processes
+    digit dashboard --status      List running dashboard processes
 
 For more help on a command:
-    hermes <command> --help
+    digit <command> --help
 """
 
 
@@ -90,8 +90,8 @@ def build_top_level_parser():
     other subparsers via ``subparsers.add_parser(...)``.
     """
     parser = argparse.ArgumentParser(
-        prog="hermes",
-        description="Hermes Agent - AI assistant with tool-calling capabilities",
+        prog="digit",
+        description="Digit by Digitable - local AI agent with tool-calling capabilities",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=_EPILOGUE,
     )
