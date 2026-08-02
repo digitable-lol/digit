@@ -27,6 +27,12 @@ Digit основан на MIT-лицензированном
 
 ## Установка
 
+macOS через Homebrew:
+
+```bash
+brew install digitable-lol/tap/digit
+```
+
 macOS, Linux и WSL:
 
 ```bash
@@ -131,6 +137,14 @@ cp -a ~/.hermes/. ~/.digit/
 `HERMES_HOME` продолжает работать.
 
 ## Обновление и разработка
+
+Установка через Homebrew обновляется вместе с остальными пакетами:
+
+```bash
+brew upgrade digitable-lol/tap/digit
+```
+
+Для установки через скрипт используйте встроенное обновление:
 
 ```bash
 digit update

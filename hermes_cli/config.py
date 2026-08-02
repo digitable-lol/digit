@@ -384,6 +384,8 @@ _NIX_UPDATE_MSG = (
     "(e.g. nix profile upgrade, or update your flake input and rebuild with nixos-rebuild or home-manager switch)"
 )
 
+_HOMEBREW_UPDATE_MSG = "brew upgrade digitable-lol/tap/digit"
+
 
 def get_managed_update_command() -> Optional[str]:
     """Return the preferred upgrade command for a managed install."""
@@ -408,7 +410,10 @@ def _install_method_project_root(project_root: Optional[Path] = None) -> Path:
 
 
 def detect_install_method(project_root: Optional[Path] = None) -> str:
-    """Detect how Hermes was installed: 'docker', 'nix', 'nixos', 'git', or 'unknown'.
+    """Detect how Digit was installed.
+
+    Known methods are ``docker``, ``homebrew``, ``nix``, ``nixos``, ``git``,
+    and ``unknown``.
 
     Resolution order:
     1. Code-scoped stamp ``<install tree>/.install_method`` (next to the
@@ -452,7 +457,7 @@ def detect_install_method(project_root: Optional[Path] = None) -> str:
     See issue #34397.
     """
     root = _install_method_project_root(project_root)
-    supported_methods = {"docker", "nix", "nixos", "git", "unknown"}
+    supported_methods = {"docker", "homebrew", "nix", "nixos", "git", "unknown"}
 
     # 1. Code-scoped stamp — authoritative, immune to shared $HERMES_HOME.
     try:
@@ -542,11 +547,13 @@ def stamp_install_method(method: str, project_root: Optional[Path] = None) -> No
 
 def recommended_update_command_for_method(method: str) -> str:
     """Return the update command or guidance for a given install method."""
+    if method == "homebrew":
+        return _HOMEBREW_UPDATE_MSG
     if method in {"nix", "nixos"}:
         return _NIX_UPDATE_MSG
     if method == "docker":
         return "docker pull nousresearch/hermes-agent:latest"
-    return "hermes update"
+    return "digit update"
 
 
 def recommended_update_command() -> str:

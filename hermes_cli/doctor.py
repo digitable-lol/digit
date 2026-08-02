@@ -87,10 +87,10 @@ def _sqlite_upgrade_hint(install_method: str | None = None) -> str:
     if method == "docker":
         command = recommended_update_command_for_method(method)
         action = f"run `{command}`, then recreate all Hermes containers"
-    elif method in {"nix", "nixos"}:
+    elif method in {"homebrew", "nix", "nixos"}:
         action = recommended_update_command_for_method(method)
     else:
-        action = "run `hermes update`"
+        action = "run `digit update`"
     return (
         f"({action}; fixed versions: 3.51.3+ / 3.50.7 / 3.44.6 — "
         "see https://sqlite.org/wal.html#walresetbug)"
