@@ -25,7 +25,7 @@ For a shared or always-on Digit, Workbench should use the authenticated gateway 
 
 ## Required Workbench UI
 
-- model/provider selector with `local`, `cloud`, and `auto` labels;
+- model/provider selector with `local`, `custom endpoint`, and `auto` labels;
 - visible local/remote privacy indicator;
 - current Digit profile and workspace root;
 - approval queue and cancel button;

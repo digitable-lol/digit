@@ -269,7 +269,7 @@ def _get_profiles_root() -> Path:
     can see all profiles.
 
     In Docker/custom deployments where HERMES_HOME points outside
-    ``~/.hermes``, profiles live under ``HERMES_HOME/profiles/`` so
+    ``~/.digit``, profiles live under ``HERMES_HOME/profiles/`` so
     they persist on the mounted volume.
     """
     return _get_default_hermes_home() / "profiles"
@@ -278,8 +278,8 @@ def _get_profiles_root() -> Path:
 def _get_default_hermes_home() -> Path:
     """Return the default (pre-profile) HERMES_HOME path.
 
-    In standard deployments this is ``~/.hermes``.
-    In Docker/custom deployments where HERMES_HOME is outside ``~/.hermes``
+    In standard Digit deployments this is ``~/.digit``.
+    In Docker/custom deployments where HERMES_HOME is outside ``~/.digit``
     (e.g. ``/opt/data``), returns HERMES_HOME directly.
     """
     from hermes_constants import get_default_hermes_root

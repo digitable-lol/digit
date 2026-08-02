@@ -84,26 +84,23 @@ async function renderProvidersSettings() {
 }
 
 describe('ProvidersSettings', () => {
-  it('disconnects a connected provider account and refreshes the accounts list', async () => {
+  it('does not surface the upstream vendor cloud account', async () => {
     await renderProvidersSettings()
 
-    const remove = await screen.findByRole('button', { name: 'Remove Nous Portal' })
-    await act(async () => {
-      fireEvent.click(remove)
-    })
-
-    await waitFor(() => expect(disconnectOAuthProvider).toHaveBeenCalledWith('nous'))
-    expect(listOAuthProviders).toHaveBeenCalledTimes(2)
+    fireEvent.click(await screen.findByText('Other providers'))
+    expect(await screen.findByText('MiniMax')).toBeTruthy()
+    expect(screen.queryByText('Nous Portal')).toBeNull()
   })
 
   it('keeps provider selection separate from account removal', async () => {
     await renderProvidersSettings()
 
+    fireEvent.click(await screen.findByText('Other providers'))
     await act(async () => {
-      fireEvent.click(await screen.findByText('Nous Portal'))
+      fireEvent.click(await screen.findByText('MiniMax'))
     })
 
-    expect(startManualProviderOAuth).toHaveBeenCalledWith('nous')
+    expect(startManualProviderOAuth).toHaveBeenCalledWith('minimax-oauth')
     expect(disconnectOAuthProvider).not.toHaveBeenCalled()
   })
 

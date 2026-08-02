@@ -56,40 +56,33 @@ afterEach(() => {
 })
 
 describe('onboarding Picker', () => {
-  it('features Nous Portal and hides other providers behind a disclosure', () => {
+  it('hides the upstream vendor cloud and shows visible providers directly', () => {
     setProviders([provider('anthropic', 'Anthropic Claude'), provider('nous', 'Nous Portal')])
     render(<Picker ctx={ctx} />)
 
-    expect(screen.getByText('Nous Portal')).toBeTruthy()
-    expect(screen.getByText('Recommended')).toBeTruthy()
-    // Fireworks is the always-visible #2 slot (after Nous), even while OAuth
-    // alternatives stay collapsed behind the disclosure.
+    expect(screen.queryByText('Nous Portal')).toBeNull()
+    expect(screen.queryByText('Recommended')).toBeNull()
     expect(screen.getByText('Fireworks AI')).toBeTruthy()
-    expect(screen.queryByText('Anthropic API Key')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Other providers' }))
-
     expect(screen.getByText('Anthropic API Key')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Collapse' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Other providers' })).toBeNull()
   })
 
-  it('shows Fireworks in slot #2 ahead of other OAuth providers', () => {
+  it('shows Fireworks ahead of other visible OAuth providers', () => {
     setProviders([
       provider('openai-codex', 'OpenAI Codex / ChatGPT'),
       provider('minimax-oauth', 'MiniMax'),
       provider('nous', 'Nous Portal')
     ])
     render(<Picker ctx={ctx} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Other providers' }))
 
     const labels = screen
       .getAllByRole('button')
       .map(el => el.textContent ?? '')
-      .filter(text => /Nous Portal|Fireworks AI|OpenAI OAuth|MiniMax|OpenRouter/.test(text))
+      .filter(text => /Fireworks AI|OpenAI OAuth|MiniMax|OpenRouter/.test(text))
 
     const indexOf = (needle: string) => labels.findIndex(text => text.includes(needle))
-    expect(indexOf('Nous Portal')).toBeGreaterThanOrEqual(0)
-    expect(indexOf('Fireworks AI')).toBeGreaterThan(indexOf('Nous Portal'))
+    expect(screen.queryByText('Nous Portal')).toBeNull()
+    expect(indexOf('Fireworks AI')).toBeGreaterThanOrEqual(0)
     expect(indexOf('OpenAI OAuth')).toBeGreaterThan(indexOf('Fireworks AI'))
     expect(indexOf('MiniMax')).toBeGreaterThan(indexOf('OpenAI OAuth'))
   })
