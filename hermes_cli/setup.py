@@ -116,7 +116,7 @@ def _choose_setup_language(config: dict, requested: str | None = None) -> str:
 
     display = config.setdefault("display", {})
     display["language"] = language
-    display.setdefault("skin", "digitable")
+    display["skin"] = "digitable"
     save_config(config)
     try:
         from agent.i18n import reset_language_cache
@@ -3313,7 +3313,7 @@ def _run_first_time_local_setup(config: dict, hermes_home, language: str) -> Non
 
     display = config.setdefault("display", {})
     display["language"] = language
-    display.setdefault("skin", "digitable")
+    display["skin"] = "digitable"
 
     _apply_default_agent_settings(config, language)
     save_config(config)

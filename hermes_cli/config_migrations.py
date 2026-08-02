@@ -644,6 +644,22 @@ def _migrate_to_33(results: Dict[str, Any], quiet: bool) -> None:
             )
 
 
+def _migrate_to_34(results: Dict[str, Any], quiet: bool) -> None:
+    """Move the one-time upstream default skin to Digit's branded skin."""
+    _c = _cfg()
+    config = _c.read_raw_config()
+    display = config.get("display")
+    if not isinstance(display, dict) or display.get("skin") != "default":
+        return
+
+    display["skin"] = "digitable"
+    config["display"] = display
+    _c._persist_migration(config)
+    results["config_added"].append("display.skin=digitable")
+    if not quiet:
+        print("  ✓ Switched the legacy default skin to Digitable")
+
+
 #: Registry of (target_version, migration_fn), strictly ascending. The driver
 #: applies every entry whose target version is greater than the on-disk
 #: version captured before the ladder started. Order matters: later steps may
@@ -665,6 +681,7 @@ MIGRATIONS: Tuple[Tuple[int, Callable[[Dict[str, Any], bool], None]], ...] = (
     (31, _migrate_to_31),
     (32, _migrate_to_32),
     (33, _migrate_to_33),
+    (34, _migrate_to_34),
 )
 
 

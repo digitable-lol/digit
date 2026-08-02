@@ -3950,22 +3950,30 @@ def _build_compact_banner() -> str:
     if skin_name == "default":
         line1 = "⚕ NOUS HERMES - AI Agent Framework"
         tiny_line = "⚕ NOUS HERMES"
+        byline = "Nous Research"
     else:
         agent_name = _skin.get_branding("agent_name", "Hermes Agent") if _skin else "Hermes Agent"
-        line1 = f"{agent_name} - AI Agent Framework"
+        if skin_name == "digitable":
+            from hermes_cli.digit_ui import digit_ui_text
+
+            line1 = digit_ui_text("compact_title")
+        else:
+            line1 = f"{agent_name} - AI Agent Framework"
         tiny_line = agent_name
+        byline = _skin.get_branding("byline", "") if _skin else ""
 
     if os.environ.get("HERMES_FAST_STARTUP_BANNER") == "1":
         from hermes_cli import __release_date__ as _release_date
         from hermes_cli import __version__ as _version
 
-        version_line = f"Hermes Agent v{_version} ({_release_date})"
+        version_line = f"Digit v{_version} ({_release_date})" if skin_name == "digitable" else f"Hermes Agent v{_version} ({_release_date})"
     else:
         version_line = format_banner_version_label()
 
     w = min(shutil.get_terminal_size().columns - 2, 88)
     if w < 30:
-        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]- Nous Research[/]\n"
+        suffix = f" - {byline}" if byline else ""
+        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]{suffix}[/]\n"
 
     inner = w - 2  # inside the box border
     bar = "═" * w
@@ -14867,7 +14875,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         try:
             from hermes_cli.skin_engine import get_active_skin
             _welcome_skin = get_active_skin()
-            _welcome_text = _welcome_skin.get_branding("welcome", "Welcome to Hermes Agent! Type your message or /help for commands.")
+            if getattr(_welcome_skin, "name", "") == "digitable":
+                from hermes_cli.digit_ui import digit_ui_text
+
+                _welcome_text = digit_ui_text("welcome")
+            else:
+                _welcome_text = _welcome_skin.get_branding("welcome", "Welcome to Hermes Agent! Type your message or /help for commands.")
             _welcome_color = _welcome_skin.get_color("banner_text", "#FFF8DC")
         except Exception:
             _welcome_text = "Welcome to Hermes Agent! Type your message or /help for commands."
@@ -14935,7 +14948,12 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 mark_seen,
                 openclaw_residue_hint_cli,
             )
-            if not is_seen(self.config, OPENCLAW_RESIDUE_FLAG) and detect_openclaw_residue():
+            _is_digitable = getattr(_welcome_skin, "name", "") == "digitable"
+            if (
+                not _is_digitable
+                and not is_seen(self.config, OPENCLAW_RESIDUE_FLAG)
+                and detect_openclaw_residue()
+            ):
                 try:
                     _resid_color = _welcome_skin.get_color("banner_dim", "#B8860B")
                 except Exception:
@@ -14950,13 +14968,16 @@ class HermesCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
             pass  # banner is non-critical — never break startup
         # Show a random tip to help users discover features
         try:
+            if getattr(_welcome_skin, "name", "") == "digitable":
+                raise LookupError("Digit startup guidance is already shown in the banner")
             from hermes_cli.tips import get_random_tip
             _tip = get_random_tip()
             try:
                 _tip_color = _welcome_skin.get_color("banner_dim", "#B8860B")
             except Exception:
                 _tip_color = "#B8860B"
-            self._console_print(f"[dim {_tip_color}]✦ Tip: {_tip}[/]")
+            _tip_label = "Tip"
+            self._console_print(f"[dim {_tip_color}]✦ {_tip_label}: {_tip}[/]")
         except Exception:
             pass  # Tips are non-critical — never break startup
 
