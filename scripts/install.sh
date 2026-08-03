@@ -1753,33 +1753,33 @@ exec "$DIGIT_BIN" "\$@"
 EOF
     fi
     chmod +x "$command_link_dir/digit"
-    cp "$command_link_dir/digit" "$command_link_dir/digit"
-    chmod +x "$command_link_dir/digit"
     log_success "Installed digit launcher → $command_link_display_dir/digit"
-    log_info "Compatibility launcher: $command_link_display_dir/digit"
 
-    # Also expose `digit`. The `digit` console script declared in
+    # Also expose `digit-agent`. The console script declared in
     # pyproject.toml's [project.scripts] lives inside the venv, which is not on
     # the login-shell PATH. Without this launcher users can't invoke the agent
     # entrypoint directly from outside the venv. (#74819)
-    rm -f "$command_link_dir/digit"
+    #
+    # Written straight to digit-agent. Before the rebrand this block wrote
+    # \`hermes-agent\` and copied it to \`digit-agent\` (rebrand:keep); once both
+    # to `digit`, it silently overwrote the CLI launcher created just above
+    # with the run_agent entrypoint.
+    rm -f "$command_link_dir/digit-agent"
     if [ "$USE_VENV" = true ]; then
-        cat > "$command_link_dir/digit" <<EOF
+        cat > "$command_link_dir/digit-agent" <<EOF
 #!/usr/bin/env bash
 unset PYTHONPATH
 unset PYTHONHOME
 exec "$DIGIT_BIN" "$INSTALL_DIR/run_agent.py" "\$@"
 EOF
     else
-        cat > "$command_link_dir/digit" <<EOF
+        cat > "$command_link_dir/digit-agent" <<EOF
 #!/usr/bin/env bash
 unset PYTHONPATH
 unset PYTHONHOME
 exec "$DIGIT_BIN" run_agent.py "\$@"
 EOF
     fi
-    chmod +x "$command_link_dir/digit"
-    cp "$command_link_dir/digit" "$command_link_dir/digit-agent"
     chmod +x "$command_link_dir/digit-agent"
     log_success "Installed digit-agent launcher → $command_link_display_dir/digit-agent"
 
@@ -1805,8 +1805,6 @@ unset PYTHONHOME
 exec "$DIGIT_BIN" acp "\$@"
 EOF
     fi
-    chmod +x "$command_link_dir/digit-acp"
-    cp "$command_link_dir/digit-acp" "$command_link_dir/digit-acp"
     chmod +x "$command_link_dir/digit-acp"
     log_success "Installed digit-acp launcher → $command_link_display_dir/digit-acp"
 

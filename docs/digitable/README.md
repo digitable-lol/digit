@@ -13,12 +13,31 @@ Digit is the Digitable distribution of Hermes Agent. It keeps upstream compatibi
 
 ## Surfaces
 
-| Surface | Digit entry point | Compatibility entry point |
-|---|---|---|
-| CLI | `digit` | `digit` |
-| headless agent | `digit-agent` | `digit` |
-| Workbench / IDE ACP | `digit-acp` | `digit-acp` |
-| Desktop | Digit | Digit internals remain compatible |
+| Surface | Entry point |
+|---|---|
+| CLI | `digit` |
+| headless agent | `digit-agent` |
+| Workbench / IDE ACP | `digit-acp` |
+| Desktop | Digit |
+
+<!-- rebrand:keep -->
+The `hermes`, `hermes-agent` and `hermes-acp` aliases were removed in the <!-- rebrand:keep -->
+rebrand; see CHANGELOG.md. `HERMES_*` environment variables are still honoured <!-- rebrand:keep -->
+for one more minor release.
+
+## MCP servers
+
+Two first-party servers ship in the approved catalog:
+
+- `fts-gate` — `fts_gate_check`, `fts_morphisms_list` (Apache-2.0)
+- `digit-tools` — `tools_categories`, `tools_list`, `tools_execute` (GPL-3.0,
+  behind a stdio process boundary; see [mcp-servers.md](mcp-servers.md) for the
+  licence analysis)
+
+```bash
+digit mcp install fts-gate
+digit mcp install digit-tools
+```
 
 ## Bundled Digitable skills
 
@@ -31,4 +50,4 @@ Digit is the Digitable distribution of Hermes Agent. It keeps upstream compatibi
 
 ## Upstream sync policy
 
-Keep distribution changes additive and concentrated in identity, skin, assets, skills, docs, and launch aliases. Merge upstream regularly and do not rename internal Python packages unless an upstream incompatibility forces it.
+Keep distribution changes additive and concentrated in identity, skin, assets, skills and docs. <!-- rebrand:keep --> **The internal Python packages have now been renamed** (`hermes_cli` -> `digit_cli`, `hermes_*` -> `digit_*`), so upstream merges will conflict on every renamed path; expect to resolve them by applying the same rename to incoming code. That cost was accepted deliberately as part of the rebrand — see CHANGELOG.md.

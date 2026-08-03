@@ -23,9 +23,7 @@
 
 Digit основан на MIT-лицензированном
 [Hermes Agent](https://github.com/NousResearch/hermes-agent) и сохраняет
-совместимость с его ядром. Старые команды `digit`, `digit` и
-`digit-acp` пока остаются алиасами, чтобы существующие сценарии не ломались.
-
+совместимость с его ядром.
 ## Установка
 
 macOS через Homebrew:
@@ -177,3 +175,31 @@ scripts/run_tests.sh tests/test_digit_home.py tests/skills/test_digit_distributi
 
 [MIT](LICENSE). Изменения Digitable и исходный upstream сохраняют атрибуцию,
 указанную в истории Git и лицензии проекта.
+
+
+## Происхождение
+
+Digit — производная работа от <!-- rebrand:keep -->
+[Hermes Agent](https://github.com/NousResearch/hermes-agent), <!-- rebrand:keep -->
+Copyright (c) 2025 Nous Research, распространяемого под лицензией MIT.
+Текст лицензии сохранён без изменений в [LICENSE](LICENSE); указание авторства
+Nous Research удалению не подлежит.
+
+Совместимость с ядром сохраняется на уровне архитектуры, но старые команды
+удалены. Замены:
+
+| Было | Стало |
+|---|---|
+| `hermes` | `digit` | <!-- rebrand:keep -->
+| `hermes-agent` | `digit-agent` | <!-- rebrand:keep -->
+| `hermes-acp` | `digit-acp` | <!-- rebrand:keep -->
+
+Переменные окружения `HERMES_*` продолжают работать один минорный релиз: <!-- rebrand:keep -->
+они автоматически переносятся на имена `DIGIT_*` с предупреждением.
+Каталог данных переехал в `~/.digit`; при первом запуске Digit покажет
+команду для переноса, но ничего не скопирует сам — там могут лежать
+учётные данные.
+
+Идентификаторы моделей не переименованы: `hermes-4-405b`, <!-- rebrand:keep -->
+`NousResearch/Hermes-3-Llama-3.1-70B` и другие — это внешние имена, <!-- rebrand:keep -->
+которые уходят в API провайдеров.
