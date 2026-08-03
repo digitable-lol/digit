@@ -1,0 +1,15 @@
+Digit
+Copyright (c) 2026 Digitable
+
+This product includes software developed by Nous Research.
+
+Digit is a derivative work of Hermes Agent
+(https://github.com/NousResearch/hermes-agent), Copyright (c) 2025 Nous
+Research, licensed under the MIT License. The full text of that licence is
+retained verbatim in LICENSE and applies to the portions of this work derived
+from it.
+
+Hermes model identifiers referenced by this software (for example hermes-4-405b
+and NousResearch/Hermes-3-Llama-3.1-70B) are names of models published by Nous
+Research and are used here only to address those models through their providers'
+APIs.
