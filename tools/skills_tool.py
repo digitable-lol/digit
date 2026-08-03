@@ -1454,7 +1454,7 @@ def skill_view(
         digit_meta = {}
         metadata = frontmatter.get("metadata")
         if isinstance(metadata, dict):
-            digit_meta = metadata.get("digit", {}) or {}
+            digit_meta = _read_skill_metadata_block(metadata, source=str(skill_md))
 
         tags = _parse_tags(digit_meta.get("tags") or frontmatter.get("tags", ""))
         related_skills = _parse_tags(
@@ -1826,3 +1826,24 @@ registry.register(
     check_fn=check_skills_requirements,
     emoji="📚",
 )
+
+
+# --- Skill metadata key compatibility -------------------------------------
+# The frontmatter key `metadata.hermes` became `metadata.digit` (rebrand:keep).
+# Bundled skills were rewritten, but skills installed from the hub or authored
+# by users were not and cannot be. Read the new key, fall back to the old one.
+# Remove one minor release after the rebrand.
+def _read_skill_metadata_block(metadata, source: str = ""):
+    try:
+        from digit_compat import read_skill_metadata_block
+
+        return read_skill_metadata_block(metadata, source=source)
+    except Exception:
+        if isinstance(metadata, dict):
+            block = metadata.get("digit")
+            if isinstance(block, dict):
+                return block
+            legacy = metadata.get("hermes")  # rebrand:keep
+            if isinstance(legacy, dict):
+                return legacy
+        return {}

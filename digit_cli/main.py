@@ -11187,6 +11187,24 @@ def main():
     except Exception:
         pass
 
+    # The data directory moved to ~/.digit from the pre-rebrand location
+    # (rebrand:keep — this comment names it deliberately). Changing the path
+    # without saying so would present the user with an agent that has lost all
+    # its sessions, skills and credentials, and no explanation. Detect the old
+    # tree and print the exact command to carry it over. Nothing is copied
+    # automatically: the old tree can hold provider credentials, and duplicating
+    # those is the user's decision. Remove one minor release after the rebrand.
+    try:
+        import digit_compat
+        from digit_constants import get_digit_home
+
+        _notice = digit_compat.legacy_home_notice(get_digit_home())
+        if _notice:
+            print(_notice, file=sys.stderr)
+            print(file=sys.stderr)
+    except Exception:
+        pass
+
     # Sweep stale ``digit.exe.old.*`` quarantine files left by previous
     # ``digit update`` runs on Windows. Silent no-op on non-Windows or when
     # there's nothing to clean. See ``_quarantine_running_digit_exe``.

@@ -106,7 +106,7 @@ def parse_blueprint(skill_md_text: str) -> Optional[BlueprintSpec]:
     name = str(fm.get("name", "")).strip()
 
     meta = fm.get("metadata")
-    digit = meta.get("digit") if isinstance(meta, dict) else None
+    digit = _read_skill_metadata_block(meta) or None
     blueprint = digit.get("blueprint") if isinstance(digit, dict) else None
     if blueprint is None:
         return None
@@ -322,3 +322,24 @@ def _schedule_to_string(schedule: Any) -> str:
                     return f"every {secs // 60}m"
                 return f"every {secs}s"
     return "0 9 * * *"  # safe daily fallback
+
+
+# --- Skill metadata key compatibility -------------------------------------
+# The frontmatter key `metadata.hermes` became `metadata.digit` (rebrand:keep).
+# Bundled skills were rewritten, but skills installed from the hub or authored
+# by users were not and cannot be. Read the new key, fall back to the old one.
+# Remove one minor release after the rebrand.
+def _read_skill_metadata_block(metadata, source: str = ""):
+    try:
+        from digit_compat import read_skill_metadata_block
+
+        return read_skill_metadata_block(metadata, source=source)
+    except Exception:
+        if isinstance(metadata, dict):
+            block = metadata.get("digit")
+            if isinstance(block, dict):
+                return block
+            legacy = metadata.get("hermes")  # rebrand:keep
+            if isinstance(legacy, dict):
+                return legacy
+        return {}

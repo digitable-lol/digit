@@ -11,6 +11,22 @@ import sys
 from contextvars import ContextVar, Token
 from pathlib import Path
 
+# Environment compatibility. This module is imported by essentially every entry
+# point and has no dependencies of its own, which makes it the earliest place
+# that reliably runs in every process — including subprocesses, cron jobs and
+# the gateway, none of which go through digit_cli.main.
+#
+# adopt_legacy_env() copies any surviving HERMES_* variable onto its DIGIT_*  rebrand:keep
+# name when the new name is unset. Users keep these in shell profiles, systemd
+# units and CI secrets, so they outlive a rename of this repository.
+# Remove one minor release after the rebrand.
+try:
+    import digit_compat as _digit_compat
+
+    _digit_compat.adopt_legacy_env()
+except Exception:  # never let a shim break startup
+    _digit_compat = None  # type: ignore[assignment]
+
 
 _profile_fallback_warned: bool = False
 _UNSET = object()

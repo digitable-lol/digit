@@ -374,6 +374,7 @@ py-modules = [
   "cli",
   "digit_bootstrap",
   "digit_constants",
+  "digit_compat",
   "digit_state",
   "digit_state_common",
   "digit_state_portability",
