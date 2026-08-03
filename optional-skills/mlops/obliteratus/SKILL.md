@@ -2,12 +2,12 @@
 name: obliteratus
 description: "OBLITERATUS: abliterate LLM refusals (diff-in-means)."
 version: 2.0.0
-author: Hermes Agent
+author: Digit
 license: MIT
 dependencies: [obliteratus, torch, transformers, bitsandbytes, accelerate, safetensors]
 platforms: [linux, macos]
 metadata:
-  hermes:
+  digit:
     tags: [Abliteration, Uncensoring, Refusal-Removal, LLM, Weight-Projection, SVD, Mechanistic-Interpretability, HuggingFace, Model-Surgery]
     related_skills: [serving-llms-vllm, llama-cpp, huggingface-tokenizers]
 ---
@@ -24,7 +24,7 @@ Remove refusal behaviors (guardrails) from open-weight LLMs without retraining o
 
 ## Video Guide
 
-Walkthrough of OBLITERATUS used by a Hermes agent to abliterate Gemma:
+Walkthrough of OBLITERATUS used by a Digit agent to abliterate Gemma:
 https://www.youtube.com/watch?v=8fG9BrNTeHs ("OBLITERATUS: An AI Agent Removed Gemma 4's Safety Guardrails")
 
 Useful when the user wants a visual overview of the end-to-end workflow before running it themselves.

@@ -7,7 +7,7 @@ Digit ships four Ollama aliases: `/model digit-local-small` (Qwen3.5 2B), `/mode
 ## Runtime order
 
 1. **Ollama** — default local setup and the least-friction OpenAI-compatible endpoint at `http://localhost:11434/v1`.
-2. **LM Studio** — visual model management and a first-class Hermes provider.
+2. **LM Studio** — visual model management and a first-class Digit provider.
 3. **MLX / MLX-VLM server** — performance-oriented Apple Silicon path for text and multimodal models.
 4. **Bring-your-own endpoint** — an optional user-configured fallback when the local model lacks context, vision, or reliable tool calling.
 
@@ -58,4 +58,4 @@ Do not equate “loads on M1” with “works as an agent.” Models that fail t
 - Qwen3.5 4B model card: https://huggingface.co/Qwen/Qwen3.5-4B
 - Qwen3-VL 4B compatibility model card: https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct
 - Gemma 3 model card: https://ai.google.dev/gemma/docs/core/model_card_3
-- Hermes local-model setup: `website/docs/reference/faq.md`
+- Digit local-model setup: `website/docs/reference/faq.md`

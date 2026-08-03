@@ -1,7 +1,7 @@
 """Tests for the cua-driver --no-overlay policy.
 
 cua-driver's cursor overlay rendering loop can consume CPU indefinitely when
-idle (#28152, #47032). Hermes passes ``--no-overlay`` to suppress it when the
+idle (#28152, #47032). Digit passes ``--no-overlay`` to suppress it when the
 ``computer_use.no_overlay`` config is enabled (or auto-detected on macOS and
 headless Linux / WSL2).
 
@@ -23,14 +23,14 @@ class TestNoOverlayFlag:
 
 
     def test_explicit_true_overrides(self):
-        with patch("hermes_cli.config.load_config",
+        with patch("digit_cli.config.load_config",
                    return_value={"computer_use": {"no_overlay": True}}):
             assert cua_backend._cua_no_overlay() is True
 
 
     def test_config_load_failure_falls_through_to_auto_detect(self):
         """Unreadable config => auto-detect (macOS defaults to disabled)."""
-        with patch("hermes_cli.config.load_config",
+        with patch("digit_cli.config.load_config",
                    side_effect=RuntimeError("boom")), \
              patch.object(sys, "platform", "darwin"):
             assert cua_backend._cua_no_overlay() is True

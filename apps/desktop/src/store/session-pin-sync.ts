@@ -20,7 +20,7 @@
  * the local set untouched.
  */
 
-import { setSessionPinnedRemote } from '@/hermes'
+import { setSessionPinnedRemote } from '@/digit'
 import { $pinnedSessionIds, pinSession, unpinSession } from '@/store/layout'
 import { $sessions, sessionMatchesStoredId, sessionPinId } from '@/store/session'
 
@@ -106,7 +106,7 @@ function pullRemotePins(): void {
 
 function reconcile(): void {
   // Config/session REST is only reachable through the Electron bridge.
-  if (!window.hermesDesktop) {
+  if (!window.digitDesktop) {
     return
   }
 

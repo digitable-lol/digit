@@ -148,7 +148,7 @@ class ComputeHost:
         self._heartbeat_secs = (
             float(heartbeat_secs)
             if heartbeat_secs is not None
-            else float(os.environ.get("HERMES_COMPUTE_HOST_HEARTBEAT_SECS") or "15")
+            else float(os.environ.get("DIGIT_COMPUTE_HOST_HEARTBEAT_SECS") or "15")
         )
         if self._heartbeat_secs > 0:
             threading.Thread(target=self._heartbeat_loop, name="compute-host-heartbeat", daemon=True).start()
@@ -386,9 +386,9 @@ class ComputeHost:
             except Exception:
                 pass
             try:
-                import hermes_undo
+                import digit_undo
 
-                hermes_undo.on_user_message_appended(session["session_key"])
+                digit_undo.on_user_message_appended(session["session_key"])
             except Exception:
                 pass
             try:
@@ -457,11 +457,11 @@ class ComputeHost:
         secret_token = None
         try:
             if profile_home:
-                from hermes_constants import set_hermes_home_override
+                from digit_constants import set_digit_home_override
                 from agent.secret_scope import build_profile_secret_scope, set_secret_scope
-                from hermes_state import SessionDB
+                from digit_state import SessionDB
 
-                home_token = set_hermes_home_override(profile_home)
+                home_token = set_digit_home_override(profile_home)
                 secret_token = set_secret_scope(build_profile_secret_scope(Path(profile_home)))
                 session_db = SessionDB(db_path=Path(profile_home) / "state.db")
             agent = server._make_agent(
@@ -477,10 +477,10 @@ class ComputeHost:
         finally:
             if home_token is not None:
                 try:
-                    from hermes_constants import reset_hermes_home_override
+                    from digit_constants import reset_digit_home_override
                     from agent.secret_scope import reset_secret_scope
 
-                    reset_hermes_home_override(home_token)
+                    reset_digit_home_override(home_token)
                     reset_secret_scope(secret_token)
                 except Exception:
                     pass
@@ -719,13 +719,13 @@ def _rss_mb(pid: int) -> float:
 
 def _default_workers() -> int:
     try:
-        return max(2, int(os.environ.get("HERMES_TUI_RPC_POOL_WORKERS") or "8"))
+        return max(2, int(os.environ.get("DIGIT_TUI_RPC_POOL_WORKERS") or "8"))
     except (TypeError, ValueError):
         return 8
 
 
 def run_host(stdin: Any = None, stdout: Any = None) -> None:
-    os.environ["HERMES_COMPUTE_HOST_CHILD"] = "1"
+    os.environ["DIGIT_COMPUTE_HOST_CHILD"] = "1"
     stdin = stdin or sys.stdin
     host = ComputeHost(stdout=stdout or sys.stdout)
     shutting_down = threading.Event()
@@ -750,7 +750,7 @@ def run_host(stdin: Any = None, stdout: Any = None) -> None:
             "boot_id": host._boot_id,
             "build_sha": _build_sha(),
             "cwd": os.getcwd(),
-            "hermes_home": os.environ.get("HERMES_HOME", ""),
+            "digit_home": os.environ.get("DIGIT_HOME", ""),
         }
     )
 

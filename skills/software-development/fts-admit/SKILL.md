@@ -6,7 +6,7 @@ author: Digitable
 license: Apache-2.0
 platforms: [linux, macos, windows]
 metadata:
-  hermes:
+  digit:
     tags: [fts, spec-driven, ftspec, requirements, review, verification]
     category: software-development
     related_skills: [fts, fts-specify, fts-constitution, fts-memory]

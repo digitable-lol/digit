@@ -14,10 +14,10 @@ OBLITERATUS: abliterate LLM refusals (diff-in-means).
 
 | | |
 |---|---|
-| Source | Optional — install with `hermes skills install official/mlops/obliteratus` |
+| Source | Optional — install with `digit skills install official/mlops/obliteratus` |
 | Path | `optional-skills/mlops/obliteratus` |
 | Version | `2.0.0` |
-| Author | Hermes Agent |
+| Author | Digit |
 | License | MIT |
 | Dependencies | `obliteratus`, `torch`, `transformers`, `bitsandbytes`, `accelerate`, `safetensors` |
 | Platforms | linux, macos |
@@ -27,7 +27,7 @@ OBLITERATUS: abliterate LLM refusals (diff-in-means).
 ## Reference: full SKILL.md
 
 :::info
-The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+The following is the complete skill definition that Digit loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
 :::
 
 # OBLITERATUS Skill
@@ -42,7 +42,7 @@ Remove refusal behaviors (guardrails) from open-weight LLMs without retraining o
 
 ## Video Guide
 
-Walkthrough of OBLITERATUS used by a Hermes agent to abliterate Gemma:
+Walkthrough of OBLITERATUS used by a Digit agent to abliterate Gemma:
 https://www.youtube.com/watch?v=8fG9BrNTeHs ("OBLITERATUS: An AI Agent Removed Gemma 4's Safety Guardrails")
 
 Useful when the user wants a visual overview of the end-to-end workflow before running it themselves.

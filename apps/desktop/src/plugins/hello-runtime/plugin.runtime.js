@@ -3,10 +3,10 @@
  * raw text (`?raw`) and goes through the real runtime pipeline (specifier
  * rewrite -> SDK/react shim blobs -> blob import -> register). Plain ESM js
  * with `jsx()` calls — exactly what an agent (or a compiler) writes into
- * `~/.hermes/desktop-plugins/<name>/plugin.js`.
+ * `~/.digit/desktop-plugins/<name>/plugin.js`.
  */
 
-import { cn, host, Tip, useValue } from '@hermes/plugin-sdk'
+import { cn, host, Tip, useValue } from '@digit/plugin-sdk'
 import { jsx, jsxs } from 'react/jsx-runtime'
 
 function RuntimeChip() {

@@ -21,12 +21,12 @@ Use when operating or explaining Digit and Digitable.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digit`, `digitable`, `identity`, `russian`, `english` |
-| Related skills | [`hermes-agent`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-hermes-agent), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench) |
+| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench) |
 
 ## Reference: full SKILL.md
 
 :::info
-The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+The following is the complete skill definition that Digit loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
 :::
 
 # Digit

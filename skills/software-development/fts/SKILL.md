@@ -6,7 +6,7 @@ author: Digitable
 license: Apache-2.0
 platforms: [linux, macos, windows]
 metadata:
-  hermes:
+  digit:
     tags: [fts, executable-specifications, ddd, testing, mcp]
     category: software-development
     related_skills: [digit, digitable-courses, digitable-workbench, test-driven-development, fts-constitution, fts-specify, fts-admit, fts-memory]

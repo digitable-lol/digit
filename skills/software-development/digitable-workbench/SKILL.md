@@ -6,9 +6,9 @@ author: Digitable
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
-  hermes:
+  digit:
     tags: [digitable, workbench, acp, mcp, integration]
-    related_skills: [digit, hermes-agent, digitable-tools]
+    related_skills: [digit, digit, digitable-tools]
 ---
 
 # Digitable Workbench
@@ -20,7 +20,7 @@ Integrate Digit through stable agent protocols, not Desktop renderer internals. 
 ## Routing
 
 - Use `digit-acp` over stdio for interactive workspace sessions, streaming, approvals, and cancellation.
-- Use the Hermes-tools MCP server for bounded utility-style calls.
+- Use the Digit-tools MCP server for bounded utility-style calls.
 - Use the authenticated gateway for shared or always-on remote deployments.
 
 ## Implementation workflow

@@ -70,7 +70,7 @@ def test_load_wake_word_config_is_a_dict_with_defaults():
 
 def test_load_wake_word_config_guards_non_dict(monkeypatch):
     monkeypatch.setattr(
-        "hermes_cli.config.load_config", lambda: {"wake_word": "oops"}
+        "digit_cli.config.load_config", lambda: {"wake_word": "oops"}
     )
     assert ww.load_wake_word_config() == {}
 
@@ -225,7 +225,7 @@ def test_openwakeword_ensures_base_models_for_custom_path(monkeypatch):
     assert eng._labels == ["hey_hermes"]
 
 
-def test_bundled_hey_hermes_model_ships_on_disk():
+def test_bundled_hey_digit_model_ships_on_disk():
     # The "hey hermes" wake word works out of the box only if the model is
     # actually bundled. Both framework artifacts must exist and be non-trivial.
     for framework in ("onnx", "tflite"):

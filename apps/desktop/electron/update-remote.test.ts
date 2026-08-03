@@ -63,7 +63,7 @@ test('isOfficialSshRemote is true only for the official repo over SSH', () => {
 test('isOfficialSshRemote does NOT match forks, other hosts, or HTTPS', () => {
   // A fork over SSH belongs to the user — fetching it is their own remote,
   // not the official upstream, so the SSH-avoidance swap must not apply.
-  assert.equal(isOfficialSshRemote('git@github.com:someuser/hermes-agent.git'), false)
+  assert.equal(isOfficialSshRemote('git@github.com:someuser/digit.git'), false)
   // Same repo name on a different host is not the official repo.
   assert.equal(isOfficialSshRemote('git@gitlab.com:NousResearch/hermes-agent.git'), false)
   // HTTPS to the official repo never prompts for SSH/FIDO2, so it keeps the

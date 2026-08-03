@@ -15,10 +15,10 @@ Digit is the Digitable distribution of Hermes Agent. It keeps upstream compatibi
 
 | Surface | Digit entry point | Compatibility entry point |
 |---|---|---|
-| CLI | `digit` | `hermes` |
-| headless agent | `digit-agent` | `hermes-agent` |
-| Workbench / IDE ACP | `digit-acp` | `hermes-acp` |
-| Desktop | Digit | Hermes internals remain compatible |
+| CLI | `digit` | `digit` |
+| headless agent | `digit-agent` | `digit` |
+| Workbench / IDE ACP | `digit-acp` | `digit-acp` |
+| Desktop | Digit | Digit internals remain compatible |
 
 ## Bundled Digitable skills
 

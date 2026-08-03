@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { MessagingPlatformInfo } from '@/types/hermes'
+import type { MessagingPlatformInfo } from '@/types/digit'
 
 const getMessagingPlatforms = vi.fn()
 const updateMessagingPlatform = vi.fn()
@@ -12,7 +12,7 @@ const approvePairing = vi.fn()
 const revokePairing = vi.fn()
 const openExternalLink = vi.fn()
 
-vi.mock('@/hermes', () => ({
+vi.mock('@/digit', () => ({
   approvePairing: (platformId: string, requestId: string) => approvePairing(platformId, requestId),
   getMessagingPlatforms: () => getMessagingPlatforms(),
   getPairing: () => getPairing(),

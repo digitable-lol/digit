@@ -17,7 +17,7 @@ The Workbench adapter should:
 
 ## MCP tool surface
 
-For lightweight delegation, Workbench may connect to Digit's Hermes-tools MCP server and call a bounded tool instead of opening a full agent session. Use this for deterministic utilities, portal lookup, and narrowly scoped transformations. Use ACP when the task requires conversation state, planning, or multiple tools.
+For lightweight delegation, Workbench may connect to Digit's Digit-tools MCP server and call a bounded tool instead of opening a full agent session. Use this for deterministic utilities, portal lookup, and narrowly scoped transformations. Use ACP when the task requires conversation state, planning, or multiple tools.
 
 ## Remote/gateway mode
 

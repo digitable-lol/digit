@@ -2,25 +2,25 @@
 
 from pathlib import Path
 
-import hermes_constants
-from hermes_cli.update_cmd import OFFICIAL_REPO_URL, _is_fork
+import digit_constants
+from digit_cli.update_cmd import OFFICIAL_REPO_URL, _is_fork
 
 
-def test_posix_default_home_is_isolated_from_hermes(tmp_path, monkeypatch):
+def test_posix_default_home_is_isolated_from_digit(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
-    monkeypatch.setattr(hermes_constants.sys, "platform", "darwin")
-    monkeypatch.delenv("HERMES_HOME", raising=False)
+    monkeypatch.setattr(digit_constants.sys, "platform", "darwin")
+    monkeypatch.delenv("DIGIT_HOME", raising=False)
 
-    assert hermes_constants.get_hermes_home() == tmp_path / ".digit"
-    assert hermes_constants.get_default_hermes_root() == tmp_path / ".digit"
+    assert digit_constants.get_digit_home() == tmp_path / ".digit"
+    assert digit_constants.get_default_digit_root() == tmp_path / ".digit"
 
 
 def test_legacy_home_override_remains_supported(tmp_path, monkeypatch):
     custom_home = tmp_path / "shared-runtime"
-    monkeypatch.setenv("HERMES_HOME", str(custom_home))
+    monkeypatch.setenv("DIGIT_HOME", str(custom_home))
 
-    assert hermes_constants.get_hermes_home() == custom_home
-    assert hermes_constants.get_process_hermes_home() == custom_home
+    assert digit_constants.get_digit_home() == custom_home
+    assert digit_constants.get_process_digit_home() == custom_home
 
 
 def test_updater_tracks_digit_distribution():

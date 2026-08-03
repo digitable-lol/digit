@@ -8,7 +8,7 @@
 // instead of submitting it.
 //
 // Deliberately conservative: it only fires when the WHOLE utterance is a stop
-// phrase (optionally addressed to Hermes), so a real turn that merely contains
+// phrase (optionally addressed to Digit), so a real turn that merely contains
 // the word "stop" — e.g. "stop the docker container" or "how do I stop a
 // running process" — is never swallowed.
 
@@ -33,9 +33,9 @@ const STOP_PHRASES: readonly string[] = [
   'cancel'
 ]
 
-// Optional address prefixes so "hermes stop" / "ok stop" / "hey hermes, stop"
+// Optional address prefixes so "digit stop" / "ok stop" / "hey hermes, stop"
 // still count. Stripped before matching the core phrase.
-const ADDRESS_PREFIXES: readonly string[] = ['hey hermes', 'hey hermes,', 'hermes', 'hermes,', 'ok', 'okay', 'hey']
+const ADDRESS_PREFIXES: readonly string[] = ['hey hermes', 'hey hermes,', 'digit', 'digit,', 'ok', 'okay', 'hey']
 
 // Normalise: lowercase, strip surrounding punctuation/whitespace, collapse
 // internal runs of spaces. Trailing punctuation (".", "!", "…") is common in
@@ -51,7 +51,7 @@ function normalize(text: string): string {
 function stripAddress(text: string): string {
   for (const prefix of ADDRESS_PREFIXES) {
     if (text === prefix) {
-      // Bare address ("hermes") is not a stop command on its own.
+      // Bare address ("digit") is not a stop command on its own.
       continue
     }
 
@@ -65,7 +65,7 @@ function stripAddress(text: string): string {
 
 /**
  * True when the entire spoken utterance is a stop command (optionally addressed
- * to Hermes). Returns false for anything that merely contains "stop" as part of
+ * to Digit). Returns false for anything that merely contains "stop" as part of
  * a longer, substantive request.
  */
 export function isVoiceStopCommand(transcript: string): boolean {

@@ -21,12 +21,12 @@ Use when embedding Digit into Digitable Workbench.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digitable`, `workbench`, `acp`, `mcp`, `integration` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`hermes-agent`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-hermes-agent), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools) |
+| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools) |
 
 ## Reference: full SKILL.md
 
 :::info
-The following is the complete skill definition that Hermes loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
+The following is the complete skill definition that Digit loads when this skill is triggered. This is what the agent sees as instructions when the skill is active.
 :::
 
 # Digitable Workbench
@@ -38,7 +38,7 @@ Integrate Digit through stable agent protocols, not Desktop renderer internals. 
 ## Routing
 
 - Use `digit-acp` over stdio for interactive workspace sessions, streaming, approvals, and cancellation.
-- Use the Hermes-tools MCP server for bounded utility-style calls.
+- Use the Digit-tools MCP server for bounded utility-style calls.
 - Use the authenticated gateway for shared or always-on remote deployments.
 
 ## Implementation workflow

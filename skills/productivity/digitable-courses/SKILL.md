@@ -6,7 +6,7 @@ author: Digitable
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
-  hermes:
+  digit:
     tags: [digitable, courses, learning, curriculum, russian]
     related_skills: [digit, digitable-portal, digitable-tools, fts]
 ---

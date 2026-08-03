@@ -25,7 +25,7 @@ def test_openrouter_base_url_applies_or_headers(mock_openai):
 
     headers = agent._client_kwargs["default_headers"]
     assert headers["HTTP-Referer"] == "https://hermes-agent.nousresearch.com"
-    assert headers["X-Title"] == "Hermes Agent"
+    assert headers["X-Title"] == "Digit"
 
 
 @patch("run_agent.OpenAI")
@@ -44,8 +44,8 @@ def test_ai_gateway_base_url_applies_attribution_headers(mock_openai):
 
     headers = agent._client_kwargs["default_headers"]
     assert headers["HTTP-Referer"] == "https://hermes-agent.nousresearch.com"
-    assert headers["X-Title"] == "Hermes Agent"
-    assert headers["User-Agent"].startswith("HermesAgent/")
+    assert headers["X-Title"] == "Digit"
+    assert headers["User-Agent"].startswith("DigitAgent/")
 
 
 @patch("run_agent.OpenAI")
@@ -63,7 +63,7 @@ def test_routermint_base_url_applies_user_agent_header(mock_openai):
     agent._apply_client_headers_for_base_url("https://api.routermint.com/v1")
 
     headers = agent._client_kwargs["default_headers"]
-    assert headers["User-Agent"].startswith("HermesAgent/")
+    assert headers["User-Agent"].startswith("DigitAgent/")
 
 
 @patch("run_agent.OpenAI")
@@ -79,12 +79,12 @@ def test_nvidia_cloud_base_url_applies_billing_origin_header(mock_openai):
         skip_memory=True,
     )
 
-    assert agent._client_kwargs["default_headers"]["X-BILLING-INVOKE-ORIGIN"] == "HermesAgent"
+    assert agent._client_kwargs["default_headers"]["X-BILLING-INVOKE-ORIGIN"] == "DigitAgent"
 
     agent._apply_client_headers_for_base_url("https://integrate.api.nvidia.com/v1")
 
     headers = agent._client_kwargs["default_headers"]
-    assert headers["X-BILLING-INVOKE-ORIGIN"] == "HermesAgent"
+    assert headers["X-BILLING-INVOKE-ORIGIN"] == "DigitAgent"
 
 
 
@@ -95,7 +95,7 @@ def test_routed_client_preserves_openai_sdk_custom_headers(mock_openai):
     routed_client = SimpleNamespace(
         api_key="test-key",
         base_url="https://integrate.api.nvidia.com/v1",
-        _custom_headers={"X-BILLING-INVOKE-ORIGIN": "HermesAgent"},
+        _custom_headers={"X-BILLING-INVOKE-ORIGIN": "DigitAgent"},
     )
 
     with patch("agent.auxiliary_client.resolve_provider_client", return_value=(
@@ -111,7 +111,7 @@ def test_routed_client_preserves_openai_sdk_custom_headers(mock_openai):
         )
 
     headers = agent._client_kwargs["default_headers"]
-    assert headers["X-BILLING-INVOKE-ORIGIN"] == "HermesAgent"
+    assert headers["X-BILLING-INVOKE-ORIGIN"] == "DigitAgent"
 
 
 
@@ -137,9 +137,9 @@ def test_openrouter_headers_include_response_cache_when_enabled(mock_openai):
         skip_memory=True,
     )
 
-    with patch("hermes_cli.config.load_config", return_value={
+    with patch("digit_cli.config.load_config", return_value={
         "openrouter": {"response_cache": True, "response_cache_ttl": 600},
-    }), patch("hermes_cli.config.load_config_readonly", return_value={
+    }), patch("digit_cli.config.load_config_readonly", return_value={
         "openrouter": {"response_cache": True, "response_cache_ttl": 600},
     }):
         agent._apply_client_headers_for_base_url("https://openrouter.ai/api/v1")
@@ -170,9 +170,9 @@ def test_user_default_headers_override_sdk_user_agent(mock_openai):
         skip_memory=True,
     )
 
-    with patch("hermes_cli.config.load_config", return_value={
+    with patch("digit_cli.config.load_config", return_value={
         "model": {"default_headers": {"User-Agent": "curl/8.7.1", "X-Extra": "1"}},
-    }), patch("hermes_cli.config.load_config_readonly", return_value={
+    }), patch("digit_cli.config.load_config_readonly", return_value={
         "model": {"default_headers": {"User-Agent": "curl/8.7.1", "X-Extra": "1"}},
     }):
         agent._apply_client_headers_for_base_url("http://localhost:8080/v1")
@@ -201,9 +201,9 @@ def test_openrouter_headers_no_cache_when_disabled(mock_openai):
         skip_memory=True,
     )
 
-    with patch("hermes_cli.config.load_config", return_value={
+    with patch("digit_cli.config.load_config", return_value={
         "openrouter": {"response_cache": False},
-    }), patch("hermes_cli.config.load_config_readonly", return_value={
+    }), patch("digit_cli.config.load_config_readonly", return_value={
         "openrouter": {"response_cache": False},
     }):
         agent._apply_client_headers_for_base_url("https://openrouter.ai/api/v1")
