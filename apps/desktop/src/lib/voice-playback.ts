@@ -1,6 +1,6 @@
-import { resolveGatewayWsUrl } from '@hermes/shared'
+import { resolveGatewayWsUrl } from '@digit/shared'
 
-import { getApiRequestProfile, speakText } from '@/hermes'
+import { getApiRequestProfile, speakText } from '@/digit'
 import {
   $voicePlayback,
   setVoicePlaybackState,
@@ -97,7 +97,7 @@ export function stopVoicePlayback() {
 // ---------------------------------------------------------------------------
 
 async function resolveSpeakStreamUrl(): Promise<null | string> {
-  const desktop = window.hermesDesktop
+  const desktop = window.digitDesktop
 
   if (!desktop?.getConnection) {
     return null

@@ -3,7 +3,7 @@
 A lightweight, always-on hotword listener that fires a callback when a wake
 phrase is spoken — the "Hey Siri" / "Alexa" pattern. Shared by the CLI, TUI, and
 desktop GUI (one of them owns it, gated by ``wake_surface_enabled``): say the
-wake word, Hermes opens a fresh session and captures voice via the existing
+wake word, Digit opens a fresh session and captures voice via the existing
 pipeline, then answers.
 
 Three engines, all fully on-device (no audio leaves the machine for detection):
@@ -186,7 +186,7 @@ def ensure_tflite_runtime() -> bool:
 def load_wake_word_config() -> Dict[str, Any]:
     """Return the ``wake_word`` config section, shape-guarded to a dict."""
     try:
-        from hermes_cli.config import load_config
+        from digit_cli.config import load_config
 
         cfg = load_config().get("wake_word")
     except Exception:
@@ -264,7 +264,7 @@ def wake_surface_enabled(surface: str, cfg: Optional[Dict[str, Any]] = None) -> 
 
 def _active_profile_name() -> str:
     try:
-        from hermes_cli.profiles import get_active_profile_name
+        from digit_cli.profiles import get_active_profile_name
 
         return get_active_profile_name() or "default"
     except Exception:
@@ -282,8 +282,8 @@ def enrolled_profile_phrases() -> Dict[str, str]:
     """
     phrases: Dict[str, str] = {}
     try:
-        from hermes_cli.config import read_user_config_raw
-        from hermes_cli.profiles import get_profile_dir, list_profiles
+        from digit_cli.config import read_user_config_raw
+        from digit_cli.profiles import get_profile_dir, list_profiles
 
         for info in list_profiles():
             name = getattr(info, "name", None) or str(info)
@@ -373,7 +373,7 @@ def silent_audio_hint(details: Dict[str, Any]) -> str:
     """Platform-specific remediation for an armed stream delivering silence."""
     if sys.platform == "darwin":
         return (
-            "Microphone delivers only silence. Grant the Hermes backend "
+            "Microphone delivers only silence. Grant the Digit backend "
             "microphone access in System Settings > Privacy & Security > "
             "Microphone, then toggle the wake word."
         )
@@ -517,7 +517,7 @@ class _OpenWakeWordEngine(_Engine):
 
 # sherpa-onnx open-vocabulary KWS model: a small streaming zipformer
 # transducer. English (GigaSpeech); one-time download, cached under
-# HERMES_HOME. Keywords are typed phrases tokenized at RUNTIME — no
+# DIGIT_HOME. Keywords are typed phrases tokenized at RUNTIME — no
 # training step, unlike openWakeWord/Porcupine custom models.
 _SHERPA_KWS_MODEL_URL = (
     "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/"
@@ -527,9 +527,9 @@ _SHERPA_KWS_MODEL_DIR = "sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01"
 
 
 def _sherpa_model_root() -> Path:
-    from hermes_constants import get_hermes_home
+    from digit_constants import get_digit_home
 
-    return get_hermes_home() / "cache" / "wakewords"
+    return get_digit_home() / "cache" / "wakewords"
 
 
 def _ensure_sherpa_model(root: Optional[Path] = None) -> Path:
@@ -604,7 +604,7 @@ class _SherpaKwsEngine(_Engine):
         # them and map display → profile for match routing.
         self._display_to_profile: Dict[str, str] = {}
         kw = tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", prefix="hermes-kws-", delete=False, encoding="utf-8"
+            mode="w", suffix=".txt", prefix="digit-kws-", delete=False, encoding="utf-8"
         )
         for p, toks in zip(phrases, tokens):
             display = p.upper().replace(" ", "_")
@@ -844,7 +844,7 @@ def check_wake_word_requirements(cfg: Optional[Dict[str, Any]] = None) -> Dict[s
         missing = " and ".join(
             name for name, ok in (("speech-to-text", stt_ok), ("text-to-speech", tts_ok)) if not ok
         )
-        hint = (f"Wake word needs {missing} configured — run `hermes tools` "
+        hint = (f"Wake word needs {missing} configured — run `digit tools` "
                 f"(Voice section) or see the voice-mode docs.")
 
     return {
@@ -1056,7 +1056,7 @@ class WakeWordDetector:
 
 
 # ---------------------------------------------------------------------------
-# Process-wide singleton (mirrors hermes_cli.voice's continuous API)
+# Process-wide singleton (mirrors digit_cli.voice's continuous API)
 # ---------------------------------------------------------------------------
 
 _detector: Optional[WakeWordDetector] = None
@@ -1066,9 +1066,9 @@ _detector_lock = threading.Lock()
 
 
 def _lock_path() -> Path:
-    from hermes_constants import get_default_hermes_root
+    from digit_constants import get_default_digit_root
 
-    return get_default_hermes_root() / "runtime" / "wake-word.lock"
+    return get_default_digit_root() / "runtime" / "wake-word.lock"
 
 
 def _acquire_machine_lock(path: Optional[Path] = None):

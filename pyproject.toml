@@ -1,7 +1,7 @@
 
 
 [project]
-name = "hermes-agent"
+name = "digit"
 version = "0.19.8"
 description = "Digit by Digitable — a portal-aware, self-improving AI agent built on Hermes Agent"
 readme = "README.md"
@@ -31,7 +31,7 @@ dependencies = [
   # `uv lock` so the transitive resolution stays consistent. Don't
   # introduce ranges back without a written justification.
   #
-  # Scope rule: only packages used by EVERY hermes session belong here.
+  # Scope rule: only packages used by EVERY digit session belong here.
   # Anything that's provider-specific (`anthropic`, `firecrawl-py`,
   # `exa-py`, `fal-client`, `edge-tts`, `parallel-web`) belongs in an
   # extra and gets lazy-installed via `tools/lazy_deps.py` when the
@@ -63,7 +63,7 @@ dependencies = [
   # try/except-ImportError fallbacks silently degrade: Hindsight's
   # ``_meets_minimum_version`` disables update_mode='append' (#40503),
   # tools/lazy_deps.py treats every version constraint as satisfied, and
-  # hermes_cli/main.py drops to naive requirement parsing. Pure-Python
+  # digit_cli/main.py drops to naive requirement parsing. Pure-Python
   # py3-none-any wheel, no compiled extensions — safe to ship everywhere.
   # Pinned to the version already resolved in uv.lock (no resolution churn).
   "packaging==26.0",
@@ -111,7 +111,7 @@ dependencies = [
   "python-multipart>=0.0.9,<1",
   "ptyprocess>=0.7.0,<1; sys_platform != 'win32'",
   "pywinpty>=2.0.0,<3; sys_platform == 'win32'",
-  # Desktop SSH's Windows remote runtime (hermes_cli/windows_ssh_runtime.py)
+  # Desktop SSH's Windows remote runtime (digit_cli/windows_ssh_runtime.py)
   # imports win32security/win32file/etc. directly — declare pywin32 rather than
   # relying on the concurrent-log-handler → portalocker transitive chain.
   "pywin32>=306,<312; sys_platform == 'win32'",
@@ -126,12 +126,12 @@ dependencies = [
   # Windows log rotation. Stdlib ``RotatingFileHandler.doRollover()`` uses
   # ``os.rename()`` which fails with ``PermissionError [WinError 32]`` on
   # Windows whenever any other process holds an append-mode handle on
-  # ``agent.log`` (always the case in Hermes — TUI, gateway, ``hy_memory``
+  # ``agent.log`` (always the case in Digit — TUI, gateway, ``hy_memory``
   # server, MCP servers, and on-demand CLI commands all log from separate
   # processes), pinning ``agent.log`` at the 5 MiB threshold and spamming
   # stderr on every emit (see #44873). ``concurrent-log-handler`` wraps the
   # rename in a cross-process file lock (via ``portalocker``: pywin32 on
-  # Windows) so only one process rotates at a time. ``hermes_logging.py``
+  # Windows) so only one process rotates at a time. ``digit_logging.py``
   # aliases it ONLY on Windows — POSIX renames an open file fine, so stdlib
   # already works there and managed-mode perms depend on its exact lifecycle.
   # Hence the ``sys_platform == 'win32'`` marker: the dep (and its portalocker
@@ -149,7 +149,7 @@ dependencies = [
 # OpenRouter or other aggregators).
 anthropic = ["anthropic==0.87.0"]  # CVE-2026-34450, CVE-2026-34452
 # Web search backends — each only loaded when the user picks it as their
-# search provider (configured via `hermes tools` or config.yaml).
+# search provider (configured via `digit tools` or config.yaml).
 exa = ["exa-py==2.10.2"]
 firecrawl = ["firecrawl-py==4.17.0"]
 parallel-web = ["parallel-web==0.4.2"]
@@ -235,7 +235,7 @@ homeassistant = ["aiohttp==3.14.1"]
 sms = ["aiohttp==3.14.1"]
 teams = ["microsoft-teams-apps==2.0.13.4", "aiohttp==3.14.1"]  # aiohttp 3.14.1: CVE-2026-34993(RCE)/47265 + 34513/34518/34519/34520/34525
 # Computer use — macOS background desktop control via cua-driver (MCP stdio).
-# The cua-driver binary itself is installed via `hermes tools` post-setup
+# The cua-driver binary itself is installed via `digit tools` post-setup
 # (curl install script); this extra just pins the MCP client used to talk
 # to it, which is already provided by the `mcp` extra.
 computer-use = ["mcp==1.28.1", "starlette==1.3.1"]  # starlette: CVE-2026-48710
@@ -260,23 +260,23 @@ azure-identity = ["azure-identity==1.25.3"]
 termux = [
   # Baseline Android / Termux path for reliable fresh installs.
   "python-telegram-bot[webhooks]==22.6",
-  "hermes-agent[cron]",
-  "hermes-agent[cli]",
-  "hermes-agent[mcp]",
-  "hermes-agent[honcho]",
-  "hermes-agent[acp]",
+  "digit[cron]",
+  "digit[cli]",
+  "digit[mcp]",
+  "digit[honcho]",
+  "digit[acp]",
 ]
 termux-all = [
   # Best-effort "install all" profile for Termux. Same policy as [all]:
   # only includes extras that aren't covered by `tools/lazy_deps.py`.
   # Backends like telegram/slack/dingtalk/feishu/honcho lazy-install at
   # first use, so they're no longer eager-installed here.
-  "hermes-agent[termux]",
-  "hermes-agent[google]",
-  "hermes-agent[homeassistant]",
-  "hermes-agent[sms]",
-  "hermes-agent[web]",
-  "hermes-agent[pty]",
+  "digit[termux]",
+  "digit[google]",
+  "digit[homeassistant]",
+  "digit[sms]",
+  "digit[web]",
+  "digit[pty]",
 ]
 dingtalk = ["dingtalk-stream==0.24.3", "alibabacloud-dingtalk==2.2.42", "qrcode==7.4.2"]
 feishu = ["lark-oapi==1.6.8", "qrcode==7.4.2"]
@@ -303,7 +303,7 @@ youtube = [
   # at first invocation with ModuleNotFoundError (issue #22243).
   "youtube-transcript-api==1.2.4",
 ]
-# `hermes dashboard` (localhost SPA + API).  Not in core to keep the default install lean.
+# `digit dashboard` (localhost SPA + API).  Not in core to keep the default install lean.
 # starlette==1.3.1 pinned for CVE-2026-48710 (BadHost) — fastapi pulls Starlette
 # transitively and pre-1.0.1 is the vulnerable range. See the mcp extra above.
 web = ["fastapi==0.133.1", "uvicorn[standard]==0.41.0", "starlette==1.3.1", "python-multipart==0.0.32"]
@@ -329,16 +329,16 @@ all = [
   # [all], `uv sync --locked` on Windows tried to build it from sdist
   # and failed on `make`. Lazy-install routes that build to first use,
   # where the user is expected to have a toolchain available.
-  "hermes-agent[cron]",
-  "hermes-agent[cli]",
-  "hermes-agent[pty]",
-  "hermes-agent[mcp]",
-  "hermes-agent[homeassistant]",
-  "hermes-agent[sms]",
-  "hermes-agent[acp]",
-  "hermes-agent[google]",
-  "hermes-agent[web]",
-  "hermes-agent[youtube]",
+  "digit[cron]",
+  "digit[cli]",
+  "digit[pty]",
+  "digit[mcp]",
+  "digit[homeassistant]",
+  "digit[sms]",
+  "digit[acp]",
+  "digit[google]",
+  "digit[web]",
+  "digit[youtube]",
 ]
 
 [build-system]
@@ -346,12 +346,9 @@ requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-digit = "hermes_cli.main:main"
+digit = "digit_cli.main:main"
 digit-agent = "run_agent:main"
 digit-acp = "acp_adapter.entry:main"
-hermes = "hermes_cli.main:main"
-hermes-agent = "run_agent:main"
-hermes-acp = "acp_adapter.entry:main"
 
 [tool.uv]
 override-dependencies = [
@@ -366,7 +363,7 @@ exclude-newer-package = { vercel = false, nemo-relay = false, huggingface_hub = 
 
 [tool.setuptools]
 # Top-level single-file modules (not packages). Without this, uv2nix's
-# sealed venv is missing hermes_constants, run_agent, etc.
+# sealed venv is missing digit_constants, run_agent, etc.
 py-modules = [
   "run_agent",
   "model_tools",
@@ -375,24 +372,24 @@ py-modules = [
   "trajectory_compressor",
   "toolset_distributions",
   "cli",
-  "hermes_bootstrap",
-  "hermes_constants",
-  "hermes_state",
-  "hermes_state_common",
-  "hermes_state_portability",
-  "hermes_state_schema",
-  "hermes_state_search",
-  "hermes_time",
-  "hermes_logging",
+  "digit_bootstrap",
+  "digit_constants",
+  "digit_state",
+  "digit_state_common",
+  "digit_state_portability",
+  "digit_state_schema",
+  "digit_state_search",
+  "digit_time",
+  "digit_logging",
   "utils",
   "mcp_serve",
 ]
 
 [tool.setuptools.packages.find]
-include = ["agent", "agent.*", "tools", "tools.*", "hermes_cli", "hermes_cli.*", "gateway", "gateway.*", "tui_gateway", "tui_gateway.*", "cron", "cron.*", "acp_adapter", "plugins", "plugins.*", "providers", "providers.*"]
+include = ["agent", "agent.*", "tools", "tools.*", "digit_cli", "digit_cli.*", "gateway", "gateway.*", "tui_gateway", "tui_gateway.*", "cron", "cron.*", "acp_adapter", "plugins", "plugins.*", "providers", "providers.*"]
 
 [tool.setuptools.package-data]
-hermes_cli = ["observability/schemas/*.json"]
+digit_cli = ["observability/schemas/*.json"]
 # gateway/assets/ ships status_phrases.yaml and the Telegram BotFather
 # screenshot. Without this, sealed venvs (uv2nix) silently lose both —
 # status phrases fall back to the tiny hardcoded set and the Telegram
@@ -404,9 +401,9 @@ gateway = ["assets/**/*"]
 testpaths = ["tests"]
 markers = [
     "integration: marks tests requiring external services (API keys, Modal, etc.)",
-    "real_concurrent_gate: opt out of the autouse stub that disables _detect_concurrent_hermes_instances",
+    "real_concurrent_gate: opt out of the autouse stub that disables _detect_concurrent_digit_instances",
     "real_agent_prewarm: opt out of the autouse stub that disables the tui_gateway deferred agent pre-warm timer",
-    "requires_wal: needs the runtime to actually enable SQLite WAL mode (skipped where Hermes falls back to journal_mode=DELETE)",
+    "requires_wal: needs the runtime to actually enable SQLite WAL mode (skipped where Digit falls back to journal_mode=DELETE)",
     "no_isolate: opt out of per-file subprocess isolation (tests share mutable module-level state)",
     "ssh: marks tests requiring a reachable SSH server (skipped in normal CI)",
 ]

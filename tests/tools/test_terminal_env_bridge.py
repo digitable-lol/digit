@@ -11,7 +11,7 @@ import os
 import pytest
 
 import tools.terminal_tool as terminal_tool
-from hermes_constants import get_hermes_home
+from digit_constants import get_digit_home
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +29,7 @@ def _reset_bridge_state(monkeypatch):
 
 
 def _write_config(text: str) -> None:
-    home = get_hermes_home()
+    home = get_digit_home()
     home.mkdir(parents=True, exist_ok=True)
     (home / "config.yaml").write_text(text)
 
@@ -108,7 +108,7 @@ def test_defaults_backfill_when_neither_config_nor_env_selects_backend():
 def test_bridge_only_attempted_once(monkeypatch):
     calls = []
 
-    import hermes_cli.config as config_mod
+    import digit_cli.config as config_mod
 
     real = config_mod.apply_terminal_config_to_env
 
@@ -126,7 +126,7 @@ def test_bridge_only_attempted_once(monkeypatch):
 
 
 def test_bridge_config_failure_does_not_crash(monkeypatch):
-    import hermes_cli.config as config_mod
+    import digit_cli.config as config_mod
 
     monkeypatch.setattr(
         config_mod,

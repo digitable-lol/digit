@@ -25,10 +25,10 @@ def _build_artifact(
     # nix develop exports this too, so it must not grant permission to build
     # a distributable artifact.
     env["NIX_BUILD_TOP"] = "/build/devshell"
-    env.pop("HERMES_NIX_BUILD", None)
+    env.pop("DIGIT_NIX_BUILD", None)
     env.pop("DIGIT_HOMEBREW_BUILD", None)
     if package_build == "nix":
-        env["HERMES_NIX_BUILD"] = "1"
+        env["DIGIT_NIX_BUILD"] = "1"
     elif package_build == "homebrew":
         env["DIGIT_HOMEBREW_BUILD"] = "1"
     # Redirect setuptools' scratch dirs (build/, *.egg-info) into tmp_path so
@@ -67,7 +67,7 @@ def test_artifact_build_rejects_nix_development_shell_environment(kind, tmp_path
 
 @pytest.mark.parametrize(
     ("kind", "artifact_glob"),
-    [("sdist", "hermes_agent-*.tar.gz"), ("wheel", "hermes_agent-*.whl")],
+    [("sdist", "digit-*.tar.gz"), ("wheel", "digit-*.whl")],
 )
 def test_artifact_build_allows_explicit_nix_package_build_marker(kind, artifact_glob, tmp_path):
     result = _build_artifact(kind, tmp_path, package_build="nix")
@@ -78,7 +78,7 @@ def test_artifact_build_allows_explicit_nix_package_build_marker(kind, artifact_
 
 @pytest.mark.parametrize(
     ("kind", "artifact_glob"),
-    [("sdist", "hermes_agent-*.tar.gz"), ("wheel", "hermes_agent-*.whl")],
+    [("sdist", "digit-*.tar.gz"), ("wheel", "digit-*.whl")],
 )
 def test_artifact_build_allows_official_homebrew_marker(kind, artifact_glob, tmp_path):
     result = _build_artifact(kind, tmp_path, package_build="homebrew")

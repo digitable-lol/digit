@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 
 logger = logging.getLogger(__name__)
 
-from hermes_constants import get_hermes_home
+from digit_constants import get_digit_home
 from tools.tool_backend_helpers import managed_nous_tools_enabled
 
 _DEFAULT_TOOL_GATEWAY_DOMAIN = "nousresearch.com"
@@ -29,8 +29,8 @@ class ManagedToolGatewayConfig:
 
 
 def auth_json_path():
-    """Return the Hermes auth store path, respecting HERMES_HOME overrides."""
-    return get_hermes_home() / "auth.json"
+    """Return the Digit auth store path, respecting DIGIT_HOME overrides."""
+    return get_digit_home() / "auth.json"
 
 
 def _read_nous_provider_state() -> Optional[dict]:
@@ -76,7 +76,7 @@ def _access_token_is_expiring(expires_at: object, skew_seconds: int) -> bool:
 def peek_nous_access_token() -> Optional[str]:
     """Cheap probe for a Nous gateway token without triggering refresh.
 
-    Availability scans (`hermes tools`, banner/status paint, provider
+    Availability scans (`digit tools`, banner/status paint, provider
     `is_available()` checks) must stay off the synchronous OAuth refresh path.
     This helper therefore only inspects the explicit env override and the
     cached auth-store token, without checking expiry and without making any
@@ -109,7 +109,7 @@ def read_nous_access_token() -> Optional[str]:
         return cached_token
 
     try:
-        from hermes_cli.auth import resolve_nous_access_token
+        from digit_cli.auth import resolve_nous_access_token
 
         refreshed_token = resolve_nous_access_token(
             refresh_skew_seconds=_NOUS_ACCESS_TOKEN_REFRESH_SKEW_SECONDS,
@@ -199,7 +199,7 @@ def is_managed_tool_gateway_ready(
 #
 # Vendors the gateway serves on its own origin (rather than on a
 # `{vendor}-gateway` host) are pinned HERE, in code, the same way every other
-# managed vendor's gateway URL is pinned: adding one is a Hermes release, and
+# managed vendor's gateway URL is pinned: adding one is a Digit release, and
 # the exact URL a user's agent may connect to is reviewable in this file. A
 # runtime discovery catalog was tried and deliberately removed — a remote
 # endpoint that can add tools to every entitled install is a bigger trust

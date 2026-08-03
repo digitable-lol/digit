@@ -115,7 +115,7 @@ export interface Translations {
       loadingSettings: string
       loadingSessions: string
       startingDesktopConnection: string
-      startingHermesDesktop: string
+      startingDigitDesktop: string
     }
     errors: {
       backgroundExited: string
@@ -167,7 +167,7 @@ export interface Translations {
     backendOutOfDateTitle: string
     backendOutOfDateMessage: string
     installMethodUnsupportedTitle: string
-    updateHermes: string
+    updateDigit: string
     updateReadyTitle: string
     updateReadyMessage: (count: number) => string
     seeWhatsNew: string
@@ -608,9 +608,9 @@ export interface Translations {
       sshPortDesc: string
       sshKeyTitle: string
       sshKeyDesc: string
-      sshHermesPathTitle: string
-      sshHermesPathDesc: string
-      sshHermesPathPlaceholder: string
+      sshDigitPathTitle: string
+      sshDigitPathDesc: string
+      sshDigitPathPlaceholder: string
       sshRemoteProfileTitle: string
       sshRemoteProfileDesc: string
       sshTestConnection: string
@@ -1102,10 +1102,10 @@ export interface Translations {
     noSessions: string
     gatewayRunning: string
     gatewayStopped: string
-    hermesActiveSessions: (version: string, count: number) => string
+    digitActiveSessions: (version: string, count: number) => string
     restartGateway: string
     gatewayRestartFailed: string
-    updateHermes: string
+    updateDigit: string
     actionRunning: string
     actionDone: string
     actionFailed: string

@@ -5,8 +5,8 @@ from pathlib import Path
 import yaml
 
 from agent.prompt_builder import DEFAULT_AGENT_IDENTITY
-from hermes_cli.default_soul import DEFAULT_SOUL_MD
-from hermes_cli.skin_engine import load_skin
+from digit_cli.default_soul import DEFAULT_SOUL_MD
+from digit_cli.skin_engine import load_skin
 
 
 REPO = Path(__file__).resolve().parent.parent.parent
@@ -16,7 +16,7 @@ def test_digit_identity_is_consistent():
     for identity in (DEFAULT_AGENT_IDENTITY, DEFAULT_SOUL_MD):
         assert "Digit" in identity
         assert "Digitable" in identity
-        assert "Hermes Agent" in identity
+        assert "Digit" in identity
 
 
 def test_digitable_skin_uses_canonical_brand_tokens():
@@ -60,7 +60,7 @@ def test_tools_skill_covers_every_current_it_tools_route():
 
 
 def test_digit_local_presets_never_leave_loopback():
-    source = (REPO / "hermes_cli/model_switch.py").read_text(encoding="utf-8")
+    source = (REPO / "digit_cli/model_switch.py").read_text(encoding="utf-8")
     for alias, model in {
         "digit-local-small": "qwen3.5:2b",
         "digit-local": "qwen3.5:4b",

@@ -6,9 +6,9 @@ author: Digitable
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
-  hermes:
+  digit:
     tags: [digit, digitable, identity, russian, english]
-    related_skills: [hermes-agent, digitable-portal, digitable-courses, digitable-tools, digitable-workbench, fts]
+    related_skills: [digit, digitable-portal, digitable-courses, digitable-tools, digitable-workbench, fts]
 ---
 
 # Digit

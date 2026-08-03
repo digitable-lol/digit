@@ -4,15 +4,15 @@ import { Buffer } from 'node:buffer'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { HermesReadDirEntry, HermesReadDirResult } from '@/global'
+import type { DigitReadDirEntry, DigitReadDirResult } from '@/global'
 
 import { clearProjectDirCache, readProjectDir } from './ipc'
 
-const readDir = vi.fn<(path: string) => Promise<HermesReadDirResult>>()
+const readDir = vi.fn<(path: string) => Promise<DigitReadDirResult>>()
 const readFileDataUrl = vi.fn<(path: string) => Promise<string>>()
 const gitRoot = vi.fn<(path: string) => Promise<string | null>>()
 
-function ok(entries: HermesReadDirEntry[]): HermesReadDirResult {
+function ok(entries: DigitReadDirEntry[]): DigitReadDirResult {
   return { entries }
 }
 
@@ -23,13 +23,13 @@ function dataUrl(text: string) {
 function installBridge() {
   ;(
     window as unknown as {
-      hermesDesktop: {
+      digitDesktop: {
         gitRoot: typeof gitRoot
         readDir: typeof readDir
         readFileDataUrl: typeof readFileDataUrl
       }
     }
-  ).hermesDesktop = { gitRoot, readDir, readFileDataUrl }
+  ).digitDesktop = { gitRoot, readDir, readFileDataUrl }
 }
 
 describe('readProjectDir', () => {
@@ -43,11 +43,11 @@ describe('readProjectDir', () => {
 
   afterEach(() => {
     clearProjectDirCache()
-    delete (window as unknown as { hermesDesktop?: unknown }).hermesDesktop
+    delete (window as unknown as { digitDesktop?: unknown }).digitDesktop
   })
 
   it('returns no-bridge when the desktop bridge is unavailable', async () => {
-    delete (window as unknown as { hermesDesktop?: unknown }).hermesDesktop
+    delete (window as unknown as { digitDesktop?: unknown }).digitDesktop
 
     await expect(readProjectDir('/repo')).resolves.toEqual({ entries: [], error: 'no-bridge' })
   })

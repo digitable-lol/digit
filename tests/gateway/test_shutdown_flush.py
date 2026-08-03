@@ -113,19 +113,19 @@ def test_serialise_object_with_text():
     assert result["session_id"] == "sid"
 
 
-def test_get_flush_dir_uses_get_hermes_home(tmp_path, monkeypatch):
-    """Flush dir must use get_hermes_home(), not hardcoded Path.home()."""
+def test_get_flush_dir_uses_get_digit_home(tmp_path, monkeypatch):
+    """Flush dir must use get_digit_home(), not hardcoded Path.home()."""
     import gateway.shutdown_flush as mod
 
     captured = {}
 
-    def fake_get_hermes_home():
+    def fake_get_digit_home():
         from pathlib import Path
         captured["called"] = True
         return tmp_path
 
     monkeypatch.setattr(
-        "hermes_constants.get_hermes_home", fake_get_hermes_home
+        "digit_constants.get_digit_home", fake_get_digit_home
     )
     result = mod._get_flush_dir()
     assert captured.get("called") is True

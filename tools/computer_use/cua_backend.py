@@ -14,7 +14,7 @@ Linux is the most recent runtime (X11 today, Wayland via XWayland; pure-
 Wayland progress tracked upstream). It is enabled in
 `check_computer_use_requirements` alongside macOS and Windows. The plumbing
 in this file is OS-agnostic; per-host gaps (no DISPLAY, missing AT-SPI,
-etc.) surface as specific blocked checks via `hermes computer-use doctor`
+etc.) surface as specific blocked checks via `digit computer-use doctor`
 rather than failing silently.
 
 Install:
@@ -54,7 +54,7 @@ import uuid
 from pathlib import PureWindowsPath
 from typing import Any, Dict, List, Optional, Tuple
 
-from hermes_cli._subprocess_compat import windows_hide_flags
+from digit_cli._subprocess_compat import windows_hide_flags
 from tools.computer_use.backend import (
     ActionResult,
     CaptureResult,
@@ -140,11 +140,11 @@ def _action_result_from(
 # hardcoded version floor, which would rot and can't know what "latest" is.
 #
 # There is intentionally no version *pin* knob: the upstream installer always
-# fetches the latest release, so a `HERMES_CUA_DRIVER_VERSION` env var would
+# fetches the latest release, so a `DIGIT_CUA_DRIVER_VERSION` env var would
 # only have *looked* like it pinned. For a reproducible version, point
-# `HERMES_CUA_DRIVER_CMD` at a specific binary instead.
+# `DIGIT_CUA_DRIVER_CMD` at a specific binary instead.
 
-_CUA_DRIVER_CMD_ENV = "HERMES_CUA_DRIVER_CMD"
+_CUA_DRIVER_CMD_ENV = "DIGIT_CUA_DRIVER_CMD"
 _CUA_DRIVER_DEFAULT_CMD = "cua-driver"
 _CUA_DRIVER_ARGS = ["mcp"]  # stdio MCP transport (fallback when the
                             # driver doesn't expose `manifest` — see
@@ -193,7 +193,7 @@ _CUA_TELEMETRY_ENV_VAR = "CUA_DRIVER_RS_TELEMETRY_ENABLED"
 def _computer_use_cfg() -> Dict[str, Any]:
     """The ``computer_use`` config block, or ``{}`` when config is unreadable."""
     try:
-        from hermes_cli.config import load_config
+        from digit_cli.config import load_config
 
         return (load_config() or {}).get("computer_use") or {}
     except Exception:
@@ -201,7 +201,7 @@ def _computer_use_cfg() -> Dict[str, Any]:
 
 
 def _cua_no_overlay() -> bool:
-    """True when Hermes should pass ``--no-overlay`` to cua-driver.
+    """True when Digit should pass ``--no-overlay`` to cua-driver.
 
     Reads ``computer_use.no_overlay``. Default ``None`` (auto-detect):
     disable the overlay where idle CPU burn is a known failure mode —
@@ -231,7 +231,7 @@ def _cua_no_overlay() -> bool:
 
 
 def _cua_telemetry_disabled() -> bool:
-    """True when Hermes should disable cua-driver telemetry for this user.
+    """True when Digit should disable cua-driver telemetry for this user.
 
     Reads ``computer_use.cua_telemetry`` (default False → telemetry off).
     Unreadable config falls SAFE toward disabling telemetry.
@@ -357,17 +357,17 @@ def _select_capture_target(
 
 
 def _wsl_windows_path_to_posix(path: str) -> str:
-    """Translate a Windows absolute manifest command when Hermes runs in WSL.
+    """Translate a Windows absolute manifest command when Digit runs in WSL.
 
     Windows cua-driver manifests can report ``C:\\Users\\...\\cua-driver.exe``
-    even though the Hermes process uses POSIX subprocess spawning inside WSL.
+    even though the Digit process uses POSIX subprocess spawning inside WSL.
     The same file is reachable through DrvFS as ``/mnt/c/Users/...``.
     Non-Windows paths and non-WSL hosts are returned unchanged.
     """
     if not re.match(r"^[A-Za-z]:[\\/]", path):
         return path
     try:
-        from hermes_constants import is_wsl
+        from digit_constants import is_wsl
 
         if not is_wsl():
             return path
@@ -384,7 +384,7 @@ class _EmbeddedCuaDaemon:
     """Private host-owned daemon used for an explicit unrestricted session.
 
     Cua Driver permission mode is immutable after daemon startup.  Reusing the
-    machine-wide daemon would therefore let one Hermes session's YOLO choice
+    machine-wide daemon would therefore let one Digit session's YOLO choice
     affect another session.  A private embedded daemon gives the requesting
     session its own socket, process, and launch-time risk acknowledgement.
     """
@@ -403,7 +403,7 @@ class _EmbeddedCuaDaemon:
         self._stderr_thread: Optional[threading.Thread] = None
         token = uuid.uuid4().hex[:12]
         if sys.platform == "win32":
-            self.socket_path = rf"\\.\pipe\hermes-cua-{token}"
+            self.socket_path = rf"\\.\pipe\digit-cua-{token}"
         else:
             self.socket_path = os.path.join(
                 tempfile.gettempdir(), f"hc-{token}.sock"
@@ -461,7 +461,7 @@ class _EmbeddedCuaDaemon:
         self._stderr_thread = threading.Thread(
             target=self._drain_stderr,
             args=(self._process,),
-            name="hermes-cua-daemon-stderr",
+            name="digit-cua-daemon-stderr",
             daemon=True,
         )
         self._stderr_thread.start()
@@ -547,7 +547,7 @@ def _resolve_mcp_invocation(
     (trycua/cua#1961). The manifest carries a stable ``mcp_invocation``
     pointer with both ``command`` and ``args``, so a future cua-driver
     that renames or relocates the subcommand keeps working without a
-    Hermes patch.
+    Digit patch.
 
     Falls back to ``(driver_cmd, ["mcp"])`` for older drivers that don't
     expose ``manifest``, or any indeterminate failure — the wrapper must
@@ -594,7 +594,7 @@ def _resolve_mcp_invocation(
         # The driver knows the subcommand but didn't surface its own path.
         # Keep our resolved driver_cmd; the args are still authoritative.
         return driver_cmd, _mcp_args_with_overlay_flag(args, driver_cmd=driver_cmd)
-    # A Windows-installed cua-driver can hand a WSL-hosted Hermes an absolute
+    # A Windows-installed cua-driver can hand a WSL-hosted Digit an absolute
     # ``C:\...`` command; translate it to its DrvFS ``/mnt/<drive>/...`` form
     # BEFORE the path-separator check (backslash is not a separator on POSIX,
     # so the raw Windows string would otherwise be discarded here).
@@ -693,14 +693,14 @@ def _candidate_cua_driver_commands(override: Optional[str] = None) -> List[str]:
     """Return candidate cua-driver commands in resolution order.
 
     ``override`` is authoritative when supplied. Otherwise a non-empty
-    ``HERMES_CUA_DRIVER_CMD`` is authoritative; only when neither is set do we
+    ``DIGIT_CUA_DRIVER_CMD`` is authoritative; only when neither is set do we
     use PATH and canonical install locations.
 
     Desktop apps launched from Finder/Dock often inherit a narrow PATH that
     omits user-local install directories. The upstream cua-driver installer
     commonly places the binary under ``~/.local/bin`` on POSIX systems, so a
-    Hermes Desktop/TUI session can otherwise filter out the `computer_use`
-    tool even though `hermes computer-use doctor` succeeds from a login shell.
+    Digit Desktop/TUI session can otherwise filter out the `computer_use`
+    tool even though `digit computer-use doctor` succeeds from a login shell.
     """
     configured = (override if override is not None else os.environ.get(_CUA_DRIVER_CMD_ENV, "")).strip()
     if configured:
@@ -728,7 +728,7 @@ def _candidate_cua_driver_commands(override: Optional[str] = None) -> List[str]:
 def resolve_cua_driver_cmd(override: Optional[str] = None) -> Optional[str]:
     """Resolve the cua-driver executable for every runtime/status surface.
 
-    A supplied override (or ``HERMES_CUA_DRIVER_CMD``) is never silently
+    A supplied override (or ``DIGIT_CUA_DRIVER_CMD``) is never silently
     replaced by another binary. Otherwise resolve PATH first, then canonical
     user-local installation locations used by the official installer.
     """
@@ -812,7 +812,7 @@ def cua_driver_update_nudge() -> Optional[str]:
     current = state.get("current_version") or "?"
     return (
         f"cua-driver {latest} is available (you have {current}); "
-        f"update with `hermes computer-use install --upgrade`."
+        f"update with `digit computer-use install --upgrade`."
     )
 
 
@@ -854,10 +854,10 @@ def cua_driver_install_hint() -> str:
         )
     return (
         "cua-driver is not installed. Install with one of:\n"
-        "  hermes computer-use install\n"
+        "  digit computer-use install\n"
         "Or run the upstream installer directly:\n"
         f"{installer}\n"
-        "Or run `hermes tools` and enable the Computer Use toolset to install it automatically."
+        "Or run `digit tools` and enable the Computer Use toolset to install it automatically."
     )
 
 
@@ -1163,7 +1163,7 @@ class _CuaDriverSession:
                 command=command,
                 args=args,
                 # Apply the telemetry policy first (default: disabled), then
-                # sanitize Hermes-managed secrets out of the child env.
+                # sanitize Digit-managed secrets out of the child env.
                 env=_sanitize_subprocess_env(child_env),
             )
 
@@ -1292,12 +1292,12 @@ class _CuaDriverSession:
             # passes but the wrapper times out" reports are undiagnosable
             # from a bare "never reached ready".
             phase = getattr(self, "_startup_phase", "unknown")
-            from hermes_constants import display_hermes_home
+            from digit_constants import display_digit_home
             raise RuntimeError(
                 "cua-driver session never reached ready (timeout 30s; "
                 f"stuck in phase: {phase}). "
-                "Run `hermes computer-use doctor` and check "
-                f"{display_hermes_home()}/logs/agent.log for the phase timings."
+                "Run `digit computer-use doctor` and check "
+                f"{display_digit_home()}/logs/agent.log for the phase timings."
             )
         # If setup failed, the lifecycle coroutine set _setup_error
         # before setting _ready_event. Re-raise it on the caller's thread.
@@ -1937,20 +1937,20 @@ class CuaDriverBackend(ComputerUseBackend):
         # instructions ask every consumer to declare a stable session
         # at the start of a run (start_session) and tear it down at
         # the end (end_session). Doing so:
-        #   - Gets a distinct agent-cursor color per Hermes run, with
+        #   - Gets a distinct agent-cursor color per Digit run, with
         #     overlay rendering visualising where actions land
         #     (without moving the real OS cursor).
         #   - Isolates per-session config + recording ownership so
-        #     concurrent Hermes runs / subagents don't step on each
+        #     concurrent Digit runs / subagents don't step on each
         #     other.
         # We mint a UUID4-based id once per CuaDriverBackend instance —
-        # one Hermes run = one backend = one session — and pass it as
+        # one Digit run = one backend = one session — and pass it as
         # `session` on every cua-driver tool call. Sessions are an
         # additive feature on the cua-driver side: when our id is
         # unknown to the driver (older builds), the tool calls
         # degrade to the anonymous / unsynced path documented in the
         # MCP server instructions.
-        self._session_id: str = f"hermes-{uuid.uuid4().hex[:12]}"
+        self._session_id: str = f"digit-{uuid.uuid4().hex[:12]}"
         self._typed_browser = CuaTypedBrowserRoute(
             session_id=self._session_id,
             call_tool=self._session.call_tool,
@@ -1973,7 +1973,7 @@ class CuaDriverBackend(ComputerUseBackend):
     def start(self) -> None:
         _maybe_nudge_update()
         # The MCP client SDK (`mcp`) is an optional dependency (the
-        # `computer-use` / `mcp` extras), not part of Hermes' minimal core.
+        # `computer-use` / `mcp` extras), not part of Digit' minimal core.
         # Lazy-install it on first use — the same pattern every other optional
         # backend uses — so users never hit an opaque `No module named 'mcp'`
         # at invoke time. Auto-install is gated by `security.allow_lazy_installs`
@@ -2226,7 +2226,7 @@ class CuaDriverBackend(ComputerUseBackend):
     ) -> CaptureResult:
         """Capture the frontmost on-screen window or an exact known target.
 
-        Maps hermes `capture(mode, app)` → cua-driver `list_windows` +
+        Maps digit `capture(mode, app)` → cua-driver `list_windows` +
         `get_window_state` (ax/som) or `screenshot` (vision).
         """
         # Step 1: enumerate on-screen windows to find target pid/window_id.
@@ -2879,7 +2879,7 @@ class CuaDriverBackend(ComputerUseBackend):
         process.
 
         The default remains non-disruptive. ``raise_window=True`` is explicit,
-        separately approved by the Hermes adapter, and uses cua-driver's
+        separately approved by the Digit adapter, and uses cua-driver's
         standalone ``bring_to_front`` tool rather than an action property.
         """
         try:

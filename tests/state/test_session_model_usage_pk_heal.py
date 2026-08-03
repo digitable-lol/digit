@@ -20,8 +20,8 @@ import sqlite3
 
 import pytest
 
-from hermes_state import SessionDB
-from hermes_state_common import SCHEMA_VERSION
+from digit_state import SessionDB
+from digit_state_common import SCHEMA_VERSION
 
 LEGACY_SQL = """
     CREATE TABLE session_model_usage (

@@ -1,19 +1,19 @@
 # NeMo Relay Observability
 
-Optional Hermes observability plugin that configures exporters and maps
-Hermes-specific observer hooks to NeMo Relay marks and ATIF state. Hermes core
+Optional Digit observability plugin that configures exporters and maps
+Digit-specific observer hooks to NeMo Relay marks and ATIF state. Digit core
 owns Relay session, turn, LLM, and tool execution scopes.
 
 NeMo Relay is NVIDIA's runtime layer for agent execution boundaries. It does
-not replace Hermes Agent's planner, tools, memory, model provider routing, or
-CLI UX. Hermes core emits NeMo Relay lifecycle events for provider and tool
+not replace Digit's planner, tools, memory, model provider routing, or
+CLI UX. Digit core emits NeMo Relay lifecycle events for provider and tool
 execution, while this plugin enables rich exporters and observer marks for
 sessions, turns, approval prompts, and delegated subagents.
 
-With this plugin enabled, Hermes Agent can:
+With this plugin enabled, Digit can:
 
-- Export the Relay scopes and LLM/tool lifecycles emitted by Hermes core.
-- Add Hermes session, turn, approval, and subagent mark events.
+- Export the Relay scopes and LLM/tool lifecycles emitted by Digit core.
+- Add Digit session, turn, approval, and subagent mark events.
 - Export raw lifecycle events as Agent Trajectory Observability Format (ATOF)
   JSONL for debugging and offline inspection.
 - Export Agent Trajectory Interchange Format (ATIF) trajectories for replay,
@@ -39,63 +39,63 @@ https://github.com/harbor-framework/harbor/blob/main/rfcs/0001-trajectory-format
 Enable the plugin before setting export options:
 
 ```bash
-hermes plugins enable observability/nemo_relay
+digit plugins enable observability/nemo_relay
 ```
 
-The `HERMES_NEMO_RELAY_*` environment variables below only configure an
+The `DIGIT_NEMO_RELAY_*` environment variables below only configure an
 already-enabled plugin. They do not enable plugin discovery by themselves.
 
-For isolated test homes, enable the plugin in the same `HERMES_HOME` that the
+For isolated test homes, enable the plugin in the same `DIGIT_HOME` that the
 agent run will use:
 
 ```bash
-env HERMES_HOME=/tmp/hermes-nemo-relay-test \
-  hermes plugins enable observability/nemo_relay
+env DIGIT_HOME=/tmp/digit-nemo-relay-test \
+  digit plugins enable observability/nemo_relay
 ```
 
 Runs started with `--ignore_user_config` skip the enabled-plugin state from
-`HERMES_HOME`, so local E2E tests should omit that flag unless the test harness
+`DIGIT_HOME`, so local E2E tests should omit that flag unless the test harness
 loads `observability/nemo_relay` explicitly another way.
 
-`HERMES_HOME` is the Hermes profile/config home used by both
-`hermes plugins enable ...` and the later `hermes chat ...` run. If unset,
-Hermes uses the user's default home, usually `~/.hermes`. For isolated smoke
+`DIGIT_HOME` is the Digit profile/config home used by both
+`digit plugins enable ...` and the later `digit chat ...` run. If unset,
+Digit uses the user's default home, usually `~/.digit`. For isolated smoke
 tests, choose any writable temporary directory and use the same value for every
 command in that test:
 
 ```bash
-export HERMES_HOME=/tmp/hermes-nemo-relay-test
-hermes plugins enable observability/nemo_relay
-hermes chat --query 'Reply exactly ok' --provider custom --model qwen3.6:35b
+export DIGIT_HOME=/tmp/digit-nemo-relay-test
+digit plugins enable observability/nemo_relay
+digit chat --query 'Reply exactly ok' --provider custom --model qwen3.6:35b
 ```
 
-For source checkouts, make sure the `hermes` command you run is built from the
+For source checkouts, make sure the `digit` command you run is built from the
 checkout that contains this plugin. A globally installed older CLI will not see
 new bundled plugins from your working tree.
 
 ```bash
 uv sync
-uv run hermes plugins enable observability/nemo_relay
-uv run hermes chat --query 'Reply exactly ok' --provider custom --model qwen3.6:35b
+uv run digit plugins enable observability/nemo_relay
+uv run digit chat --query 'Reply exactly ok' --provider custom --model qwen3.6:35b
 ```
 
 To ship the updated CLI into another environment, build and install a fresh
 wheel from this checkout. On platforms for which Relay publishes a native
-wheel, Hermes installs its supported NeMo Relay runtime as a normal dependency:
+wheel, Digit installs its supported NeMo Relay runtime as a normal dependency:
 
 ```bash
 uv build --wheel
-python -m pip install --force-reinstall dist/hermes_agent-*.whl
-hermes plugins enable observability/nemo_relay
+python -m pip install --force-reinstall dist/digit-*.whl
+digit plugins enable observability/nemo_relay
 ```
 
 The plugin remains opt-in even though the runtime dependency is installed by
 default. Enabling this plugin controls rich observability and adaptive
-behavior; it does not control Hermes shared client metrics.
+behavior; it does not control Digit shared client metrics.
 
 ## Export Configuration
 
-The plugin can configure exporters directly from `HERMES_NEMO_RELAY_*`
+The plugin can configure exporters directly from `DIGIT_NEMO_RELAY_*`
 environment variables, or delegate exporter setup to a NeMo Relay
 `plugins.toml` component config.
 
@@ -109,29 +109,29 @@ OpenInference.
 Useful local export settings after the plugin is enabled:
 
 ```bash
-export HERMES_NEMO_RELAY_ATOF_ENABLED=1
-export HERMES_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=.nemo-relay/atof
-export HERMES_NEMO_RELAY_ATIF_ENABLED=1
-export HERMES_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=.nemo-relay/atif
+export DIGIT_NEMO_RELAY_ATOF_ENABLED=1
+export DIGIT_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=.nemo-relay/atof
+export DIGIT_NEMO_RELAY_ATIF_ENABLED=1
+export DIGIT_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=.nemo-relay/atif
 ```
 
 Optional overrides:
 
-- `HERMES_NEMO_RELAY_ATOF_FILENAME`
-- `HERMES_NEMO_RELAY_ATOF_MODE` (`append` or `overwrite`)
-- `HERMES_NEMO_RELAY_ATIF_FILENAME_TEMPLATE`
-- `HERMES_NEMO_RELAY_ATIF_AGENT_NAME`
-- `HERMES_NEMO_RELAY_ATIF_AGENT_VERSION`
-- `HERMES_NEMO_RELAY_ATIF_MODEL_NAME`
-- `HERMES_NEMO_RELAY_ATIF_SUBAGENT_EXPORT_MODE` (`embedded` by default; set `all` to also write standalone child files)
+- `DIGIT_NEMO_RELAY_ATOF_FILENAME`
+- `DIGIT_NEMO_RELAY_ATOF_MODE` (`append` or `overwrite`)
+- `DIGIT_NEMO_RELAY_ATIF_FILENAME_TEMPLATE`
+- `DIGIT_NEMO_RELAY_ATIF_AGENT_NAME`
+- `DIGIT_NEMO_RELAY_ATIF_AGENT_VERSION`
+- `DIGIT_NEMO_RELAY_ATIF_MODEL_NAME`
+- `DIGIT_NEMO_RELAY_ATIF_SUBAGENT_EXPORT_MODE` (`embedded` by default; set `all` to also write standalone child files)
 
 ### NeMo Relay Component Config
 
 To initialize NeMo Relay from a component config, create a `plugins.toml` file
-and point Hermes at it:
+and point Digit at it:
 
 ```bash
-export HERMES_NEMO_RELAY_PLUGINS_TOML=.nemo-relay/plugins.toml
+export DIGIT_NEMO_RELAY_PLUGINS_TOML=.nemo-relay/plugins.toml
 ```
 
 Minimal ATOF and ATIF config:
@@ -156,19 +156,19 @@ mode = "overwrite"
 enabled = true
 output_directory = ".nemo-relay/atif"
 filename_template = "trajectory-{session_id}.json"
-agent_name = "Hermes Agent"
+agent_name = "Digit"
 agent_version = "local"
 ```
 
-When `HERMES_NEMO_RELAY_PLUGINS_TOML` is set and initializes successfully, NeMo
+When `DIGIT_NEMO_RELAY_PLUGINS_TOML` is set and initializes successfully, NeMo
 Relay owns exporter lifecycle through that config. The direct
-`HERMES_NEMO_RELAY_ATOF_*` fallback setup is skipped. If the same
+`DIGIT_NEMO_RELAY_ATOF_*` fallback setup is skipped. If the same
 `plugins.toml` observability config enables `atif`, the direct
-`HERMES_NEMO_RELAY_ATIF_*` fallback setup is also skipped so Hermes does not
+`DIGIT_NEMO_RELAY_ATIF_*` fallback setup is also skipped so Digit does not
 double-export trajectories on teardown. If `plugins.toml` initialization fails,
-Hermes keeps the direct env-var fallbacks active for that run.
+Digit keeps the direct env-var fallbacks active for that run.
 
-Hermes core routes provider and tool execution through NeMo Relay managed APIs
+Digit core routes provider and tool execution through NeMo Relay managed APIs
 regardless of whether this plugin is enabled. To install adaptive interceptors
 on those boundaries, include an adaptive component in the same `plugins.toml`:
 
@@ -188,8 +188,8 @@ execution boundary.
 
 ### Dynamic Plugins
 
-Hermes uses the dynamic-plugin activation API available in NeMo Relay 0.6 and
-later. Configure native or worker plugins with Hermes-owned
+Digit uses the dynamic-plugin activation API available in NeMo Relay 0.6 and
+later. Configure native or worker plugins with Digit-owned
 `[[dynamic_plugins]]` entries that match the Python binding's activation-spec
 fields:
 
@@ -225,32 +225,32 @@ Relative `manifest_ref` and `environment_ref` values resolve relative to the
 physical `plugins.toml` file.
 
 Relay's canonical gateway `[[plugins.dynamic]]` records are not interchangeable
-with this Hermes-owned section. The gateway combines those records with
+with this Digit-owned section. The gateway combines those records with
 separate lifecycle state for enablement, trust policy, and worker environments;
-the Python binding does not yet expose that resolver. Hermes rejects
+the Python binding does not yet expose that resolver. Digit rejects
 `[[plugins.dynamic]]` with an actionable diagnostic instead of silently
 ignoring it or bypassing lifecycle policy. Use `[[dynamic_plugins]]` until Relay
 exposes shared file-and-lifecycle resolution to embedding hosts.
 
-Hermes activates these plugins before registering its managed LLM and tool
+Digit activates these plugins before registering its managed LLM and tool
 execution middleware and retains the activation for the runtime lifetime.
 During shutdown it closes session exporters, flushes Relay subscribers, and
 then closes the activation so callbacks are removed before plugin code is
 unloaded.
 
-For the full generic Hermes middleware contract, see
+For the full generic Digit middleware contract, see
 [`docs/middleware/README.md`](../../../docs/middleware/README.md).
 
 ## Canonical Local Examples
 
 The observe-only examples in this section use the NeMo Relay runtime installed
-with Hermes and a local Ollama model served through the OpenAI-compatible API.
+with Digit and a local Ollama model served through the OpenAI-compatible API.
 
 ```bash
-export HERMES_HOME=/tmp/hermes-nemo-relay-docs/hermes-home
-mkdir -p "$HERMES_HOME"
+export DIGIT_HOME=/tmp/digit-nemo-relay-docs/digit-home
+mkdir -p "$DIGIT_HOME"
 
-cat > "$HERMES_HOME/config.yaml" <<'YAML'
+cat > "$DIGIT_HOME/config.yaml" <<'YAML'
 model:
   provider: custom
   default: qwen3.6:35b
@@ -272,22 +272,22 @@ YAML
 
 ### Delegated Subagent Tool Call
 
-This run starts a parent Hermes session, delegates to a child subagent, has the
+This run starts a parent Digit session, delegates to a child subagent, has the
 child call `terminal`, and writes both ATOF and ATIF.
 
 ```bash
-export HERMES_NEMO_RELAY_ATOF_ENABLED=1
-export HERMES_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=/tmp/hermes-nemo-relay-docs/subagent/atof
-export HERMES_NEMO_RELAY_ATOF_FILENAME=nested-subagent-atof.jsonl
-export HERMES_NEMO_RELAY_ATOF_MODE=overwrite
-export HERMES_NEMO_RELAY_ATIF_ENABLED=1
-export HERMES_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=/tmp/hermes-nemo-relay-docs/subagent/atif
-export HERMES_NEMO_RELAY_ATIF_FILENAME_TEMPLATE='nested-subagent-atif-{session_id}.json'
-export HERMES_NEMO_RELAY_ATIF_AGENT_NAME='Hermes Agent E2E'
-export HERMES_NEMO_RELAY_ATIF_AGENT_VERSION=docs-example
-export HERMES_NEMO_RELAY_ATIF_SUBAGENT_EXPORT_MODE=all
+export DIGIT_NEMO_RELAY_ATOF_ENABLED=1
+export DIGIT_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=/tmp/digit-nemo-relay-docs/subagent/atof
+export DIGIT_NEMO_RELAY_ATOF_FILENAME=nested-subagent-atof.jsonl
+export DIGIT_NEMO_RELAY_ATOF_MODE=overwrite
+export DIGIT_NEMO_RELAY_ATIF_ENABLED=1
+export DIGIT_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=/tmp/digit-nemo-relay-docs/subagent/atif
+export DIGIT_NEMO_RELAY_ATIF_FILENAME_TEMPLATE='nested-subagent-atif-{session_id}.json'
+export DIGIT_NEMO_RELAY_ATIF_AGENT_NAME='Digit E2E'
+export DIGIT_NEMO_RELAY_ATIF_AGENT_VERSION=docs-example
+export DIGIT_NEMO_RELAY_ATIF_SUBAGENT_EXPORT_MODE=all
 
-hermes chat \
+digit chat \
   --query 'Use delegate_task exactly once. Ask the child subagent to use the terminal tool exactly once to run printf docs_nested_leaf_function. After the child returns, reply with exactly: parent received nested subagent result.' \
   --provider custom \
   --model qwen3.6:35b \
@@ -308,7 +308,7 @@ Sanitized ATOF excerpt:
 
 ```jsonl
 {"kind":"scope","category":"tool","name":"delegate_task","scope_category":"start","metadata":{"session_id":"docs-parent-session","tool_call_id":"call_delegate"},"data":{"goal":"Run the command `printf docs_nested_leaf_function` using the terminal tool.","toolsets":["terminal"]}}
-{"kind":"mark","name":"hermes.subagent.start","metadata":{"parent_session_id":"docs-parent-session","session_id":"docs-child-session","subagent_id":"sa-0-docs","child_role":"leaf"}}
+{"kind":"mark","name":"digit.subagent.start","metadata":{"parent_session_id":"docs-parent-session","session_id":"docs-child-session","subagent_id":"sa-0-docs","child_role":"leaf"}}
 {"kind":"scope","category":"tool","name":"terminal","scope_category":"end","metadata":{"session_id":"docs-child-session","tool_call_id":"call_terminal","status":"ok"},"data":"{\"output\":\"docs_nested_leaf_function\",\"exit_code\":0,\"error\":null}"}
 {"kind":"scope","category":"tool","name":"delegate_task","scope_category":"end","metadata":{"session_id":"docs-parent-session","tool_call_id":"call_delegate","status":"ok"}}
 ```
@@ -319,7 +319,7 @@ Sanitized ATIF excerpt:
 {
   "schema_version": "ATIF-v1.7",
   "session_id": "docs-parent-session",
-  "agent": {"name": "Hermes Agent E2E", "version": "docs-example", "model_name": "qwen3.6:35b"},
+  "agent": {"name": "Digit E2E", "version": "docs-example", "model_name": "qwen3.6:35b"},
   "steps": [
     {
       "source": "agent",
@@ -353,26 +353,26 @@ Sanitized ATIF excerpt:
 ### Parallel Tool Calls
 
 This run asks the model to emit two `read_file` tool calls in the same assistant
-message. Hermes dispatches the read-only tools as one batch, and NeMo Relay
+message. Digit dispatches the read-only tools as one batch, and NeMo Relay
 records both tool invocations.
 
 ```bash
-mkdir -p /tmp/hermes-nemo-relay-docs/workdir
-printf 'docs_parallel_alpha_function\n' > /tmp/hermes-nemo-relay-docs/workdir/alpha.txt
-printf 'docs_parallel_beta_function\n' > /tmp/hermes-nemo-relay-docs/workdir/beta.txt
-cd /tmp/hermes-nemo-relay-docs/workdir
+mkdir -p /tmp/digit-nemo-relay-docs/workdir
+printf 'docs_parallel_alpha_function\n' > /tmp/digit-nemo-relay-docs/workdir/alpha.txt
+printf 'docs_parallel_beta_function\n' > /tmp/digit-nemo-relay-docs/workdir/beta.txt
+cd /tmp/digit-nemo-relay-docs/workdir
 
-export HERMES_NEMO_RELAY_ATOF_ENABLED=1
-export HERMES_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=/tmp/hermes-nemo-relay-docs/parallel/atof
-export HERMES_NEMO_RELAY_ATOF_FILENAME=parallel-tools-atof.jsonl
-export HERMES_NEMO_RELAY_ATOF_MODE=overwrite
-export HERMES_NEMO_RELAY_ATIF_ENABLED=1
-export HERMES_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=/tmp/hermes-nemo-relay-docs/parallel/atif
-export HERMES_NEMO_RELAY_ATIF_FILENAME_TEMPLATE='parallel-tools-atif-{session_id}.json'
-export HERMES_NEMO_RELAY_ATIF_AGENT_NAME='Hermes Agent E2E'
-export HERMES_NEMO_RELAY_ATIF_AGENT_VERSION=docs-example
+export DIGIT_NEMO_RELAY_ATOF_ENABLED=1
+export DIGIT_NEMO_RELAY_ATOF_OUTPUT_DIRECTORY=/tmp/digit-nemo-relay-docs/parallel/atof
+export DIGIT_NEMO_RELAY_ATOF_FILENAME=parallel-tools-atof.jsonl
+export DIGIT_NEMO_RELAY_ATOF_MODE=overwrite
+export DIGIT_NEMO_RELAY_ATIF_ENABLED=1
+export DIGIT_NEMO_RELAY_ATIF_OUTPUT_DIRECTORY=/tmp/digit-nemo-relay-docs/parallel/atif
+export DIGIT_NEMO_RELAY_ATIF_FILENAME_TEMPLATE='parallel-tools-atif-{session_id}.json'
+export DIGIT_NEMO_RELAY_ATIF_AGENT_NAME='Digit E2E'
+export DIGIT_NEMO_RELAY_ATIF_AGENT_VERSION=docs-example
 
-hermes chat \
+digit chat \
   --query 'Use exactly two read_file tool calls in the same assistant message. Read alpha.txt and beta.txt. Do not call terminal. After both tool results are available, reply with exactly: parallel tools complete.' \
   --provider custom \
   --model qwen3.6:35b \
@@ -405,7 +405,7 @@ Sanitized ATIF excerpt:
 {
   "schema_version": "ATIF-v1.7",
   "session_id": "docs-parallel-session",
-  "agent": {"name": "Hermes Agent E2E", "version": "docs-example", "model_name": "qwen3.6:35b"},
+  "agent": {"name": "Digit E2E", "version": "docs-example", "model_name": "qwen3.6:35b"},
   "steps": [
     {
       "source": "agent",
@@ -429,9 +429,9 @@ Sanitized ATIF excerpt:
 
 The plugin keeps NeMo Relay's native event model:
 
-- Hermes sessions map to `agent` scopes.
-- Hermes core managed provider calls map to `llm` scope start/end events.
-- Hermes core managed tool calls map to `tool` scope start/end events.
+- Digit sessions map to `agent` scopes.
+- Digit core managed provider calls map to `llm` scope start/end events.
+- Digit core managed tool calls map to `tool` scope start/end events.
 - Turn, approval, subagent, and diagnostic fallback events map to `mark`
   events.
 
@@ -443,9 +443,9 @@ separate trajectories.
 
 ## Adaptive Execution Example
 
-Hermes core owns the LLM and tool boundaries and enters NeMo Relay managed
-execution while a Hermes-managed Relay consumer is active. With no shared
-metrics subscriber or explicitly configured Relay plugin, Hermes calls the
+Digit core owns the LLM and tool boundaries and enters NeMo Relay managed
+execution while a Digit-managed Relay consumer is active. With no shared
+metrics subscriber or explicitly configured Relay plugin, Digit calls the
 provider or tool directly. The `observability/nemo_relay` plugin retains the
 managed path while its adaptive components are installed on those boundaries.
 
@@ -462,22 +462,22 @@ enabled = true
 mode = "observe_only"
 ```
 
-Enable it for Hermes:
+Enable it for Digit:
 
 ```bash
-export HERMES_NEMO_RELAY_PLUGINS_TOML=/tmp/hermes-middleware-test/plugins.toml
+export DIGIT_NEMO_RELAY_PLUGINS_TOML=/tmp/digit-middleware-test/plugins.toml
 ```
 
 Execution follows these boundaries with or without an adaptive component:
 
 ```text
-Hermes provider call
+Digit provider call
   -> nemo_relay.llm.execute(...)
-    -> Hermes provider adapter callback(...)
+    -> Digit provider adapter callback(...)
 
-Hermes tool call
+Digit tool call
   -> nemo_relay.tools.execute(...)
-    -> Hermes authorization and dispatch callback(...)
+    -> Digit authorization and dispatch callback(...)
 ```
 
 The plugin emits observer marks for sessions, turns, approvals, and subagents.
@@ -487,15 +487,15 @@ produces one Relay lifecycle.
 ### Local Adaptive E2E
 
 This example enables both NeMo Relay observability export and adaptive execution
-middleware for a local Hermes run. This path requires a NeMo Relay runtime that
+middleware for a local Digit run. This path requires a NeMo Relay runtime that
 supports `[components.config.tool_parallelism]`, as provided by NeMo Relay 0.6
 and later.
 
 ```bash
-export HERMES_HOME=/tmp/hermes-middleware-test/hermes-home
-mkdir -p "$HERMES_HOME" /tmp/hermes-middleware-test/nemo-relay
+export DIGIT_HOME=/tmp/digit-middleware-test/digit-home
+mkdir -p "$DIGIT_HOME" /tmp/digit-middleware-test/nemo-relay
 
-cat > "$HERMES_HOME/config.yaml" <<'YAML'
+cat > "$DIGIT_HOME/config.yaml" <<'YAML'
 model:
   provider: custom
   default: qwen3.6:35b
@@ -506,7 +506,7 @@ plugins:
     - observability/nemo_relay
 YAML
 
-cat > /tmp/hermes-middleware-test/nemo-relay/plugins.toml <<'TOML'
+cat > /tmp/digit-middleware-test/nemo-relay/plugins.toml <<'TOML'
 version = 1
 
 [[components]]
@@ -518,15 +518,15 @@ version = 1
 
 [components.config.atof]
 enabled = true
-output_directory = "/tmp/hermes-middleware-test/atof"
+output_directory = "/tmp/digit-middleware-test/atof"
 filename = "middleware-events.jsonl"
 mode = "overwrite"
 
 [components.config.atif]
 enabled = true
-output_directory = "/tmp/hermes-middleware-test/atif"
+output_directory = "/tmp/digit-middleware-test/atif"
 filename_template = "middleware-trajectory-{session_id}.json"
-agent_name = "Hermes Middleware E2E"
+agent_name = "Digit Middleware E2E"
 agent_version = "local"
 
 [[components]]
@@ -537,9 +537,9 @@ enabled = true
 mode = "observe_only"
 TOML
 
-export HERMES_NEMO_RELAY_PLUGINS_TOML=/tmp/hermes-middleware-test/nemo-relay/plugins.toml
+export DIGIT_NEMO_RELAY_PLUGINS_TOML=/tmp/digit-middleware-test/nemo-relay/plugins.toml
 
-hermes chat \
+digit chat \
   --query 'Use the terminal tool exactly once to run printf middleware_execution_ok. Then reply with exactly the command output.' \
   --provider custom \
   --model qwen3.6:35b \
@@ -571,7 +571,7 @@ Expected ATIF shape:
   "schema_version": "ATIF-v1.7",
   "session_id": "middleware-demo-session",
   "agent": {
-    "name": "Hermes Middleware E2E",
+    "name": "Digit Middleware E2E",
     "version": "local",
     "model_name": "qwen3.6:35b"
   },

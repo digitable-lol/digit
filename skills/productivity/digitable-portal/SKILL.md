@@ -6,7 +6,7 @@ author: Digitable
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
-  hermes:
+  digit:
     tags: [digitable, portal, navigation, products]
     related_skills: [digit, digitable-courses, digitable-tools, digitable-workbench, fts]
 ---

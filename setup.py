@@ -18,8 +18,8 @@ fires for ``uv build``, ``pip wheel``, ``python -m build``, and direct
 The approved consumers of ``build_wheel`` are uv2nix and the official
 Homebrew formula. uv2nix calls
 ``setuptools.build_meta.build_wheel`` (→ ``bdist_wheel``) inside a Nix
-build sandbox. ``nix/python.nix`` sets ``HERMES_NIX_BUILD=1`` on the
-Hermes package derivation. The tap formula sets
+build sandbox. ``nix/python.nix`` sets ``DIGIT_NIX_BUILD=1`` on the
+Digit package derivation. The tap formula sets
 ``DIGIT_HOMEBREW_BUILD=1`` while assembling its isolated environment.
 
 Editable installs (``uv sync``, ``pip install -e .``, ``nix develop``)
@@ -33,12 +33,12 @@ from setuptools import setup
 from setuptools.command.sdist import sdist
 
 _IN_APPROVED_PACKAGE_BUILD = (
-    os.environ.get("HERMES_NIX_BUILD") == "1"
+    os.environ.get("DIGIT_NIX_BUILD") == "1"
     or os.environ.get("DIGIT_HOMEBREW_BUILD") == "1"
 )
 
 _BLOCK_MESSAGE = (
-    "Building wheels or sdists for hermes-agent outside an approved package build is not supported.\n"
+    "Building wheels or sdists for digit outside an approved package build is not supported.\n"
     "Digit is distributed via its installer, Homebrew tap, Docker image, or Nix.\n"
     "See: https://github.com/digitable-lol/digit#установка\n"
     "\n"

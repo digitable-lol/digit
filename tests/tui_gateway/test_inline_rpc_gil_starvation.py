@@ -38,10 +38,10 @@ def server():
     # the whole test would poison modules first imported inside test bodies
     # (see tests/tui_gateway/test_protocol.py for the full rationale).
     with patch.dict("sys.modules", {
-        "hermes_constants": MagicMock(get_hermes_home=MagicMock(return_value="/tmp/hermes_test")),
-        "hermes_cli.env_loader": MagicMock(),
-        "hermes_cli.banner": MagicMock(),
-        "hermes_state": MagicMock(),
+        "digit_constants": MagicMock(get_digit_home=MagicMock(return_value="/tmp/digit_test")),
+        "digit_cli.env_loader": MagicMock(),
+        "digit_cli.banner": MagicMock(),
+        "digit_state": MagicMock(),
     }):
         import importlib
         mod = importlib.import_module("tui_gateway.server")

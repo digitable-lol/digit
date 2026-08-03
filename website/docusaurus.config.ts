@@ -3,7 +3,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'Hermes Agent',
+  title: 'Digit',
   tagline: 'The self-improving AI agent',
   favicon: 'img/favicon.ico',
 
@@ -11,7 +11,7 @@ const config: Config = {
   baseUrl: '/docs/',
 
   organizationName: 'NousResearch',
-  projectName: 'hermes-agent',
+  projectName: 'digit',
 
   onBrokenLinks: 'warn',
 
@@ -89,7 +89,7 @@ const config: Config = {
           {
             // Moved when the Plugins subcategory was created under
             // Developer Guide > Extending (docs restructure, July 2026)
-            from: '/guides/build-a-hermes-plugin',
+            from: '/guides/build-a-digit-plugin',
             to: '/developer-guide/plugins',
           },
           {
@@ -125,7 +125,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/hermes-agent-banner.png',
+    image: 'img/digit-banner.png',
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
@@ -137,9 +137,9 @@ const config: Config = {
       },
     },
     navbar: {
-      title: 'Hermes Agent',
+      title: 'Digit',
       logo: {
-        alt: 'Hermes Agent',
+        alt: 'Digit',
         src: 'img/logo.png',
       },
       items: [
