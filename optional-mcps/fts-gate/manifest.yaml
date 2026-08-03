@@ -1,0 +1,60 @@
+# Digitable first-party MCP catalog entry.
+# Presence in this directory = approval. Merged via PR review.
+manifest_version: 1
+
+name: fts-gate
+description: Structurally verify FTS executable specifications and list domain morphisms.
+source: https://github.com/digitable/fts-gate
+
+# First-party server, built in-tree rather than fetched from a registry, so it
+# uses `install.type: local`: the path is resolved and existence-checked at
+# install time, nothing is cloned and nothing is executed.
+#
+# The path is overridable via DIGIT_FTS_GATE_HOME so this manifest does not
+# encode one machine's layout. The default matches the standard side-by-side
+# checkout used by the Digitable toolchain.
+install:
+  type: local
+  path: "${DIGIT_FTS_GATE_HOME:-/home/a/projects/digit-ml/fts-gate}"
+
+transport:
+  type: stdio
+  command: "node"
+  args:
+    - "${INSTALL_DIR}/dist/src/mcp.js"
+
+# The gate is a pure function over the source text it is handed. It opens no
+# sockets, reads no project files, and holds no credentials.
+auth:
+  type: none
+
+# Both tools are cheap and read-only, so both are on by default.
+#
+# NOTE: these are the tool names the server actually advertises, confirmed by
+# an MCP `tools/list` handshake. The `fts` skill previously documented
+# `fts_check`, `fts_compile`, `fts_test`, `fts_execute`, `fts_generate`,
+# `fts_prove`, `fts_certify` and `fts_verify`; none of those exist on any
+# server in this project. The skill was corrected to match reality.
+tools:
+  default_enabled:
+    - fts_gate_check
+    - fts_morphisms_list
+
+post_install: |
+  fts-gate is licensed Apache-2.0 while Digit is MIT. It runs as a separate
+  process over stdio — no linking, no combined work — so the licences do not
+  interact. See docs/digitable/mcp-servers.md.
+
+  Two tools are exposed:
+
+    fts_gate_check      Compile, type-check and discharge every declared
+                        morphism in an FTS source against the verified
+                        library, then return a proof certificate.
+                        Args: source (required), context, require_evidence.
+    fts_morphisms_list  List domain morphisms usable as proof premises.
+                        Args: trust ("verified"|"derived"|"proposed"), domain.
+
+  The server never reads a path you give it: pass `source` as text. This is
+  deliberate — the gate's contract is read-only structured input.
+
+  Start a new Digit session to load the tools.
