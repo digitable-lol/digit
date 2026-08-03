@@ -1,0 +1,117 @@
+// SPECIFICATION TEMPLATE (English surface)
+//
+// This is the same document as spec.fts, written on the other surface.
+// FTS has one parser: English reserved phrases are rewritten line by line into
+// the Russian ones before parsing, so both files compile to the identical
+// canonical model. The surface is a team decision — which language the customer
+// speaks, what the database columns are called — never a semantic one.
+//
+// You cannot mix surfaces inside one file: the language is decided by the first
+// non-comment line (`category` vs `категория`). Domain names in quotes are never
+// translated, so `object "Покупка"` inside an English file is legal and often
+// right: keep the customer's own words, translate only the keywords.
+//
+// PHRASE MAP (everything the English surface recognises):
+//
+//   category / object / structure / morphism / theorem / utility
+//   rule / property / example / nested object / nested structure
+//   accepts X | returns money | starts with 0
+//   X is money | X may be number | X is state "S"
+//   if / and / then add / then result / expected / given / result / field
+//   is at least | is at most | is not equal to | is greater than |
+//   is less than | equals | N percent of field X
+//   from / to / under law
+//   given "O" has "f" equal to V | in data C find where f equals V
+//   by morphism | then by morphism | apply morphism | therefore
+//
+// Types: string, number, date, money, boolean.
+
+module "Discounts"
+  uses "Constitution" from "../../constitution/constitution.fts"
+  exports "Purchase", "Order", "Calculate discount"
+
+category "Discounts"
+
+  // OBJECT — the shape of the data, the input of a utility.
+  // Every field of the object must be supplied by every example, so do not
+  // dump unrelated fields here. A separate concern is a separate object.
+  object "Purchase"
+    amount is money
+    "returning customer" is boolean
+
+  // Keep state fields out of the utility input: a state cannot be given
+  // a meaningful value in a calculation example.
+  object "Order"
+    number is string
+    paid is state "Order is paid"
+
+  // MORPHISM — a permitted transition between states, not a function.
+  // Reads: "a paid order moves into the state where a discount may be applied".
+  // A morphism computes nothing and changes nothing.
+  morphism "A paid order admits a discount"
+    from "Order is paid"
+    to "Discount may be applied"
+
+  // THEOREM — a derivation along a chain of morphisms from one fact.
+  // What is checked is the shape: the field type must equal the domain of the
+  // first morphism, each codomain the domain of the next, the last codomain the
+  // `therefore` clause. The truth of the fact itself comes from the data and is
+  // NOT proved. One theorem per document.
+  theorem "Order A-7781 admits a discount"
+    given "Order" has paid equal to true
+    in data orders find where number equals "A-7781"
+    by morphism "A paid order admits a discount"
+    therefore "Discount may be applied"
+
+  // UTILITY — a pure decision over an object.
+  // `starts with` seeds the accumulator. Then EVERY rule whose condition holds
+  // runs, strictly in declaration order. FTS has no `else` — order is priority.
+  utility "Calculate discount"
+    accepts "Purchase"
+    returns money
+    starts with 0
+
+    // `then add` accumulates: rules that fire are summed.
+    rule "Large purchase"
+      if amount is at least 10000
+      then add 10 percent of field amount
+
+    rule "Returning customer"
+      if "returning customer" equals true
+      then add 5 percent of field amount
+
+    // `then result equals` overwrites. A last-declared overwriting rule wipes
+    // out everything accumulated above — that is how an exception is written.
+    //
+    //   rule "No discount on clearance"
+    //     if clearance equals true
+    //     then result equals 0
+
+    // PROPERTY — a postcondition checked on every execution, generated code
+    // included. Put the constitution's invariants that touch this utility here.
+    // Do not clamp a broken result with a rule; declare the property and let
+    // the violation fail loudly.
+    property "Discount stays under the constitutional cap"
+      result is at most 30 percent of field amount
+
+    // EXAMPLES. Minimum: below the boundary, on it, above it, plus a case where
+    // two rules fire at once. An example far inside the range proves nothing.
+    example "One unit below the threshold"
+      given amount equals 9999
+      given "returning customer" equals false
+      expected result equals 0
+
+    example "Exactly on the threshold"
+      given amount equals 10000
+      given "returning customer" equals false
+      expected result equals 1000
+
+    example "Both rules fire"
+      given amount equals 20000
+      given "returning customer" equals true
+      expected result equals 3000
+
+    example "Returning customer discount only"
+      given amount equals 5000
+      given "returning customer" equals true
+      expected result equals 250

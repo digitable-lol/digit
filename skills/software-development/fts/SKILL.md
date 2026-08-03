@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [fts, executable-specifications, ddd, testing, mcp]
     category: software-development
-    related_skills: [digit, digitable-courses, digitable-workbench, test-driven-development]
+    related_skills: [digit, digitable-courses, digitable-workbench, test-driven-development, fts-constitution, fts-specify, fts-admit, fts-memory]
 ---
 
 # FTS Skill
