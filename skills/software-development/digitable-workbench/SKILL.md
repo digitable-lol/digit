@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   digit:
     tags: [digitable, workbench, acp, mcp, integration]
-    related_skills: [digit, digit, digitable-tools]
+    related_skills: [digit-runtime, digitable-tools]
 ---
 
 # Digitable Workbench

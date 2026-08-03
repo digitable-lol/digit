@@ -1,5 +1,5 @@
 ---
-name: digit
+name: digit-runtime
 description: "Use, configure, theme, extend, and orchestrate Digit."
 version: 3.1.0
 author: Digit + Teknium
