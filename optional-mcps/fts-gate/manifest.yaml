@@ -4,18 +4,23 @@ manifest_version: 1
 
 name: fts-gate
 description: Structurally verify FTS executable specifications and list domain morphisms.
-source: https://github.com/digitable/fts-gate
+source: https://github.com/digitable-lol/fts-gate
 
 # First-party server, built in-tree rather than fetched from a registry, so it
 # uses `install.type: local`: the path is resolved and existence-checked at
 # install time, nothing is cloned and nothing is executed.
 #
-# The path is overridable via DIGIT_FTS_GATE_HOME so this manifest does not
-# encode one machine's layout. The default matches the standard side-by-side
-# checkout used by the Digitable toolchain.
+# The default is a Digit-owned path, identical on every host — a manifest must
+# never encode one developer's checkout. Point DIGIT_FTS_GATE_HOME at your own
+# build if you keep fts-gate elsewhere:
+#
+#     export DIGIT_FTS_GATE_HOME=~/src/fts-gate
+#
+# If neither exists, `digit mcp install fts-gate` fails with the resolved path
+# and the name of the variable to set. It does not fail silently.
 install:
   type: local
-  path: "${DIGIT_FTS_GATE_HOME:-/home/a/projects/digit-ml/fts-gate}"
+  path: "${DIGIT_FTS_GATE_HOME:-~/.digit/mcp-servers/fts-gate}"
 
 transport:
   type: stdio

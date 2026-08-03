@@ -4,15 +4,24 @@ manifest_version: 1
 
 name: digit-tools
 description: Route to 95 deterministic developer utilities — encoding, crypto, converters, network.
-source: https://github.com/digit-ml/tools-core
+source: https://github.com/digitable-lol/tools-core
 
 # First-party server shipped as a self-contained compiled binary (bun
 # --compile), so there is no runtime to resolve and no node_modules to install.
 # `install.type: local` resolves and existence-checks the directory; nothing is
 # cloned and nothing is executed at install time.
+#
+# The default is a Digit-owned path, identical on every host — a manifest must
+# never encode one developer's checkout. Point DIGIT_TOOLS_CORE_HOME at your
+# own build if you keep tools-core elsewhere:
+#
+#     export DIGIT_TOOLS_CORE_HOME=~/src/tools-core
+#
+# If neither exists, `digit mcp install digit-tools` fails with the resolved
+# path and the name of the variable to set. It does not fail silently.
 install:
   type: local
-  path: "${DIGIT_TOOLS_CORE_HOME:-/home/a/projects/digit-ml/tools-core}"
+  path: "${DIGIT_TOOLS_CORE_HOME:-~/.digit/mcp-servers/tools-core}"
 
 transport:
   type: stdio

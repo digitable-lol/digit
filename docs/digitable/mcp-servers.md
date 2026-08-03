@@ -18,12 +18,27 @@ digit mcp list
 
 Both are declared with `install.type: local` — they are built alongside Digit
 rather than fetched from a registry. Install resolves and existence-checks the
-path; it clones nothing and runs nothing. Override the location per machine:
+path; it clones nothing and runs nothing.
+
+By default each resolves under Digit's own data directory, which is the same on
+every host:
+
+| Entry | Default location | Source |
+|---|---|---|
+| `fts-gate` | `~/.digit/mcp-servers/fts-gate` | [digitable-lol/fts-gate](https://github.com/digitable-lol/fts-gate) |
+| `digit-tools` | `~/.digit/mcp-servers/tools-core` | [digitable-lol/tools-core](https://github.com/digitable-lol/tools-core) |
+
+Build the server and place it there, or point the override at your own
+checkout:
 
 ```bash
 export DIGIT_FTS_GATE_HOME=/path/to/fts-gate
 export DIGIT_TOOLS_CORE_HOME=/path/to/tools-core
 ```
+
+If neither the override nor the default exists, `digit mcp install` fails and
+names both the resolved path and the variable to set. A manifest never encodes
+one developer's machine layout.
 
 ## Licence interaction — the short answer
 
