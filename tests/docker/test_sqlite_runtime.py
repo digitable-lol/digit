@@ -17,7 +17,7 @@ try:
     db.execute("CREATE VIRTUAL TABLE docs USING fts5(content, tokenize='trigram')")
     db.execute("INSERT INTO docs VALUES ('digit')")
     matches = db.execute(
-        "SELECT count(*) FROM docs WHERE docs MATCH 'erm'"
+        "SELECT count(*) FROM docs WHERE docs MATCH 'igi'"
     ).fetchone()[0]
 finally:
     db.close()

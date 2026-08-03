@@ -134,8 +134,8 @@ def test_acp_launcher_does_not_follow_a_symlink_into_the_venv(tmp_path):
 # ---------------------------------------------------------------------------
 
 DIGIT_AGENT_BLOCK = re.compile(
-    r'(rm -f "\$command_link_dir/digit".*?'
-    r'log_success "Installed digit launcher[^\n]*\n)',
+    r'(rm -f "\$command_link_dir/digit-agent".*?'
+    r'log_success "Installed digit-agent launcher[^\n]*\n)',
     re.S,
 )
 
@@ -182,7 +182,7 @@ def _run_digit_agent_block(tmp_path: Path, use_venv: str) -> Path | None:
     assert result.returncode == 0, (
         f"digit shim block failed:\nstdout={result.stdout}\nstderr={result.stderr}"
     )
-    return command_link_dir / "digit"
+    return command_link_dir / "digit-agent"
 
 
 def test_venv_install_writes_executable_digit_agent_launcher(tmp_path):
@@ -195,7 +195,7 @@ def test_venv_install_writes_executable_digit_agent_launcher(tmp_path):
     text = shim.read_text(encoding="utf-8")
     assert "unset PYTHONPATH" in text
     assert "unset PYTHONHOME" in text
-    assert "run_agent.py" in text, "digit must dispatch to run_agent.py"
+    assert "run_agent.py" in text, "digit-agent must dispatch to run_agent.py"
 
 
 def test_digit_agent_launcher_cleanup_on_uninstall(tmp_path):
