@@ -726,7 +726,7 @@ class GitHubSource(SkillSource):
         tags = []
         metadata = fm.get("metadata", {})
         if isinstance(metadata, dict):
-            digit_meta = metadata.get("digit", {})
+            digit_meta = _read_skill_metadata_block(metadata)
             if isinstance(digit_meta, dict):
                 tags = digit_meta.get("tags", [])
         if not tags:
@@ -1479,7 +1479,7 @@ class UrlSource(SkillSource):
         tags: List[str] = []
         metadata = fm.get("metadata", {})
         if isinstance(metadata, dict):
-            digit_meta = metadata.get("digit", {})
+            digit_meta = _read_skill_metadata_block(metadata)
             if isinstance(digit_meta, dict):
                 raw_tags = digit_meta.get("tags", [])
                 if isinstance(raw_tags, list):
@@ -3404,7 +3404,7 @@ class OptionalSkillSource(SkillSource):
             tags = []
             meta_block = fm.get("metadata", {})
             if isinstance(meta_block, dict):
-                digit_meta = meta_block.get("digit", {})
+                digit_meta = _read_skill_metadata_block(meta_block)
                 if isinstance(digit_meta, dict):
                     tags = digit_meta.get("tags", [])
 
@@ -4417,3 +4417,24 @@ def unified_search(query: str, sources: List[SkillSource],
     deduped = list(seen.values())
 
     return deduped[:limit]
+
+
+# --- Skill metadata key compatibility -------------------------------------
+# The frontmatter key `metadata.hermes` became `metadata.digit` (rebrand:keep).
+# Bundled skills were rewritten, but skills installed from the hub or authored
+# by users were not and cannot be. Read the new key, fall back to the old one.
+# Remove one minor release after the rebrand.
+def _read_skill_metadata_block(metadata, source: str = ""):
+    try:
+        from digit_compat import read_skill_metadata_block
+
+        return read_skill_metadata_block(metadata, source=source)
+    except Exception:
+        if isinstance(metadata, dict):
+            block = metadata.get("digit")
+            if isinstance(block, dict):
+                return block
+            legacy = metadata.get("hermes")  # rebrand:keep
+            if isinstance(legacy, dict):
+                return legacy
+        return {}
