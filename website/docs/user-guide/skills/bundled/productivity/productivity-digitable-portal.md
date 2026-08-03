@@ -21,7 +21,7 @@ Use when navigating the Digitable portal ecosystem.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digitable`, `portal`, `navigation`, `products` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench) |
+| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts) |
 
 ## Reference: full SKILL.md
 
@@ -41,12 +41,13 @@ Use this skill as a routing map for Digitable. Canonical web pages remain the so
 |---|---|
 | Digitable overview and product navigation | `https://digitable.life/` |
 | Open learning portal and course map | `https://courses.digitable.life/` |
+| FTS language, course, and case catalog | `https://courses.digitable.life/fts/` |
 | Browser-based developer utilities | `https://tools.digitable.life/` |
 | Chat product | `https://chat.digitable.life/` |
 
 ## Workflow
 
-1. Identify whether the request is navigation, learning, a deterministic transformation, chat, or agent work.
+1. Identify whether the request is navigation, learning, an FTS specification, a deterministic transformation, chat, or agent work.
 2. Load the matching related skill before giving detailed instructions.
 3. Verify availability and current wording from the canonical URL when network access exists.
 4. Link directly to the deepest useful page, not just the homepage.

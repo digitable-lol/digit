@@ -21,7 +21,7 @@ Configure and troubleshoot Honcho memory for Digit.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `Honcho`, `Memory`, `Profiles`, `Observation`, `Dialectic`, `User-Modeling`, `Session-Summary` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit) |
+| Related skills | `hermes-agent` |
 
 ## Reference: full SKILL.md
 

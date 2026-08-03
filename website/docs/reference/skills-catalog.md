@@ -29,8 +29,9 @@ If a skill is missing from this list but present in the repo, the catalog is reg
 | [`codex`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-codex) | Delegate coding to OpenAI Codex CLI (features, PRs). | `autonomous-ai-agents/codex` |
 | [`computer-use`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-computer-use) | Drive the user's desktop in the background — clicking, typing, scrolling, dragging — without stealing the cursor, keyboard focus, or switching virtual desktops / Spaces. Cross-platform: macOS, Windows, Linux. Works with any tool-capable... | `autonomous-ai-agents/computer-use` |
 | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit) | Use when operating or explaining Digit and Digitable. | `autonomous-ai-agents/digit` |
-| [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit) | Use, configure, theme, extend, and orchestrate Digit. | `autonomous-ai-agents/digit` |
+| [`digit-runtime`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit-runtime) | Use, configure, theme, extend, and orchestrate Digit. | `autonomous-ai-agents/digit-runtime` |
 | [`opencode`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-opencode) | Delegate coding to OpenCode CLI (features, PR review). | `autonomous-ai-agents/opencode` |
+| [`verified-answers`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-verified-answers) | Use when an answer must be traceable to a source rather than generated — Digit's verified mode. Covers the three allowed content sources (deterministic tool output, verbatim corpus quote with an anchor, FTS certificate over reviewed morp... | `autonomous-ai-agents/verified-answers` |
 
 ## creative
 
@@ -40,6 +41,7 @@ If a skill is missing from this list but present in the repo, the catalog is reg
 | [`ascii-art`](/docs/user-guide/skills/bundled/creative/creative-ascii-art) | ASCII art: pyfiglet, cowsay, boxes, image-to-ascii. | `creative/ascii-art` |
 | [`ascii-video`](/docs/user-guide/skills/bundled/creative/creative-ascii-video) | ASCII video: convert video/audio to colored ASCII MP4/GIF. | `creative/ascii-video` |
 | [`baoyu-infographic`](/docs/user-guide/skills/bundled/creative/creative-baoyu-infographic) | Infographics: 21 layouts x 21 styles (信息图, 可视化). | `creative/baoyu-infographic` |
+| [`blender-mcp`](/docs/user-guide/skills/bundled/creative/creative-blender-mcp) | Drive Blender over MCP to model, render and export 3D assets — including headless on a server with no GPU. Use when the task involves Blender, .blend files, GLB/glTF export, procedural geometry, 3D game assets, renders, or the blender-mc... | `creative/blender-mcp` |
 | [`claude-design`](/docs/user-guide/skills/bundled/creative/creative-claude-design) | Design one-off HTML artifacts (landing, deck, prototype). | `creative/claude-design` |
 | [`comfyui`](/docs/user-guide/skills/bundled/creative/creative-comfyui) | Generate images, video, and audio via diffusion workflows. | `creative/comfyui` |
 | [`design-md`](/docs/user-guide/skills/bundled/creative/creative-design-md) | Author/validate/export Google's DESIGN.md token spec files. | `creative/design-md` |
@@ -138,12 +140,20 @@ If a skill is missing from this list but present in the repo, the catalog is reg
 
 | Skill | Description | Path |
 |-------|-------------|------|
+| [`digit-skill-authoring`](/docs/user-guide/skills/bundled/software-development/software-development-digit-skill-authoring) | Author in-repo SKILL.md files: frontmatter and structure. | `software-development/digit-skill-authoring` |
+| [`digit-tools-core`](/docs/user-guide/skills/bundled/software-development/software-development-digit-tools-core) | Use when a task needs a deterministic local computation — hashes, HMAC, encodings, format converters, parsers, network address math, date arithmetic, generators. This is the local headless catalog behind Digit, exposed over MCP as three... | `software-development/digit-tools-core` |
 | [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools) | Use when routing work to tools.digitable.life utilities. | `software-development/digitable-tools` |
 | [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench) | Use when embedding Digit into Digitable Workbench. | `software-development/digitable-workbench` |
 | [`dogfood`](/docs/user-guide/skills/bundled/software-development/software-development-dogfood) | Exploratory QA of web apps: find bugs, evidence, reports. | `software-development/dogfood` |
-| [`digit-skill-authoring`](/docs/user-guide/skills/bundled/software-development/software-development-digit-skill-authoring) | Author in-repo SKILL.md files: frontmatter and structure. | `software-development/digit-skill-authoring` |
+| [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts) | Create and verify executable FTS specifications. | `software-development/fts` |
+| [`fts-admit`](/docs/user-guide/skills/bundled/software-development/software-development-fts-admit) | Check a new requirement against the corpus before coding. | `software-development/fts-admit` |
+| [`fts-constitution`](/docs/user-guide/skills/bundled/software-development/software-development-fts-constitution) | Write project invariants as a checkable FTS model. | `software-development/fts-constitution` |
+| [`fts-gate`](/docs/user-guide/skills/bundled/software-development/software-development-fts-gate) | Use when an FTS specification must be certified before it drives a consequential decision. The gate answers a different question than `fts check`/`fts test` — not "is this specification self-consistent" but "is every premise it rests on... | `software-development/fts-gate` |
+| [`fts-memory`](/docs/user-guide/skills/bundled/software-development/software-development-fts-memory) | Keep accepted decisions as checkable FTS models. | `software-development/fts-memory` |
+| [`fts-specify`](/docs/user-guide/skills/bundled/software-development/software-development-fts-specify) | Turn a business requirement into an FTS specification. | `software-development/fts-specify` |
 | [`inspecting-digit-desktop-dom`](/docs/user-guide/skills/bundled/software-development/software-development-inspecting-digit-desktop-dom) | Read the live Digit desktop DOM/CSS over CDP. | `software-development/inspecting-digit-desktop-dom` |
 | [`node-inspect-debugger`](/docs/user-guide/skills/bundled/software-development/software-development-node-inspect-debugger) | Debug Node.js via --inspect + Chrome DevTools Protocol CLI. | `software-development/node-inspect-debugger` |
+| [`ouroboros-tracing`](/docs/user-guide/skills/bundled/software-development/software-development-ouroboros-tracing) | Use when a specification, a test suite or a regression corpus needs examples and there is working code that already produces them. Ouroboros instruments source (Python, JS/TS, C, C++, Elixir) so running it emits a structured call trace,... | `software-development/ouroboros-tracing` |
 | [`plan`](/docs/user-guide/skills/bundled/software-development/software-development-plan) | Write a markdown plan to .digit/plans/; no execution. | `software-development/plan` |
 | [`python-debugpy`](/docs/user-guide/skills/bundled/software-development/software-development-python-debugpy) | Debug Python: pdb REPL + debugpy remote (DAP). | `software-development/python-debugpy` |
 | [`requesting-code-review`](/docs/user-guide/skills/bundled/software-development/software-development-requesting-code-review) | Pre-commit review: security scan, quality gates, auto-fix. | `software-development/requesting-code-review` |

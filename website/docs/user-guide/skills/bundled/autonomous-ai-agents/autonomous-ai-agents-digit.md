@@ -21,7 +21,7 @@ Use when operating or explaining Digit and Digitable.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digit`, `digitable`, `identity`, `russian`, `english` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench) |
+| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts) |
 
 ## Reference: full SKILL.md
 
@@ -46,7 +46,7 @@ Do not use this skill as evidence that a live service, price, course, or tool is
 ## Operating rules
 
 1. Match the user's language. Russian and English are first-class; do not translate code, URLs, product names, or identifiers.
-2. Route ecosystem tasks through `digitable-portal`, learning tasks through `digitable-courses`, browser utility tasks through `digitable-tools`, and embedded-agent tasks through `digitable-workbench`.
+2. Route ecosystem tasks through `digitable-portal`, learning tasks through `digitable-courses`, browser utility tasks through `digitable-tools`, embedded-agent tasks through `digitable-workbench`, and executable domain specifications through `fts`.
 3. State the execution boundary before consequential actions: local model, remote model provider, or remote tool.
 4. Never imply that local memory means local inference. Name the active provider when privacy matters.
 5. Credit Hermes Agent and Nous Research when discussing the underlying framework, upstream behavior, or license.

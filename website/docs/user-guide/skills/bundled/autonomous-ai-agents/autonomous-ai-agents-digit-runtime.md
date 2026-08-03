@@ -1,12 +1,12 @@
 ---
-title: "Digit — Use, configure, theme, extend, and orchestrate Digit"
-sidebar_label: "Digit"
+title: "Digit Runtime — Use, configure, theme, extend, and orchestrate Digit"
+sidebar_label: "Digit Runtime"
 description: "Use, configure, theme, extend, and orchestrate Digit"
 ---
 
 {/* This page is auto-generated from the skill's SKILL.md by website/scripts/generate-skill-docs.py. Edit the source SKILL.md, not this page. */}
 
-# Digit
+# Digit Runtime
 
 Use, configure, theme, extend, and orchestrate Digit.
 
@@ -15,7 +15,7 @@ Use, configure, theme, extend, and orchestrate Digit.
 | | |
 |---|---|
 | Source | Bundled (installed by default) |
-| Path | `skills/autonomous-ai-agents/digit` |
+| Path | `skills/autonomous-ai-agents/digit-runtime` |
 | Version | `3.1.0` |
 | Author | Digit + Teknium |
 | License | MIT |

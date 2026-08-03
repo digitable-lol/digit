@@ -61,6 +61,32 @@ Route deterministic browser tasks to `https://tools.digitable.life/<route>`. The
 
 `qrcode-generator`, `wifi-qrcode-generator`, `svg-placeholder-generator`, `camera-recorder`, `math-evaluator`, `eta-calculator`, `percentage-calculator`, `chronometer`, `temperature-converter`, `lorem-ipsum-generator`, `text-statistics`, `emoji-picker`, `string-obfuscator`, `text-diff`, `numeronym-generator`, `ascii-text-drawer`, `phone-parser-and-formatter`, `iban-validator-and-parser`.
 
+## Local execution — prefer this when Digit is doing the work
+
+The same catalog is available **offline, in-process**, through the `digit-tools`
+MCP server. It is the headless port of the same utility collection the website
+is built from, so route names and semantics match.
+
+    digit mcp install digit-tools
+
+Three tools, used as a routing sequence rather than 95 flat tools:
+
+| Step | Tool | Arguments |
+|---|---|---|
+| 1 | `tools_categories` | none — returns 14 categories |
+| 2 | `tools_list` | `category` — full input/output schemas and examples |
+| 3 | `tools_execute` | `tool_id`, `args`, optional `timeout_ms` |
+
+Argument names come from step 2 and are validated against each utility's own
+`input_schema`; guessing them returns a structured `invalid_args` error rather
+than a wrong answer. Tool ids use underscores (`hash_text`), while website
+routes use hyphens (`hash-text`).
+
+Choose the local server when the user asked Digit to perform the operation,
+when the result feeds another step, or when the data is sensitive — nothing
+leaves the machine. Link to the website when the user wants to do it themselves
+in a browser.
+
 ## Workflow
 
 1. Select the narrowest matching route from the catalog.

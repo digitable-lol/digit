@@ -21,7 +21,7 @@ Use when finding or planning Digitable courses.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digitable`, `courses`, `learning`, `curriculum`, `russian` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools) |
+| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts) |
 
 ## Reference: full SKILL.md
 
@@ -46,7 +46,8 @@ The portal spans five broad layers: computer-science foundations; programming la
 3. Build the shortest prerequisite chain that reaches the goal; distinguish required material from optional depth.
 4. Link each recommended step to its canonical page.
 5. Use `digitable-tools` for exercises requiring conversion, formatting, hashing, networking, regex, or related deterministic utilities.
-6. End with a checkable milestone or small project, not only a reading list.
+6. Use `fts` when the learner wants to turn a domain rule into an executable utility, generated tests, or a verified agent guard.
+7. End with a checkable milestone or small project, not only a reading list.
 
 ## Safety and accuracy
 
