@@ -242,4 +242,7 @@ Before a GLB replaces procedural geometry in a running game:
 | `references/headless.md` | xvfb, llvmpipe, run.sh, diagnosing the black screenshot |
 | `references/modelling.md` | Modifier recipes, bmesh, materials, lighting rigs |
 | `references/gltf-export.md` | glTF/GLB options, axes, rigs, LOD, the export gate |
+| `references/bpy-api.md` | Essential bpy operations: modeling, materials, modifiers, rendering |
+| `references/recipes.md` | Complete working scenes: low-poly terrain, glass sphere, HDRI lighting, turntable |
+| `references/pitfalls.md` | Connection, namespace and API-version traps, with the checks that catch them |
 | `scripts/setup.sh` | Checks the host, starts Blender, verifies the port |
