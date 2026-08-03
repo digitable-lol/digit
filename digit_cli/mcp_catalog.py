@@ -27,6 +27,7 @@ See references/mcp-catalog.md (this repo's skill) for the manifest schema.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -90,13 +91,30 @@ class TransportSpec:
 
 @dataclass
 class InstallSpec:
-    """Optional bootstrap step (git clone + dep install).
+    """Optional bootstrap step.
 
-    Omit for one-shot launchable servers (npx, uvx).
+    Two shapes:
+
+    ``type: git``
+        Clone ``url`` at the pinned ``ref`` into
+        ``$DIGIT_HOME/mcp-installs/<name>`` and run ``bootstrap``. Used for
+        third-party servers.
+
+    ``type: local``
+        The server is already present on this machine at ``path`` — a
+        first-party build that ships alongside Digit rather than being
+        fetched. Nothing is cloned and nothing is executed at install time;
+        ``path`` is resolved, checked for existence, and substituted for
+        ``${INSTALL_DIR}`` in the transport block. ``path`` accepts ``~``,
+        ``$VAR``, ``${VAR}`` and ``${VAR:-default}`` so a manifest never has
+        to hardcode one machine's layout.
+
+    Omit the block entirely for one-shot launchable servers (npx, uvx).
     """
-    type: str  # "git"
-    url: str
-    ref: str  # commit/tag/branch — pinned, never floats
+    type: str  # "git" | "local"
+    url: str = ""
+    ref: str = ""  # commit/tag/branch — pinned, never floats
+    path: str = ""  # local installs only
     bootstrap: List[str] = field(default_factory=list)
 
 
@@ -250,19 +268,40 @@ def _parse_manifest(path: Path) -> CatalogEntry:
         if not isinstance(install_raw, dict):
             raise CatalogError(f"{path}: 'install' must be a mapping")
         i_type = install_raw.get("type")
-        if i_type != "git":
-            raise CatalogError(f"{path}: install.type must be 'git' (got {i_type!r})")
+        if i_type not in ("git", "local"):
+            raise CatalogError(
+                f"{path}: install.type must be 'git' or 'local' (got {i_type!r})"
+            )
         url = install_raw.get("url") or ""
         ref = install_raw.get("ref") or ""
-        if not url or not ref:
+        local_path = install_raw.get("path") or ""
+        if i_type == "git" and (not url or not ref):
             raise CatalogError(f"{path}: install.url and install.ref are required")
+        if i_type == "local":
+            if not local_path:
+                raise CatalogError(
+                    f"{path}: install.path is required for a local install"
+                )
+            if url or ref:
+                raise CatalogError(
+                    f"{path}: install.url/ref are meaningless for a local install"
+                )
         bootstrap = install_raw.get("bootstrap") or []
         if not isinstance(bootstrap, list):
             raise CatalogError(f"{path}: install.bootstrap must be a list")
+        if i_type == "local" and bootstrap:
+            # A local entry describes a build that already exists. Running
+            # arbitrary commands from the manifest would make "local" a second
+            # arbitrary-code path with none of the git path's pinning
+            # guarantees, so it is refused outright.
+            raise CatalogError(
+                f"{path}: local installs must not declare bootstrap commands"
+            )
         install = InstallSpec(
             type=i_type,
             url=url,
             ref=ref,
+            path=str(local_path),
             bootstrap=[str(c) for c in bootstrap],
         )
 
@@ -453,6 +492,53 @@ def _do_git_install(entry: CatalogEntry) -> Path:
         _run_bootstrap(dest, install.bootstrap)
 
     return dest
+
+
+_ENV_DEFAULT_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*):-([^}]*)\}")
+
+
+def _expand_with_defaults(value: str) -> str:
+    """Expand ``~``, ``$VAR``, ``${VAR}`` and ``${VAR:-default}``.
+
+    ``os.path.expandvars`` has no notion of a default, but a manifest that
+    cannot express one would have to hardcode an absolute path, which is
+    exactly what we are avoiding.
+    """
+    def _sub(match: "re.Match[str]") -> str:
+        return os.environ.get(match.group(1)) or match.group(2)
+
+    value = _ENV_DEFAULT_RE.sub(_sub, value)
+    return os.path.expandvars(os.path.expanduser(value))
+
+
+def _do_local_install(entry: CatalogEntry) -> Path:
+    """Resolve and validate the install path of a ``type: local`` entry.
+
+    Deliberately inert: no clone, no bootstrap, no subprocess. A local entry
+    describes a server that is already on disk, so the only failure worth
+    surfacing is "it isn't there".
+    """
+    assert entry.install is not None and entry.install.type == "local"
+    dest = Path(_expand_with_defaults(entry.install.path)).resolve()
+    if not dest.exists():
+        raise CatalogError(
+            f"local MCP '{entry.name}' expects its build at {dest}, which does "
+            f"not exist. Build it, or point install.path somewhere else via "
+            f"the environment variable named in {entry.manifest_path}."
+        )
+    if not dest.is_dir():
+        raise CatalogError(f"local MCP '{entry.name}': {dest} is not a directory")
+    print(color(f"  Using local build at {dest}", Colors.CYAN))
+    return dest
+
+
+def _do_install(entry: CatalogEntry) -> Optional[Path]:
+    """Dispatch on install type; returns what ${INSTALL_DIR} expands to."""
+    if entry.install is None:
+        return None
+    if entry.install.type == "local":
+        return _do_local_install(entry)
+    return _do_git_install(entry)
 
 
 def _expand_install_dir(value: str, install_dir: Optional[Path]) -> str:
@@ -727,7 +813,7 @@ def install_entry(entry: CatalogEntry, *, enable: bool = True) -> None:
 
     install_dir: Optional[Path] = None
     if entry.install is not None:
-        install_dir = _do_git_install(entry)
+        install_dir = _do_install(entry)
 
     # Auth
     if entry.auth.type == "api_key":

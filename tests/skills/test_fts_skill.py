@@ -26,5 +26,5 @@ def test_fts_skill_metadata_and_template_are_valid():
     assert frontmatter["name"] == "fts"
     assert 0 < len(frontmatter["description"]) <= 60
     assert frontmatter["description"].endswith(".")
-    assert "fts_check" in body and "fts_verify" in body
+    assert "fts_gate_check" in body and "fts_morphisms_list" in body
     assert (SKILL.parent / "templates/discount.fts").is_file()

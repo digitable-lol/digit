@@ -543,11 +543,23 @@ class TestShippedCatalog:
         for m in root.glob("*/manifest.yaml"):
             entry = _parse_manifest(m)
 
-            if entry.install is not None:
+            if entry.install is not None and entry.install.type == "git":
                 if not re.fullmatch(r"[0-9a-f]{40}", entry.install.ref):
                     problems.append(
                         f"{entry.name}: install.ref {entry.install.ref!r} is not "
                         "a full 40-char commit SHA"
+                    )
+
+            if entry.install is not None and entry.install.type == "local":
+                # Nothing is downloaded, so there is no revision to pin. The
+                # supply-chain risk that remains is an install step running
+                # arbitrary commands, which the parser already refuses; assert
+                # it here too so the policy is visible in the test.
+                if not entry.install.path:
+                    problems.append(f"{entry.name}: local install declares no path")
+                if entry.install.bootstrap:
+                    problems.append(
+                        f"{entry.name}: local install declares bootstrap commands"
                     )
 
             t = entry.transport

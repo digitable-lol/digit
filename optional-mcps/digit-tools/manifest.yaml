@@ -1,0 +1,62 @@
+# Digitable first-party MCP catalog entry.
+# Presence in this directory = approval. Merged via PR review.
+manifest_version: 1
+
+name: digit-tools
+description: Route to 95 deterministic developer utilities — encoding, crypto, converters, network.
+source: https://github.com/digit-ml/tools-core
+
+# First-party server shipped as a self-contained compiled binary (bun
+# --compile), so there is no runtime to resolve and no node_modules to install.
+# `install.type: local` resolves and existence-checks the directory; nothing is
+# cloned and nothing is executed at install time.
+install:
+  type: local
+  path: "${DIGIT_TOOLS_CORE_HOME:-/home/a/projects/digit-ml/tools-core}"
+
+transport:
+  type: stdio
+  command: "${INSTALL_DIR}/dist/digit-tools-mcp"
+
+# Every utility is a pure in-process function. No network, no filesystem, no
+# credentials.
+auth:
+  type: none
+
+# Only three tools regardless of catalog size — the server is a router, not a
+# flat tool surface. Exposing 95 utilities as 95 MCP tools would cost schema
+# tokens on every API call; instead the model narrows
+# categories -> list -> execute. All three are required for that to work, so
+# none are pruned.
+tools:
+  default_enabled:
+    - tools_categories
+    - tools_list
+    - tools_execute
+
+post_install: |
+  LICENSING — read before shipping this in a product.
+
+  tools-core is a headless port of it-tools and inherits its GPL-3.0 licence.
+  Digit is MIT. The two never link: this server is a separate OS process and
+  Digit speaks to it over stdio with JSON-RPC. Process boundaries are not
+  derivation, so GPL-3.0 does not reach across into Digit's MIT code, and
+  installing this entry does not relicense anything. What it does mean is that
+  if you redistribute the digit-tools binary itself you carry GPL-3.0
+  obligations for that binary — offer of source included. See
+  docs/digitable/mcp-servers.md for the full statement.
+
+  Usage is a three-step routing protocol, not 95 separate tools:
+
+    1. tools_categories            -> 14 categories with tool counts
+    2. tools_list {category}       -> full input/output schemas + examples
+    3. tools_execute {tool_id,args}-> runs it, validates args against the
+                                      utility's own input_schema
+
+  Argument names come from step 2 and are enforced; guessing them returns a
+  structured `invalid_args` error rather than a wrong answer.
+
+  Tool descriptions and utility metadata are in Russian, matching the
+  Digitable product surface.
+
+  Start a new Digit session to load the tools.
