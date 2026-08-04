@@ -38,9 +38,25 @@ network at all, and the cloud providers (`edge` by default, `openai`,
 extension points already do it, both without new code in Digit:
 
 * `tts.providers.<name>: type: command` — any shell template that produces an
-  audio file. An `ssh gpu …` one-liner makes the remote synthesizer a normal
-  provider, with the voice, model and speed resolved from config like any
-  other.
+  audio file. An `ssh` one-liner makes the remote synthesizer a normal
+  provider, with voice, model and speed substituted from config like any
+  other:
+
+  ```yaml
+  tts:
+    provider: qwen3-remote
+    providers:
+      qwen3-remote:
+        type: command
+        command: >-
+          ssh gpu 'python -m voicer.say --voice {voice} --out /tmp/say.wav'
+          < {input_path} && scp gpu:/tmp/say.wav {output_path}
+        output_format: wav
+  ```
+
+  Placeholders are shell-quoted for their surrounding context, and the voice
+  arrives as a value rather than being baked into the template — the same
+  rule the store applies when it puts the voice in the path.
 * `agent.tts_provider.TTSProvider` — a Python plugin for a backend that needs
   an SDK, streaming bytes, or a voice catalogue.
 
