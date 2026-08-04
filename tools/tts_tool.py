@@ -649,6 +649,56 @@ def _get_provider_section(tts_config: Dict[str, Any], name: str) -> Dict[str, An
     return section if isinstance(section, dict) else {}
 
 
+# Voice and model a provider falls back to when config names neither. They go
+# into the cache directory name, so a Digit release that changes a default
+# starts a new set of recordings instead of handing back yesterday's voice
+# under today's name.
+_PROVIDER_DEFAULT_VOICE: Dict[str, str] = {
+    "edge": DEFAULT_EDGE_VOICE,
+    "elevenlabs": DEFAULT_ELEVENLABS_VOICE_ID,
+    "openai": DEFAULT_OPENAI_VOICE,
+    "deepinfra": DEFAULT_DEEPINFRA_TTS_VOICE,
+    "minimax": DEFAULT_MINIMAX_VOICE_ID,
+    "mistral": DEFAULT_MISTRAL_TTS_VOICE_ID,
+    "xai": DEFAULT_XAI_VOICE_ID,
+    "gemini": DEFAULT_GEMINI_TTS_VOICE,
+    "kittentts": DEFAULT_KITTENTTS_VOICE,
+    "piper": DEFAULT_PIPER_VOICE,
+}
+
+_PROVIDER_DEFAULT_MODEL: Dict[str, str] = {
+    "elevenlabs": DEFAULT_ELEVENLABS_MODEL_ID,
+    "openai": DEFAULT_OPENAI_MODEL,
+    "minimax": DEFAULT_MINIMAX_MODEL,
+    "mistral": DEFAULT_MISTRAL_TTS_MODEL,
+    "gemini": DEFAULT_GEMINI_TTS_MODEL,
+    "kittentts": DEFAULT_KITTENTTS_MODEL,
+}
+
+
+def speech_cache_voice(provider: str, tts_config: Dict[str, Any]) -> str:
+    """Directory name under which this configuration's recordings are stored.
+
+    Everything that changes the sound without changing the words — provider,
+    model, voice id, speed — is folded in here, because the entry id is the
+    hash of the text alone. Swapping the voice therefore builds a second set
+    beside the first rather than overwriting it, which is what makes two
+    voices comparable without re-synthesizing the corpus twice.
+    """
+    from tools.speech_cache import voice_key
+
+    section = _get_provider_section(tts_config, provider)
+    voice = str(
+        section.get("voice")
+        or section.get("voice_id")
+        or (tts_config.get("voice") if isinstance(tts_config, dict) else "")
+        or _PROVIDER_DEFAULT_VOICE.get(provider, "")
+    )
+    model = str(section.get("model") or _PROVIDER_DEFAULT_MODEL.get(provider, ""))
+    speed = tts_config.get("speed") if isinstance(tts_config, dict) else None
+    return voice_key(provider, voice, model, speed=speed)
+
+
 def _get_named_provider_config(
     tts_config: Dict[str, Any],
     name: str,
@@ -2922,9 +2972,32 @@ def text_to_speech_tool(
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_str = str(file_path)
 
+    # Content-addressed cache. The entry name is the hash of the spoken text,
+    # so "we have the file" and "the text is unchanged" are the same
+    # statement — there is nothing to invalidate. The common win is not a
+    # repeated reply but a repeated *listen*: pressing read-aloud twice, or
+    # replaying a message, costs nothing and starts instantly.
+    cache_voice = ""
+    cache_served: Optional[str] = None
     try:
+        from tools import speech_cache
+
+        if speech_cache.enabled(tts_config):
+            cache_voice = speech_cache_voice(provider, tts_config)
+            hit = speech_cache.lookup(text, cache_voice)
+            if hit is not None:
+                cache_served = speech_cache.serve(hit, file_str)
+    except Exception as exc:  # never let the cache be the reason speech fails
+        logger.debug("speech cache unavailable: %s", exc)
+        cache_voice = ""
+
+    try:
+        if cache_served:
+            file_str = cache_served
+            logger.info("TTS served from the speech cache: %s", file_str)
+
         # Generate audio with the configured provider
-        if command_provider_config is not None:
+        elif command_provider_config is not None:
             logger.info(
                 "Generating speech with command TTS provider '%s'...", provider,
             )
@@ -3125,6 +3198,24 @@ def text_to_speech_tool(
 
         file_size = os.path.getsize(file_str)
         logger.info("TTS audio saved: %s (%s bytes, provider: %s)", file_str, f"{file_size:,}", provider)
+
+        # Take a hard link into the store. The recording stays where the
+        # caller asked for it; the cache costs an inode, not a copy. Stored
+        # after the format repair/conversion above so what is kept is what was
+        # actually played, not an intermediate.
+        if cache_voice and not cache_served:
+            try:
+                from tools import speech_cache
+
+                speech_cache.store(
+                    text,
+                    cache_voice,
+                    file_str,
+                    model=str(_get_provider_section(tts_config, provider).get("model") or provider),
+                )
+                speech_cache.prune()
+            except Exception as exc:
+                logger.debug("speech cache store skipped: %s", exc)
 
         # Build response with MEDIA tag for platform delivery
         media_tag = f"MEDIA:{file_str}"
@@ -3354,6 +3445,7 @@ def stream_tts_to_speaker(
     tts_done_event: threading.Event,
     display_callback: Optional[Callable[[str], None]] = None,
     provider: Optional[str] = None,
+    speech_callback: Optional[Callable[[str, Any], None]] = None,
 ):
     """Consume text deltas from *text_queue*, buffer them into sentences, and
     speak each sentence the moment it's ready — the conversational path.
@@ -3370,8 +3462,29 @@ def stream_tts_to_speaker(
         * *stop_event* can be set to abort early (barge-in / user interrupt).
         * *tts_done_event* is **set** in the ``finally`` block so callers
           waiting on it (continuous voice mode) know playback is finished.
+
+    *speech_callback* observes what is **audible right now**, for surfaces
+    that show speech rather than only make it:
+
+        * ``("cue", sentence)`` when the playback worker reaches that
+          sentence — not when it was queued. Synthesis runs a sentence or two
+          ahead, so a display hung off the queue would point at the wrong
+          words; ``display_callback`` fires early on purpose (it prints the
+          text), this one fires late on purpose (it marks the text).
+        * ``("pcm", chunk)`` for each int16 buffer handed to the device.
+
+    Both are advisory. Exceptions from the callback are swallowed: a
+    decoration must never be the reason a reply stops being spoken.
     """
     tts_done_event.clear()
+
+    def _notify(event: str, payload: Any) -> None:
+        if speech_callback is None:
+            return
+        try:
+            speech_callback(event, payload)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.debug("speech_callback(%s) failed: %s", event, exc)
 
     try:
         output_stream = None
@@ -3430,7 +3543,11 @@ def stream_tts_to_speaker(
         # means sentence N+1's HTTP request fires WHILE sentence N is still
         # playing, so by the time the worker reaches it, audio is already
         # arriving — no inter-sentence gap.
-        _audio_queue: queue.Queue[Optional[queue.Queue[Optional[bytes]]]] = queue.Queue()
+        # Each item pairs the sentence with its audio, so the playback worker
+        # can announce the sentence at the moment it becomes audible.
+        _audio_queue: queue.Queue[
+            Optional[tuple[str, queue.Queue[Optional[bytes]]]]
+        ] = queue.Queue()
         _prefetch_threads: list[threading.Thread] = []
         _prefetch_sem = threading.Semaphore(3)
         _CHUNK_QUEUE_MAX = 64
@@ -3511,11 +3628,13 @@ def stream_tts_to_speaker(
                     _reinit_count = 0
                     _current_stream = output_stream
                     while True:
-                        chunk_queue = _audio_queue.get()
-                        if chunk_queue is None:
+                        item = _audio_queue.get()
+                        if item is None:
                             break
+                        cue_text, chunk_queue = item
                         if stop_event.is_set():
                             continue
+                        _notify("cue", cue_text)
                         if _current_stream is None:
                             _chunks = []
                             while True:
@@ -3537,6 +3656,7 @@ def stream_tts_to_speaker(
                             _buf = _pcm_leftover + chunk
                             _aligned_len = len(_buf) - (len(_buf) % 2)
                             if _aligned_len >= 2:
+                                _notify("pcm", _buf[:_aligned_len])
                                 try:
                                     _current_stream.write(
                                         _np.frombuffer(
@@ -3585,11 +3705,13 @@ def stream_tts_to_speaker(
                     mark_audio_output_active(False)
             else:
                 while True:
-                    chunk_queue = _audio_queue.get()
-                    if chunk_queue is None:
+                    item = _audio_queue.get()
+                    if item is None:
                         break
+                    cue_text, chunk_queue = item
                     if stop_event.is_set():
                         continue
+                    _notify("cue", cue_text)
                     _chunks = []
                     while True:
                         chunk = chunk_queue.get()
@@ -3610,7 +3732,7 @@ def stream_tts_to_speaker(
                 return
             _prefetch_sem.acquire()
             chunk_queue: "queue.Queue[Optional[bytes]]" = queue.Queue(maxsize=_CHUNK_QUEUE_MAX)
-            _audio_queue.put(chunk_queue)
+            _audio_queue.put((text_to_speak, chunk_queue))
             t = threading.Thread(
                 target=_consume_to_queue,
                 args=(audio_iter, chunk_queue),
@@ -3641,7 +3763,10 @@ def stream_tts_to_speaker(
             if display_callback is not None:
                 display_callback(sentence)
             # No chunked streamer → per-sentence sync synthesis (universal).
+            # This path blocks on playback, so announcing the cue here is
+            # already in step with the sound; there is no worker to defer to.
             if streamer is None:
+                _notify("cue", cleaned)
                 _speak_via_sync(cleaned)
                 return
             # Truncate very long sentences to the provider's per-request cap.

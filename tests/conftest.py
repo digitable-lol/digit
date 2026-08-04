@@ -221,6 +221,14 @@ _DIGIT_BEHAVIORAL_VARS = frozenset({
     # into the next test. See ``_audio_playback_guard`` for the second layer.
     "DIGIT_VOICE",
     "DIGIT_VOICE_TTS",
+    # Speech *display* and the content-addressed speech store. Neither makes a
+    # sound, but both are read off ``os.environ`` at call time, so a developer
+    # who silenced the live speech line in their shell must not thereby
+    # silence it for the tests that assert it draws.
+    "DIGIT_SPEECH_VIEW",
+    "DIGIT_SPEECH_CACHE",
+    "DIGIT_SPEECH_CACHE_DIR",
+    "DIGIT_SPEECH_CACHE_MAX_MB",
     "DIGIT_YOLO_MODE",
     "DIGIT_INTERACTIVE",
     "DIGIT_QUIET",
