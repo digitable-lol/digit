@@ -2,8 +2,21 @@
 
 ## Unreleased — Digit identity (2026-08-03)
 
+**Read [BREAKING.md](BREAKING.md) first** if you maintain anything that talks
+to Digit from outside this repository — an ACP client, a plugin, an installer.
+It covers the four breaks that cross a boundary someone else owns, the clients
+they affect, and what their authors have to change. Rollback:
+[docs/digitable/rebrand-rollback.md](docs/digitable/rebrand-rollback.md).
+
 ### Removed (BREAKING)
 
+- **The ACP `_meta` vendor namespace key is `digit`, was `hermes`.** This is a
+  wire format read by external ACP clients — Zed and Digitable Workbench —
+  carrying `sessionProvenance`, `compactionSummary` and
+  `containsCompactionSummary`. **Both keys are never emitted**: the owner chose
+  a clean break over a dual-emit release, so there is no deprecation window and
+  no shim. Clients that read `_meta.hermes` see the key simply absent and every
+  feature built on it turns off silently. See BREAKING.md §1.
 - The `hermes`, `hermes-agent` and `hermes-acp` commands are gone. Earlier
   READMEs promised them as permanent compatibility aliases; **that promise is
   withdrawn deliberately.** Use `digit`, `digit-agent` and `digit-acp` — the

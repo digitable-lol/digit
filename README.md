@@ -186,7 +186,12 @@ Copyright (c) 2025 Nous Research, распространяемого под ли
 Nous Research удалению не подлежит.
 
 Совместимость с ядром сохраняется на уровне архитектуры, но старые команды
-удалены. Замены:
+удалены. Полный разбор того, что именно сломано снаружи репозитория, кого это
+задевает (Zed, Digitable Workbench, Buzz Desktop) и что делать авторам
+клиентов — в [BREAKING.md](BREAKING.md). Порядок отката —
+в [docs/digitable/rebrand-rollback.md](docs/digitable/rebrand-rollback.md).
+
+Замены:
 
 | Было | Стало |
 |---|---|
