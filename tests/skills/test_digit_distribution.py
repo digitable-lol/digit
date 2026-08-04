@@ -37,6 +37,7 @@ def test_digit_skills_have_valid_frontmatter():
         REPO / "skills/productivity/digitable-courses/SKILL.md",
         REPO / "skills/software-development/digitable-tools/SKILL.md",
         REPO / "skills/software-development/digitable-workbench/SKILL.md",
+        REPO / "skills/software-development/digitable-engineering-docs/SKILL.md",
     ]
 
     for path in paths:

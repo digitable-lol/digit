@@ -33,6 +33,15 @@ from agent.usage_pricing import (
 
 
 
+def _format_money(amount: float | None) -> str:
+    """Деньги для отчёта. Ненулевая трата мельче цента не должна печататься
+    как ``$0.00`` — иначе читатель решит, что расход нулевой."""
+    value = float(amount or 0.0)
+    if value and abs(value) < 0.01:
+        return "<$0.01"
+    return f"${value:,.2f}"
+
+
 def _estimate_cost(
     session_or_model: Dict[str, Any] | str,
     input_tokens: int = 0,
@@ -932,6 +941,26 @@ class InsightsEngine:
         lines.append(f"  Tool calls:        {o['total_tool_calls']:<12,}  User messages:   {o['user_messages']:,}")
         lines.append(f"  Input tokens:      {o['total_input_tokens']:<12,}  Output tokens:   {o['total_output_tokens']:,}")
         lines.append(f"  Total tokens:      {o['total_tokens']:,}")
+
+        # Стоимость считалась и раньше, но оба текстовых рендерера её выбрасывали:
+        # деньги были видны только на веб-дашборде. Показываем — но не выдаём
+        # отсутствие тарифа за ноль: у локальных моделей цены нет по существу.
+        spent = o.get("actual_cost") or 0.0
+        estimated = o.get("estimated_cost") or 0.0
+        if spent or estimated:
+            label = "Billed" if spent else "Estimated"
+            amount = spent or estimated
+            lines.append(f"  {label + ' cost:':<18} {_format_money(amount)}")
+        # models_without_pricing — список имён моделей, а не счётчик.
+        unpriced = o.get("models_without_pricing") or []
+        count = len(unpriced) if isinstance(unpriced, (list, tuple, set)) else int(unpriced)
+        if count:
+            names = ", ".join(sorted(unpriced)[:3]) if not isinstance(unpriced, int) else ""
+            tail = f" ({names}{', …' if count > 3 else ''})" if names else ""
+            lines.append(
+                f"  {'Without pricing:':<18} {count} model(s){tail} — not counted above"
+            )
+
         if o["total_hours"] > 0:
             lines.append(f"  Active time:       ~{format_duration_compact(o['total_hours'] * 3600):<11}  Avg session:     ~{format_duration_compact(o['avg_session_duration'])}")
         lines.append(f"  Avg msgs/session:  {o['avg_messages_per_session']:.1f}")
@@ -941,10 +970,18 @@ class InsightsEngine:
         if report["models"]:
             lines.append("  🤖 Models Used")
             lines.append("  " + "─" * 56)
-            lines.append(f"  {'Model':<30} {'Sessions':>8} {'Tokens':>12}")
+            lines.append(f"  {'Model':<26} {'Sessions':>8} {'Tokens':>12} {'Cost':>9}")
             for m in report["models"]:
-                model_name = m["model"][:28]
-                lines.append(f"  {model_name:<30} {m['sessions']:>8} {m['total_tokens']:>12,}")
+                model_name = m["model"][:24]
+                # Прочерк, а не $0.00: модель без тарифа и модель, потратившая
+                # ноль, — разные вещи, и путать их в отчёте о деньгах нельзя.
+                if m.get("has_pricing"):
+                    cost = _format_money((m.get("actual_cost") or 0.0) or (m.get("cost") or 0.0))
+                else:
+                    cost = "—"
+                lines.append(
+                    f"  {model_name:<26} {m['sessions']:>8} {m['total_tokens']:>12,} {cost:>9}"
+                )
             lines.append("")
 
         # Platform breakdown
