@@ -27,11 +27,14 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
         "kb",
         help="Offline knowledge base over the Digitable courses corpus",
         description=(
-            "A fully offline retrieval-augmented knowledge base built from the "
+            "A self-hosted retrieval-augmented knowledge base built from the "
             "Digitable corpus (course articles, SDD documents, workbench "
             "templates).\n\n"
-            "Embeddings and answer synthesis both run on a loopback ollama; "
-            "the KB never contacts a non-loopback address.\n\n"
+            "Embeddings run on our own Qwen3-Embedding-8B server and answer "
+            "synthesis on a loopback ollama. Both endpoints are checked "
+            "against an allowlist, so the corpus can only ever go to "
+            "loopback or to our own vetted hosts — never to a third-party "
+            "provider.\n\n"
             "Typical flow:\n"
             "  digit kb index                 # first full build\n"
             "  digit kb update                # incremental, only changed files\n"
@@ -44,10 +47,14 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
 
     def _common(p: argparse.ArgumentParser) -> None:
         p.add_argument("--host", default=None,
-                       help="ollama base URL; must be loopback "
-                            "(default http://127.0.0.1:11435)")
+                       help="ollama base URL, used for answer generation; "
+                            "must be loopback (default http://127.0.0.1:11435)")
+        p.add_argument("--embed-host", default=None,
+                       help="embedding server base URL; loopback or a vetted "
+                            "host (default https://embed.gpu.local-xyz.ru)")
         p.add_argument("--embed-model", default=None,
-                       help="embedding model (default nomic-embed-text)")
+                       help="embedding model: Qwen/Qwen3-Embedding-8B (default, "
+                            "4096 dims) or nomic-embed-text (768, via ollama)")
 
     # -- index / update ---------------------------------------------------
     p_index = sub.add_parser(
@@ -72,8 +79,10 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
                          help="re-embed every file even if unchanged")
     p_index.add_argument("--limit", type=int, default=0,
                          help="stop after N files (for smoke tests)")
-    p_index.add_argument("--batch-size", type=int, default=8,
-                         help="chunks per encoder request (default 8)")
+    p_index.add_argument("--batch-size", type=int, default=32,
+                         help="chunks handed to the encoder at once (default 32); "
+                              "the client re-splits these by token budget, so "
+                              "this is a scheduling knob, not a wire limit")
     p_index.add_argument("--dry-run", action="store_true",
                          help="report the plan without embedding anything")
     p_index.add_argument("--quiet", action="store_true", help="only print the summary")
@@ -86,7 +95,7 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
     p_update.add_argument("--corpus", default=None)
     p_update.add_argument("--track", action="append", default=[])
     p_update.add_argument("--limit", type=int, default=0)
-    p_update.add_argument("--batch-size", type=int, default=8)
+    p_update.add_argument("--batch-size", type=int, default=32)
     p_update.add_argument("--dry-run", action="store_true")
     p_update.add_argument("--quiet", action="store_true")
 
@@ -155,11 +164,12 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
 
 
 def _client(args):
-    from digit_cli.kb.embed import DEFAULT_EMBED_MODEL, OllamaClient
+    from digit_cli.kb.embed import EmbedClient
 
-    return OllamaClient(
+    return EmbedClient(
         host=getattr(args, "host", None),
-        embed_model=getattr(args, "embed_model", None) or DEFAULT_EMBED_MODEL,
+        embed_host=getattr(args, "embed_host", None),
+        embed_model=getattr(args, "embed_model", None),
     )
 
 
@@ -511,57 +521,80 @@ def _cmd_doctor(args) -> int:
 
     ok = True
     client = _client(args)
-    print(f"endpoint     : {client.host}  (loopback enforced)")
+    print(f"chat endpoint : {client.host}  (allowlist enforced)")
+    print(f"embed endpoint: {client.embed_host}  ({client.profile.api} API)")
     try:
-        print(f"ollama       : v{client.version()}")
+        print(f"ollama        : v{client.version()}")
     except EmbedError as exc:
-        print(f"ollama       : UNREACHABLE — {exc}")
+        print(f"ollama        : UNREACHABLE — {exc}")
         return 1
 
-    for label, name in (("embedder", client.embed_model),
-                        ("generator", DEFAULT_CHAT_MODEL),
+    try:
+        served = client.embed_endpoint_ok()
+        print(f"embedder      : {client.embed_model} — "
+              f"{'served' if served else 'NOT SERVED by the endpoint'}")
+        ok = ok and served
+    except Exception as exc:  # noqa: BLE001
+        print(f"embedder      : {client.embed_model} — check failed: {exc}")
+        ok = False
+
+    for label, name in (("generator", DEFAULT_CHAT_MODEL),
                         ("code model", CODE_CHAT_MODEL)):
         try:
             present = client.has_model(name)
         except Exception as exc:  # noqa: BLE001
-            present, exc_msg = False, str(exc)
-            print(f"{label:<13}: {name} — check failed: {exc_msg}")
+            print(f"{label:<14}: {name} — check failed: {exc}")
             ok = False
             continue
-        print(f"{label:<13}: {name} — {'present' if present else 'MISSING (ollama pull)'}")
+        print(f"{label:<14}: {name} — {'present' if present else 'MISSING (ollama pull)'}")
         ok = ok and present
 
     try:
         vec = client.embed_one("проверка", is_query=True)
-        print(f"embed probe  : OK, dim={len(vec)}")
+        got, want = len(vec), client.embed_dim
+        print(f"embed probe   : {'OK' if got == want else 'DIM MISMATCH'}, "
+              f"dim={got} (profile says {want})")
+        ok = ok and got == want
     except Exception as exc:  # noqa: BLE001
-        print(f"embed probe  : FAILED — {exc}")
+        print(f"embed probe   : FAILED — {exc}")
         ok = False
 
     try:
         import numpy
-        print(f"numpy        : {numpy.__version__}")
+        print(f"numpy         : {numpy.__version__}")
     except ImportError:
-        print("numpy        : MISSING (pip install numpy==2.4.3)")
+        print("numpy         : MISSING (pip install numpy==2.4.3)")
         ok = False
 
     with store.connect() as conn:
         stats = store.index_stats(conn)
         import sqlite3
-        print(f"sqlite       : {sqlite3.sqlite_version} (FTS5 required)")
+        print(f"sqlite        : {sqlite3.sqlite_version} (FTS5 required)")
         try:
             conn.execute("SELECT COUNT(*) FROM chunks_fts WHERE chunks_fts MATCH 'x'")
-            print("fts5         : OK")
+            print("fts5          : OK")
         except sqlite3.OperationalError as exc:
-            print(f"fts5         : FAILED — {exc}")
+            print(f"fts5          : FAILED — {exc}")
             ok = False
-    print(f"index        : {stats['chunks']} chunks / {stats['files']} files, "
+        # The check every read path performs, surfaced here so a mismatched
+        # index is diagnosed by `doctor` rather than by a failing search.
+        try:
+            store.assert_compatible(conn, client.embed_model, client.embed_dim)
+            if stats["chunks"]:
+                print(f"index encoder : {stats['embed_model']} × "
+                      f"{stats['embed_dim']} — matches the configured encoder")
+            else:
+                print("index encoder : (index is empty — nothing to compare)")
+        except store.KBError as exc:
+            print(f"index encoder : MISMATCH — {exc}")
+            ok = False
+    print(f"index         : {stats['chunks']} chunks / {stats['files']} files, "
           f"{stats['n_vectors']} vectors")
     if stats["pending"]:
-        print(f"  WARNING    : {stats['pending']} staged vectors are not in the slab; "
+        print(f"  WARNING     : {stats['pending']} staged vectors are not in the slab; "
               f"rerun `digit kb index`")
     if stats["chunks"] and stats["chunks"] != int(stats["n_vectors"] or 0):
-        print("  WARNING    : chunk count != vector count; run `digit kb index`")
+        print("  WARNING     : chunk count != vector count; run `digit kb index`")
         ok = False
     return 0 if ok else 1
 

@@ -1,16 +1,19 @@
-"""Digit knowledge base — fully offline RAG over the Digitable corpus.
+"""Digit knowledge base — self-hosted RAG over the Digitable corpus.
 
 ``digit kb`` indexes the Digitable ``courses`` checkout (course articles,
 SDD engineering documents, workbench templates) into a local store and
-answers questions from it with citations, using only a loopback ollama.
-Nothing in this package makes a network call to a non-loopback address —
-the endpoint is validated against a loopback allowlist on construction.
+answers questions from it with citations. Retrieval uses our own
+Qwen3-Embedding-8B server; answer synthesis uses a loopback ollama.
+
+No third party ever sees the corpus: every endpoint is validated on
+construction against an allowlist of loopback plus a short, exactly-matched
+list of our own machines (see :mod:`~digit_cli.kb.embed`).
 
 Modules
 -------
 :mod:`~digit_cli.kb.chunker`  Markdown/front-matter aware chunking.
 :mod:`~digit_cli.kb.store`    SQLite metadata + FTS5 + the ``.npy`` slab.
-:mod:`~digit_cli.kb.embed`    Loopback-only ollama client.
+:mod:`~digit_cli.kb.embed`    Allowlisted encoder + generator client.
 :mod:`~digit_cli.kb.indexer`  Corpus discovery, incremental (re)index.
 :mod:`~digit_cli.kb.search`   Dense + BM25 hybrid retrieval (RRF).
 :mod:`~digit_cli.kb.ask`      Retrieval-gated, cited answering.
@@ -18,7 +21,7 @@ Modules
 
 Imports here are deliberately lazy: ``digit_cli.main`` imports
 :func:`digit_cli.kb.cli.add_parser` on every CLI start, and neither numpy
-nor a live ollama may be required just to render ``digit --help``.
+nor a live encoder may be required just to render ``digit --help``.
 """
 
 from __future__ import annotations

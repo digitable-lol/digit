@@ -10,7 +10,10 @@ fake, so everything here runs hermetically. What is actually being pinned:
 * the row ↔ ``vectors.npy`` alignment survives an incremental rebuild,
   including that surviving chunks keep their *original* vectors;
 * abstention triggers on out-of-corpus questions and not on in-corpus ones;
-* the client refuses a non-loopback endpoint.
+* the client refuses any endpoint outside the allowlist, and the allowlist
+  matches host names exactly rather than by suffix;
+* the encoder's dimension travels with the index in ``meta`` and a
+  mismatch is refused loudly instead of returning nonsense.
 """
 
 from __future__ import annotations
@@ -28,13 +31,28 @@ from digit_cli.kb.chunker import (  # noqa: E402
     parse_front_matter,
     split_sections,
 )
-from digit_cli.kb.embed import EMBED_DIM, OfflineViolation, resolve_host  # noqa: E402
+from digit_cli.kb.embed import (  # noqa: E402
+    NOMIC_EMBED,
+    QWEN3_EMBED,
+    EmbedClient,
+    OfflineViolation,
+    resolve_embed_host,
+    resolve_host,
+)
 from digit_cli.kb.search import (  # noqa: E402
     SearchResult,
     build_fts_query,
     content_terms,
     stem,
 )
+
+FAKE_DIM = 64
+"""Width of the fake encoder's vectors.
+
+Deliberately not any real encoder's dimension: the point of these tests is
+that nothing in the pipeline assumes a *global* dimension, so using 64 here
+would fail loudly against any code that still hard-coded 768 or 4096.
+"""
 
 ARTICLE = """---
 title: "Go: конкурентность"
@@ -144,6 +162,100 @@ def test_loopback_endpoint_is_accepted(monkeypatch):
     assert resolve_host() == "http://127.0.0.1:11434"
 
 
+def test_vetted_remote_embedding_host_is_accepted(monkeypatch):
+    """The corpus may go to our own encoder, and only to it."""
+    monkeypatch.setenv("DIGIT_KB_EMBED_HOST", "https://embed.gpu.local-xyz.ru")
+    assert resolve_embed_host() == "https://embed.gpu.local-xyz.ru"
+
+
+def test_untrusted_remote_embedding_host_is_refused(monkeypatch):
+    monkeypatch.setenv("DIGIT_KB_EMBED_HOST", "https://api.openai.com")
+    with pytest.raises(OfflineViolation):
+        resolve_embed_host()
+
+
+@pytest.mark.parametrize("host", [
+    "https://embed.gpu.local-xyz.ru.evil.example",   # suffix-of-attacker
+    "https://evil-embed.gpu.local-xyz.ru",           # wildcard DNS neighbour
+    "https://gpu.local-xyz.ru",                      # parent domain
+])
+def test_allowlist_matches_hosts_exactly_not_by_suffix(monkeypatch, host):
+    """A wildcard DNS zone makes suffix matching a real hole.
+
+    ``*.gpu.local-xyz.ru`` resolves for names nobody ever provisioned, so an
+    ``endswith(".gpu.local-xyz.ru")`` check would have accepted the second
+    case here, and a naive ``in url`` check the first. Membership is exact.
+    """
+    monkeypatch.setenv("DIGIT_KB_EMBED_HOST", host)
+    with pytest.raises(OfflineViolation):
+        resolve_embed_host()
+
+
+def test_vetted_host_still_requires_tls(monkeypatch):
+    monkeypatch.setenv("DIGIT_KB_EMBED_HOST", "http://embed.gpu.local-xyz.ru")
+    with pytest.raises(OfflineViolation):
+        resolve_embed_host()
+
+
+# --------------------------------------------------------------------------
+# Encoder profiles: dimension and prefixes travel with the model
+# --------------------------------------------------------------------------
+
+
+def test_profiles_disagree_on_dimension_and_prefixes():
+    """The two supported encoders are genuinely incompatible.
+
+    Guards the reason ``meta`` records the model: these vectors are not
+    merely differently scaled, they are different widths.
+    """
+    assert QWEN3_EMBED.dim == 4096 and NOMIC_EMBED.dim == 768
+    assert QWEN3_EMBED.api == "openai" and NOMIC_EMBED.api == "ollama"
+    # nomic is asymmetric and needs its prefixes; Qwen3 wants raw passages
+    # and an Instruct envelope on the query side only.
+    assert NOMIC_EMBED.doc_prefix and NOMIC_EMBED.query_prefix
+    assert QWEN3_EMBED.doc_prefix == ""
+    assert QWEN3_EMBED.query_prefix.startswith("Instruct:")
+
+
+def test_client_reports_the_dimension_of_its_own_model(monkeypatch):
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
+    monkeypatch.delenv("DIGIT_KB_EMBED_HOST", raising=False)
+    assert EmbedClient(embed_model="Qwen/Qwen3-Embedding-8B").embed_dim == 4096
+    assert EmbedClient(embed_model="nomic-embed-text").embed_dim == 768
+
+
+def test_ollama_flavoured_encoder_stays_on_the_ollama_host(monkeypatch):
+    """Selecting nomic must reproduce the pre-Qwen behaviour exactly.
+
+    ``--host`` used to steer embedding as well as generation; that has to
+    keep working, or the documented fallback path silently starts talking
+    to the wrong box.
+    """
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
+    monkeypatch.delenv("DIGIT_KB_EMBED_HOST", raising=False)
+    client = EmbedClient(host="http://127.0.0.1:9999",
+                         embed_model="nomic-embed-text")
+    assert client.embed_host == "http://127.0.0.1:9999" == client.host
+
+
+def test_request_batches_respect_the_token_budget():
+    """Batching is by estimated tokens, not by item count.
+
+    Measured against the live endpoint: 8 inputs of 2600 chars (~8240 tok)
+    succeeded, 10 of the same (~10300 tok) returned 500. A fixed item count
+    therefore cannot be safe across a corpus whose chunks range from a few
+    hundred to ~3950 characters.
+    """
+    client = EmbedClient(embed_model="Qwen/Qwen3-Embedding-8B")
+    budget = client.profile.token_budget
+    texts = ["ё" * 3000] * 12
+    groups = client._plan_batches(texts)
+    assert len(groups) > 1, "12 large chunks must not go out as one request"
+    assert [i for g in groups for i in g] == list(range(12)), "order preserved"
+    for g in groups:
+        assert sum(client._est_tokens(texts[i]) for i in g) <= budget or len(g) == 1
+
+
 # --------------------------------------------------------------------------
 # Abstention
 # --------------------------------------------------------------------------
@@ -224,7 +336,8 @@ class FakeClient:
     to assert that survivors keep *their own* vectors across a rebuild.
     """
 
-    embed_model = "nomic-embed-text"
+    embed_model = "fake-encoder"
+    embed_dim = FAKE_DIM
     chat_model = "qwen2.5-coder:7b"
 
     def __init__(self):
@@ -240,7 +353,7 @@ class FakeClient:
         out = []
         for text in texts:
             rng = numpy.random.default_rng(abs(hash(text)) % (2**32))
-            out.append(rng.normal(size=EMBED_DIM).astype(numpy.float32).tolist())
+            out.append(rng.normal(size=FAKE_DIM).astype(numpy.float32).tolist())
         return out
 
     def embed_one(self, text, *, is_query=False):
@@ -268,8 +381,8 @@ def test_slab_rows_align_and_survive_incremental_delete(tmp_path, corpus, monkey
         assert report.files_new == 2
         assert report.chunks_added > 0
 
-        mat = store.load_matrix(EMBED_DIM)
-        assert mat.shape == (report.chunks_added, EMBED_DIM)
+        mat = store.load_matrix(FAKE_DIM)
+        assert mat.shape == (report.chunks_added, FAKE_DIM)
         assert numpy.allclose(numpy.linalg.norm(mat, axis=1), 1.0, atol=1e-5)
 
         rows = [r["row"] for r in
@@ -291,7 +404,7 @@ def test_slab_rows_align_and_survive_incremental_delete(tmp_path, corpus, monkey
         assert report2.files_deleted == 1
         assert client.calls == 0, "deleting a file must not re-embed anything"
 
-        mat2 = store.load_matrix(EMBED_DIM)
+        mat2 = store.load_matrix(FAKE_DIM)
         rows2 = [r["row"] for r in
                  conn.execute("SELECT row FROM chunks ORDER BY id")]
         assert rows2 == list(range(len(rows2)))
@@ -352,7 +465,7 @@ def test_editing_one_file_reembeds_only_that_file(tmp_path, corpus, monkeypatch)
         touched = {t.split("\n")[0] for t in client.texts}
         assert touched, "the changed file must have been re-embedded"
 
-        mat = store.load_matrix(EMBED_DIM)
+        mat = store.load_matrix(FAKE_DIM)
         n_chunks = store.chunk_count(conn)
         assert mat.shape[0] == n_chunks
 
@@ -396,7 +509,7 @@ def test_encoder_failure_leaves_previous_chunks_intact(tmp_path, corpus, monkeyp
         assert remaining > 0
         assert store.chunk_count(conn) == before
         # And the slab still matches the chunk table.
-        assert store.load_matrix(EMBED_DIM).shape[0] == before
+        assert store.load_matrix(FAKE_DIM).shape[0] == before
 
 
 def test_model_mismatch_is_refused(tmp_path, corpus, monkeypatch):
@@ -404,4 +517,51 @@ def test_model_mismatch_is_refused(tmp_path, corpus, monkeypatch):
     with store.connect() as conn:
         indexer.run_index(root=corpus, client=FakeClient(), conn=conn)
         with pytest.raises(store.KBError):
-            store.assert_compatible(conn, "some-other-embedder", EMBED_DIM)
+            store.assert_compatible(conn, "some-other-embedder", FAKE_DIM)
+
+
+def test_index_records_the_encoder_identity_and_width(tmp_path, corpus, monkeypatch):
+    """``meta`` is the only thing that knows what built the slab."""
+    monkeypatch.setenv("DIGIT_HOME", str(tmp_path / "home"))
+    client = FakeClient()
+    with store.connect() as conn:
+        indexer.run_index(root=corpus, client=client, conn=conn)
+        assert store.get_meta(conn, "embed_model") == client.embed_model
+        assert int(store.get_meta(conn, "embed_dim")) == client.embed_dim
+        assert store.load_matrix(client.embed_dim).shape[1] == client.embed_dim
+
+
+def test_dimension_mismatch_is_refused_rather_than_answered(
+    tmp_path, corpus, monkeypatch
+):
+    """Swapping the encoder for a wider one must fail loudly.
+
+    This is the 768-vs-4096 case the migration created. Two slabs of
+    different widths cannot even be multiplied, but a same-width/different-
+    model pair would silently return confident nonsense, so both are
+    refused by the same check.
+    """
+    monkeypatch.setenv("DIGIT_HOME", str(tmp_path / "home"))
+    with store.connect() as conn:
+        indexer.run_index(root=corpus, client=FakeClient(), conn=conn)
+        with pytest.raises(store.KBError, match="dimension"):
+            store.assert_compatible(conn, FakeClient.embed_model, 4096)
+
+
+def test_index_with_chunks_but_no_recorded_encoder_is_refused(
+    tmp_path, corpus, monkeypatch
+):
+    """An index that cannot say what produced it is not trusted.
+
+    Without this, a store written before the encoder was recorded would
+    pass the compatibility check by virtue of having nothing to compare —
+    exactly the silent-wrong-answer the check exists to prevent.
+    """
+    monkeypatch.setenv("DIGIT_HOME", str(tmp_path / "home"))
+    with store.connect() as conn:
+        indexer.run_index(root=corpus, client=FakeClient(), conn=conn)
+        with store.write_txn(conn):
+            conn.execute("DELETE FROM meta WHERE key IN ('embed_model','embed_dim')")
+        assert store.chunk_count(conn) > 0
+        with pytest.raises(store.KBError, match="records no embedding model"):
+            store.assert_compatible(conn, FakeClient.embed_model, FAKE_DIM)

@@ -5,12 +5,19 @@ Layout — everything lives under ``$DIGIT_HOME/kb`` (profile-aware, via
 
     ~/.digit/kb/
         kb.db        SQLite: meta, files, chunks, chunks_fts (FTS5)
-        vectors.npy  float32 (N, 768), L2-normalised, row i ↔ chunks.row = i
+        vectors.npy  float32 (N, D), L2-normalised, row i ↔ chunks.row = i
+
+``D`` is a property of the encoder, not a constant: 4096 for
+``Qwen/Qwen3-Embedding-8B``, 768 for ``nomic-embed-text``. It is recorded
+in ``meta`` alongside the model name and enforced by
+:func:`assert_compatible` on every read, because a slab mixing two widths
+(or two models at the same width) answers confidently and wrongly instead
+of failing.
 
 Why SQLite + a raw ``.npy`` slab and not a vector database: the corpus is
-~1200 documents / ~10^4 chunks. A brute-force ``matrix @ query`` over a
-40 MB float32 array is a few milliseconds of numpy and is *exact* — an ANN
-index would add a dependency, an approximation, and a build step to buy
+~1200 documents / ~3·10^4 chunks. A brute-force ``matrix @ query`` over a
+~500 MB float32 array is tens of milliseconds of numpy and is *exact* — an
+ANN index would add a dependency, an approximation, and a build step to buy
 nothing at this scale.
 
 **Row alignment is the load-bearing invariant.** ``chunks.row`` is the
@@ -18,8 +25,9 @@ index into ``vectors.npy``. It is assigned only when the slab is
 materialised, inside the same transaction that writes the file, and a
 partial unique index enforces that no two chunks claim the same row.
 
-**Durability during a long index.** Embedding the full corpus on a
-CPU-only ollama takes hours, so an index run must survive interruption.
+**Durability during a long index.** Embedding the full corpus takes hours
+(the encoder is a shared, single-stream GPU server), so an index run must
+survive interruption.
 Freshly computed vectors are committed per-file into ``chunks.vec`` (a
 float32 BLOB) as they arrive. The ``.npy`` slab is rebuilt from
 (surviving old rows ∪ new BLOBs) at the end of the run via
@@ -209,9 +217,17 @@ def set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
 def assert_compatible(conn: sqlite3.Connection, model: str, dim: int) -> None:
     """Refuse to query a store built with a different encoder.
 
-    Vectors from two models occupy unrelated spaces; mixing them produces
-    confident nonsense rather than an error, so this is checked explicitly
-    on every search rather than trusted.
+    Vectors from two models occupy unrelated spaces; mixing a 768-dim
+    nomic slab with a 4096-dim Qwen3 query produces confident nonsense
+    rather than an error, so this is checked explicitly on every search
+    rather than trusted. It is the whole reason the model name and the
+    dimension are persisted in ``meta`` instead of living as a constant
+    beside the code that happens to be running.
+
+    An index that has chunks but *no* recorded encoder is also refused: it
+    predates this check, so nothing can vouch for what produced its
+    vectors, and guessing is exactly the silent-wrong-answer this function
+    exists to prevent.
     """
     stored_model = get_meta(conn, "embed_model")
     stored_dim = get_meta(conn, "embed_dim")
@@ -221,17 +237,24 @@ def assert_compatible(conn: sqlite3.Connection, model: str, dim: int) -> None:
             f"Index schema v{stored_schema} != code v{SCHEMA_VERSION}. "
             f"Run `digit kb index --rebuild`."
         )
+    if chunk_count(conn) > 0 and not (stored_model and stored_dim):
+        raise KBError(
+            "The index has chunks but records no embedding model/dimension, "
+            "so its vectors cannot be trusted to match the configured "
+            f"encoder ({model}, {dim} dims). Run `digit kb index --rebuild`."
+        )
     if stored_model and stored_model != model:
         raise KBError(
             f"Index was built with embedding model {stored_model!r}, but "
             f"{model!r} is configured. Vectors from different models are not "
             f"comparable. Run `digit kb index --rebuild` or pass "
-            f"--model {stored_model}."
+            f"--embed-model {stored_model}."
         )
     if stored_dim and int(stored_dim) != dim:
         raise KBError(
-            f"Index dimension {stored_dim} != encoder dimension {dim}. "
-            f"Run `digit kb index --rebuild`."
+            f"Index dimension {stored_dim} != encoder dimension {dim} "
+            f"({model}). Vectors of different widths cannot be compared at "
+            f"all. Run `digit kb index --rebuild`."
         )
 
 
@@ -424,9 +447,10 @@ def materialize_slab(conn: sqlite3.Connection, dim: int) -> int:
 VACUUM_FREE_PAGE_THRESHOLD = 2048
 """Reclaim the DB file only once enough pages are actually free.
 
-Clearing the staged ``vec`` BLOBs frees a lot of space (each is 3 KB, and a
-full index stages tens of thousands), so without a VACUUM the file stays
-several times larger than its live data. But VACUUM rewrites the entire
+Clearing the staged ``vec`` BLOBs frees a lot of space (16 KB each at 4096
+float32 dims, and a full index stages ~32 thousand of them — half a
+gigabyte), so without a VACUUM the file stays several times larger than its
+live data. But VACUUM rewrites the entire
 database, which at full corpus size is not free, and running it after every
 incremental one-file update would be pure waste. So it is gated on the
 freelist actually being large.

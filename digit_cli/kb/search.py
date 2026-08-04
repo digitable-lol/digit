@@ -2,21 +2,35 @@
 
 Why hybrid and not pure vector search
 -------------------------------------
-``nomic-embed-text`` is an English-first encoder and the Digitable corpus is
-Russian. Measured on the live encoder, its cosine scores are *ordinally*
-useful but not *calibrated*: for the query "бюджет ошибок SLO", an
-off-corpus borscht recipe scored 0.7654 while the correct SRE passage
-scored 0.7357 — the wrong document won outright. With the
-``search_document:``/``search_query:`` prefixes the ordering is fixed, but
-the margin collapses to 0.6854 vs 0.6791. There is no absolute cosine
-threshold that separates "this is in the corpus" from "this is not".
+Two independent reasons, and only the first one improved when the encoder
+was replaced.
 
-So an honest "not in the knowledge base" answer cannot rest on cosine.
-It rests on a **lexical fact**: the word "борщ" occurs zero times in a
-corpus about Go, SRE and Python, and SQLite's FTS5 index can prove that in
-a single query. That proof is what makes the ``ask`` command's abstention
-defensible rather than a tuned guess — the owner's "формально-доказуемо"
-requirement.
+**Calibration.** Under ``nomic-embed-text`` the dense channel was very
+nearly useless as evidence: on the full index a *relevant* top hit scored
+0.7643 ("горутины и каналы") while a completely off-corpus query
+("как ухаживать за орхидеей") still reached 0.7503 — a margin of 0.014,
+far inside the noise. ``Qwen/Qwen3-Embedding-8B`` is dramatically better
+separated: the same off-corpus query tops out around 0.31-0.44 against
+relevant hits at 0.77-0.82. Cosine is now genuinely informative.
+
+**Attestation is still not cosine.** Better separation raises the dense
+channel's value for *ranking*, but an honest "not in the knowledge base"
+verdict still rests on a **lexical fact** rather than on any threshold:
+the word "борщ" occurs zero times in a corpus about Go, SRE and Python,
+and SQLite's FTS5 index proves that in a single query. A threshold, however
+well separated today, is a number that can drift with the corpus, the
+query language, or the next model swap; an attestation count cannot. That
+attestation is what makes ``ask``'s abstention defensible rather than a
+tuned guess, so the refusal rule was left exactly as it was and merely
+gained margin.
+
+Say precisely what this does and does not give. It is evidence about the
+*corpus* — this term does or does not occur — and it grounds a claim in a
+passage the reader can check. It is **not** a proof that the answer is
+true: prose about goroutines is a statement of practice, not a theorem,
+and no retrieval statistic can make it one. Formal proof lives where the
+facts are already typed (see the FTS gate and its morphism manifest); this
+module deliberately does not claim it.
 
 The two rankings are fused with Reciprocal Rank Fusion. RRF combines
 *ranks*, not scores, which is exactly right here: the dense scores are not
@@ -40,7 +54,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from digit_cli.kb import store
-from digit_cli.kb.embed import EMBED_DIM, EmbedError, OllamaClient
+from digit_cli.kb.embed import EmbedClient, EmbedError
 
 # --------------------------------------------------------------------------
 # Tunables
@@ -293,7 +307,7 @@ def _lexical_pool(
 
 
 def _dense_pool(
-    conn: sqlite3.Connection, client: OllamaClient, query: str, limit: int
+    conn: sqlite3.Connection, client: EmbedClient, query: str, limit: int
 ) -> Tuple[List[Tuple[int, float]], float, float]:
     """Cosine top-N. Returns an empty pool if the encoder is unavailable.
 
@@ -308,7 +322,7 @@ def _dense_pool(
     """
     import numpy as np
 
-    mat = store.load_matrix(EMBED_DIM)
+    mat = store.load_matrix(client.embed_dim)
     if mat.shape[0] == 0:
         return [], 0.0, 0.0
 
@@ -368,7 +382,7 @@ def search(
     query: str,
     k: int = 5,
     *,
-    client: Optional[OllamaClient] = None,
+    client: Optional[EmbedClient] = None,
     conn: Optional[sqlite3.Connection] = None,
     track: Optional[str] = None,
     dense_pool: int = DENSE_POOL,
@@ -376,23 +390,27 @@ def search(
 ) -> SearchResult:
     """Hybrid search. Opens its own DB connection unless one is supplied."""
     if conn is not None:
-        return _search(query, k, client or OllamaClient(), conn, track,
+        return _search(query, k, client or EmbedClient(), conn, track,
                        dense_pool, lexical_pool)
     with store.connect() as own:
-        return _search(query, k, client or OllamaClient(), own, track,
+        return _search(query, k, client or EmbedClient(), own, track,
                        dense_pool, lexical_pool)
 
 
 def _search(
     query: str,
     k: int,
-    client: OllamaClient,
+    client: EmbedClient,
     conn: sqlite3.Connection,
     track: Optional[str],
     dense_pool_size: int,
     lexical_pool_size: int,
 ) -> SearchResult:
-    store.assert_compatible(conn, client.embed_model, EMBED_DIM)
+    # Before anything else, and specifically before the encoder is called:
+    # a dim mismatch raised from ``embed()`` would surface as
+    # DenseUnavailable and degrade silently to lexical-only, which looks
+    # like a working search. The store check must fail loudly first.
+    store.assert_compatible(conn, client.embed_model, client.embed_dim)
     if store.chunk_count(conn) == 0:
         raise store.KBError(
             "The knowledge base is empty. Run `digit kb index` first."

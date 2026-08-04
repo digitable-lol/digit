@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
 from digit_cli.kb import store
-from digit_cli.kb.embed import OllamaClient
+from digit_cli.kb.embed import EmbedClient
 from digit_cli.kb.search import Hit, SearchResult, search
 
 # --------------------------------------------------------------------------
@@ -239,13 +239,13 @@ def ask(
     question: str,
     *,
     k: int = 6,
-    client: Optional[OllamaClient] = None,
+    client: Optional[EmbedClient] = None,
     model: Optional[str] = None,
     conn=None,
     track: Optional[str] = None,
 ) -> Answer:
     """Retrieve, decide, and only then (maybe) generate."""
-    client = client or OllamaClient()
+    client = client or EmbedClient()
     if conn is not None:
         return _ask(question, k, client, model, conn, track)
     with store.connect() as own:

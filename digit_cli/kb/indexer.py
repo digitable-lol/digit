@@ -39,7 +39,7 @@ from typing import Callable, Dict, List, Optional, Sequence
 
 from digit_cli.kb import store
 from digit_cli.kb.chunker import chunk_markdown, file_digest, iter_corpus_files
-from digit_cli.kb.embed import EMBED_DIM, EmbedError, OllamaClient
+from digit_cli.kb.embed import EmbedClient, EmbedError
 
 # --------------------------------------------------------------------------
 # Corpus definition
@@ -215,8 +215,8 @@ def run_index(
     tracks: Sequence[str] = (),
     force: bool = False,
     limit: int = 0,
-    batch_size: int = 8,
-    client: Optional[OllamaClient] = None,
+    batch_size: int = 32,
+    client: Optional[EmbedClient] = None,
     conn=None,
     progress: Optional[Callable[[str], None]] = None,
     dry_run: bool = False,
@@ -226,12 +226,12 @@ def run_index(
         with store.connect() as own:
             return _run_index(
                 root=root, tracks=tracks, force=force, limit=limit,
-                batch_size=batch_size, client=client or OllamaClient(),
+                batch_size=batch_size, client=client or EmbedClient(),
                 conn=own, progress=progress, dry_run=dry_run,
             )
     return _run_index(
         root=root, tracks=tracks, force=force, limit=limit,
-        batch_size=batch_size, client=client or OllamaClient(),
+        batch_size=batch_size, client=client or EmbedClient(),
         conn=conn, progress=progress, dry_run=dry_run,
     )
 
@@ -248,7 +248,7 @@ def _run_index(
     force: bool,
     limit: int,
     batch_size: int,
-    client: OllamaClient,
+    client: EmbedClient,
     conn,
     progress: Optional[Callable[[str], None]],
     dry_run: bool,
@@ -282,12 +282,12 @@ def _run_index(
 
     # Existing store must agree with the encoder before anything is written.
     if store.chunk_count(conn) > 0:
-        store.assert_compatible(conn, client.embed_model, EMBED_DIM)
+        store.assert_compatible(conn, client.embed_model, client.embed_dim)
 
     with store.write_txn(conn):
         store.set_meta(conn, "schema_version", store.SCHEMA_VERSION)
         store.set_meta(conn, "embed_model", client.embed_model)
-        store.set_meta(conn, "embed_dim", str(EMBED_DIM))
+        store.set_meta(conn, "embed_dim", str(client.embed_dim))
         store.set_meta(conn, "corpus_root", str(root))
 
     # Files that vanished from disk are dropped up front — there is nothing
@@ -323,7 +323,7 @@ def _run_index(
         if the_plan.deleted or staged or slab_rows != store.chunk_count(conn):
             if staged:
                 _emit(progress, f"recovering {staged} staged vector(s) into the slab…")
-            report.vectors = store.materialize_slab(conn, EMBED_DIM)
+            report.vectors = store.materialize_slab(conn, client.embed_dim)
         else:
             report.vectors = slab_rows
         with store.write_txn(conn):
@@ -393,7 +393,7 @@ def _run_index(
             # the materialise call below), so `kb search` would silently
             # degrade to lexical-only against a half-built index.
             if i % SLAB_REFRESH_FILES == 0 and i != total:
-                store.materialize_slab(conn, EMBED_DIM)
+                store.materialize_slab(conn, client.embed_dim)
                 _emit(progress, f"       … slab refreshed at {i}/{total}")
     except KeyboardInterrupt:
         report.interrupted = True
@@ -418,7 +418,7 @@ def _run_index(
         )
 
     _emit(progress, "materialising vector slab…")
-    report.vectors = store.materialize_slab(conn, EMBED_DIM)
+    report.vectors = store.materialize_slab(conn, client.embed_dim)
     with store.write_txn(conn):
         store.set_meta(conn, "last_index_at", str(time.time()))
     report.elapsed = time.time() - started
