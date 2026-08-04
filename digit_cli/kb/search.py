@@ -1,0 +1,447 @@
+"""Hybrid retrieval over the knowledge base: dense vectors + FTS5 BM25.
+
+Why hybrid and not pure vector search
+-------------------------------------
+``nomic-embed-text`` is an English-first encoder and the Digitable corpus is
+Russian. Measured on the live encoder, its cosine scores are *ordinally*
+useful but not *calibrated*: for the query "бюджет ошибок SLO", an
+off-corpus borscht recipe scored 0.7654 while the correct SRE passage
+scored 0.7357 — the wrong document won outright. With the
+``search_document:``/``search_query:`` prefixes the ordering is fixed, but
+the margin collapses to 0.6854 vs 0.6791. There is no absolute cosine
+threshold that separates "this is in the corpus" from "this is not".
+
+So an honest "not in the knowledge base" answer cannot rest on cosine.
+It rests on a **lexical fact**: the word "борщ" occurs zero times in a
+corpus about Go, SRE and Python, and SQLite's FTS5 index can prove that in
+a single query. That proof is what makes the ``ask`` command's abstention
+defensible rather than a tuned guess — the owner's "формально-доказуемо"
+requirement.
+
+The two rankings are fused with Reciprocal Rank Fusion. RRF combines
+*ranks*, not scores, which is exactly right here: the dense scores are not
+comparable to BM25 scores, and normalising them against each other would
+re-introduce the calibration problem the lexical channel exists to avoid.
+
+Russian morphology
+------------------
+FTS5's ``unicode61`` tokeniser indexes Cyrillic correctly but does no
+stemming, so a query for "горутина" would miss a chunk that says
+"горутины". Verified against a live FTS5 table. The fix is a light
+suffix-stripping stemmer plus FTS5 prefix queries (``"горутин"*``), which
+matches every inflection sharing the stem.
+"""
+
+from __future__ import annotations
+
+import re
+import sqlite3
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Sequence, Tuple
+
+from digit_cli.kb import store
+from digit_cli.kb.embed import EMBED_DIM, EmbedError, OllamaClient
+
+# --------------------------------------------------------------------------
+# Tunables
+# --------------------------------------------------------------------------
+
+RRF_K = 60
+"""RRF damping constant. 60 is the value from the original Cormack et al.
+paper and is not sensitive at this corpus size."""
+
+DENSE_POOL = 60
+LEXICAL_POOL = 60
+
+MIN_STEM_LEN = 4
+"""Never truncate a token below this; shorter prefixes match half the corpus."""
+
+# Function words carry no retrieval signal but would otherwise dominate the
+# lexical-coverage statistic that drives abstention ("что такое X" must be
+# judged on X alone).
+STOPWORDS = frozenset("""
+и в во не что он на я с со как а то все она так его но да ты к у же вы за бы
+по только ее мне было вот от меня еще нет о из ему теперь когда даже ну вдруг
+ли если уже или ни быть был него до вас нибудь опять уж вам ведь там потом
+себя ничего ей может они тут где есть надо ней для мы тебя их чем была сам
+чтоб без будто чего раз тоже себе под будет ж тогда кто этот того потому этого
+какой совсем ним здесь этом один почти мой тем чтобы нее сейчас были куда зачем
+всех никогда можно при наконец два об другой хоть после над больше тот через
+эти нас про всего них какая много разве три эту моя впрочем хорошо свою этой
+перед иногда лучше чуть том нельзя такой им более всегда конечно всю между
+это чем какие каких каком какому чем зачем почему отличие отличается разница
+такое такие эта эти этих этими
+the a an of to in is are was were be been and or for with on at by from as
+that this these those it its what which how why when who whom whose do does
+did not no nor but if then than so such can could should would will shall
+""".split())
+
+
+def _tokenize(text: str) -> List[str]:
+    return re.findall(r"[0-9a-zA-Zа-яёА-ЯЁ_.\-]+", text.lower())
+
+
+# Longest-first so "ами" is tried before "и".
+_SUFFIXES: Tuple[str, ...] = tuple(sorted(
+    (
+        # nouns / adjectives
+        "ами", "ями", "ого", "его", "ому", "ему", "ыми", "ими", "ах", "ях",
+        "ам", "ям", "ов", "ев", "ей", "ой", "ый", "ий", "ая", "яя", "ое",
+        "ее", "ые", "ие", "ью", "ия", "ии", "ом", "ем", "ем", "ы", "и", "а",
+        "я", "о", "е", "у", "ю", "й", "ь",
+        # verbs
+        "ться", "тся", "ать", "ять", "ить", "еть", "уть", "ешь", "ишь",
+        "ет", "ит", "ут", "ют", "ат", "ят", "ла", "ло", "ли", "л",
+        # English plural / gerund
+        "ing", "es", "s",
+    ),
+    key=len, reverse=True,
+))
+
+
+def stem(token: str) -> str:
+    """Light suffix-stripping stemmer (Russian + naive English plurals).
+
+    Deliberately crude. It only has to produce a *prefix* that FTS5 can
+    expand with ``*``; over-stemming costs precision in the lexical channel,
+    which RRF then dilutes, whereas under-stemming loses the recall this
+    channel exists to provide.
+    """
+    t = token.lower().strip("._-")
+    if len(t) <= MIN_STEM_LEN:
+        return t
+    for suf in _SUFFIXES:
+        if t.endswith(suf) and len(t) - len(suf) >= MIN_STEM_LEN:
+            return t[: -len(suf)]
+    return t
+
+
+def content_terms(query: str) -> List[str]:
+    """Query tokens that carry retrieval signal, de-duplicated, order kept."""
+    out: List[str] = []
+    seen = set()
+    for tok in _tokenize(query):
+        if tok in STOPWORDS or len(tok) < 2:
+            continue
+        if tok.isdigit() and len(tok) < 3:
+            continue
+        if tok not in seen:
+            seen.add(tok)
+            out.append(tok)
+    return out
+
+
+def build_fts_query(terms: Sequence[str]) -> str:
+    """OR of prefix-matched stems: ``"горутин"* OR "канал"*``."""
+    parts = []
+    for term in terms:
+        s = stem(term).replace('"', "")
+        if s:
+            parts.append(f'"{s}"*')
+    return " OR ".join(parts)
+
+
+# --------------------------------------------------------------------------
+# Results
+# --------------------------------------------------------------------------
+
+
+class DenseUnavailable(Exception):
+    """Internal signal: the encoder is down, continue with lexical only."""
+
+
+@dataclass
+class Hit:
+    """One retrieved chunk plus the evidence for why it was retrieved."""
+
+    chunk_id: int
+    rel_path: str
+    track: str
+    title: str
+    heading: str
+    ordinal: int
+    body: str
+    score: float = 0.0            # fused RRF score
+    dense: Optional[float] = None  # cosine similarity, if in the dense pool
+    bm25: Optional[float] = None   # FTS5 bm25 (lower is better), if matched
+    dense_rank: Optional[int] = None
+    lex_rank: Optional[int] = None
+
+    @property
+    def citation(self) -> str:
+        loc = f"{self.rel_path}#{self.ordinal}"
+        if self.heading:
+            return f"{loc} ({self.track} › {self.heading})"
+        return f"{loc} ({self.track})"
+
+    def snippet(self, limit: int = 400) -> str:
+        text = " ".join(self.body.split())
+        return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+@dataclass
+class SearchResult:
+    """Hits plus the retrieval diagnostics that justify trusting them."""
+
+    query: str
+    hits: List[Hit] = field(default_factory=list)
+    terms: List[str] = field(default_factory=list)
+    attested: Dict[str, int] = field(default_factory=dict)
+    dense_max: float = 0.0
+    dense_mean_top: float = 0.0
+    n_vectors: int = 0
+    n_chunks: int = 0
+    dense_available: bool = True
+    """False when the encoder could not be reached and results are lexical-only."""
+
+    @property
+    def support(self) -> float:
+        """Best per-chunk term support among the returned hits.
+
+        For each hit, the fraction of the query's content terms whose stem
+        literally occurs in that chunk; the result is the maximum.
+
+        This is the signal :mod:`digit_cli.kb.ask` actually trusts, and it
+        exists because corpus-global attestation proved too weak. Measured
+        on the real index, the query "рецепт борща" scores 100% *coverage*
+        — "рецепт" appears in 315 chunks as an ordinary Russian word, and
+        the corpus really does mention "борща" twice, as a pedagogical
+        counter-example. Coverage therefore said "present" for a question
+        the corpus cannot answer. Support asks the sharper question: is
+        there a single retrieved passage containing these terms *together*?
+        For the borscht query no chunk does, while a genuine query's top hit
+        contains all of them.
+        """
+        if not self.terms or not self.hits:
+            return 0.0
+        stems = [stem(t) for t in self.terms]
+        best = 0.0
+        for hit in self.hits:
+            low = f"{hit.title} {hit.heading} {hit.body}".lower()
+            present = sum(1 for s in stems if s and s in low)
+            best = max(best, present / len(stems))
+        return best
+
+    @property
+    def dense_complete(self) -> bool:
+        """False while an index run has chunks not yet in the vector slab.
+
+        Retrieval still works (the lexical channel covers every chunk the
+        moment it is committed), but results are not the final ranking, and
+        an ``ask`` verdict computed now could differ from one computed after
+        the run finishes. Callers surface this rather than pretending the
+        index is whole.
+        """
+        return self.n_vectors >= self.n_chunks
+
+    @property
+    def coverage(self) -> float:
+        """Fraction of query content terms attested anywhere in the corpus."""
+        if not self.terms:
+            return 0.0
+        return sum(1 for t in self.terms if self.attested.get(t, 0) > 0) / len(self.terms)
+
+    @property
+    def unattested(self) -> List[str]:
+        return [t for t in self.terms if not self.attested.get(t, 0)]
+
+
+# --------------------------------------------------------------------------
+# Retrieval
+# --------------------------------------------------------------------------
+
+
+def term_attestation(conn: sqlite3.Connection, terms: Sequence[str]) -> Dict[str, int]:
+    """How many chunks contain each term (prefix-stemmed). 0 ⇒ absent.
+
+    This is the ground truth behind ``kb ask``'s refusal to answer: a term
+    with zero hits is provably not in the corpus, no threshold involved.
+    """
+    counts: Dict[str, int] = {}
+    for term in terms:
+        expr = build_fts_query([term])
+        if not expr:
+            counts[term] = 0
+            continue
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?",
+                (expr,),
+            ).fetchone()
+            counts[term] = int(row["n"])
+        except sqlite3.OperationalError:
+            counts[term] = 0
+    return counts
+
+
+def _lexical_pool(
+    conn: sqlite3.Connection, terms: Sequence[str], limit: int
+) -> List[Tuple[int, float]]:
+    expr = build_fts_query(terms)
+    if not expr:
+        return []
+    try:
+        rows = conn.execute(
+            "SELECT rowid AS id, bm25(chunks_fts) AS score "
+            "FROM chunks_fts WHERE chunks_fts MATCH ? "
+            "ORDER BY score LIMIT ?",
+            (expr, limit),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [(int(r["id"]), float(r["score"])) for r in rows]
+
+
+def _dense_pool(
+    conn: sqlite3.Connection, client: OllamaClient, query: str, limit: int
+) -> Tuple[List[Tuple[int, float]], float, float]:
+    """Cosine top-N. Returns an empty pool if the encoder is unavailable.
+
+    Degrading instead of raising is deliberate. The FTS5 half of retrieval
+    is pure local SQLite and keeps working when the encoder does not — and
+    the encoder *does* go away in practice: the shared GPU behind this
+    endpoint ran out of memory mid-session and returned 500 for every
+    model. A knowledge base that answers nothing because a GPU is busy is
+    worse than one that answers from its lexical index and says so. The
+    caller reports the degradation via
+    :attr:`SearchResult.dense_available`.
+    """
+    import numpy as np
+
+    mat = store.load_matrix(EMBED_DIM)
+    if mat.shape[0] == 0:
+        return [], 0.0, 0.0
+
+    try:
+        raw = client.embed_one(query, is_query=True)
+    except EmbedError:
+        raise DenseUnavailable() from None
+
+    qvec = np.asarray(raw, dtype=np.float32)
+    qnorm = float(np.linalg.norm(qvec)) or 1.0
+    qvec /= qnorm
+
+    scores = np.asarray(mat @ qvec, dtype=np.float32)
+    take = min(limit, scores.shape[0])
+    top = np.argpartition(-scores, take - 1)[:take]
+    top = top[np.argsort(-scores[top])]
+
+    rows = conn.execute(
+        "SELECT id, row FROM chunks WHERE row IS NOT NULL"
+    ).fetchall()
+    row_to_id = {int(r["row"]): int(r["id"]) for r in rows}
+
+    pool: List[Tuple[int, float]] = []
+    for r in top:
+        cid = row_to_id.get(int(r))
+        if cid is not None:
+            pool.append((cid, float(scores[r])))
+    dense_max = float(scores[top[0]]) if take else 0.0
+    dense_mean = float(np.mean(scores[top[: min(5, take)]])) if take else 0.0
+    return pool, dense_max, dense_mean
+
+
+def _load_hits(conn: sqlite3.Connection, ids: Sequence[int]) -> Dict[int, Hit]:
+    if not ids:
+        return {}
+    marks = ",".join("?" * len(ids))
+    rows = conn.execute(
+        f"SELECT id, rel_path, track, title, heading, ordinal, body "
+        f"FROM chunks WHERE id IN ({marks})",
+        tuple(ids),
+    ).fetchall()
+    return {
+        int(r["id"]): Hit(
+            chunk_id=int(r["id"]),
+            rel_path=r["rel_path"],
+            track=r["track"],
+            title=r["title"],
+            heading=r["heading"],
+            ordinal=int(r["ordinal"]),
+            body=r["body"],
+        )
+        for r in rows
+    }
+
+
+def search(
+    query: str,
+    k: int = 5,
+    *,
+    client: Optional[OllamaClient] = None,
+    conn: Optional[sqlite3.Connection] = None,
+    track: Optional[str] = None,
+    dense_pool: int = DENSE_POOL,
+    lexical_pool: int = LEXICAL_POOL,
+) -> SearchResult:
+    """Hybrid search. Opens its own DB connection unless one is supplied."""
+    if conn is not None:
+        return _search(query, k, client or OllamaClient(), conn, track,
+                       dense_pool, lexical_pool)
+    with store.connect() as own:
+        return _search(query, k, client or OllamaClient(), own, track,
+                       dense_pool, lexical_pool)
+
+
+def _search(
+    query: str,
+    k: int,
+    client: OllamaClient,
+    conn: sqlite3.Connection,
+    track: Optional[str],
+    dense_pool_size: int,
+    lexical_pool_size: int,
+) -> SearchResult:
+    store.assert_compatible(conn, client.embed_model, EMBED_DIM)
+    if store.chunk_count(conn) == 0:
+        raise store.KBError(
+            "The knowledge base is empty. Run `digit kb index` first."
+        )
+
+    terms = content_terms(query)
+    attested = term_attestation(conn, terms)
+
+    lex = _lexical_pool(conn, terms, lexical_pool_size)
+    dense_available = True
+    try:
+        dense, dense_max, dense_mean = _dense_pool(
+            conn, client, query, dense_pool_size
+        )
+    except DenseUnavailable:
+        dense, dense_max, dense_mean = [], 0.0, 0.0
+        dense_available = False
+
+    hits = _load_hits(conn, [cid for cid, _ in lex] + [cid for cid, _ in dense])
+
+    # Reciprocal Rank Fusion over the two pools.
+    fused: Dict[int, float] = {}
+    for rank, (cid, score) in enumerate(dense, start=1):
+        if cid in hits:
+            hits[cid].dense = score
+            hits[cid].dense_rank = rank
+            fused[cid] = fused.get(cid, 0.0) + 1.0 / (RRF_K + rank)
+    for rank, (cid, score) in enumerate(lex, start=1):
+        if cid in hits:
+            hits[cid].bm25 = score
+            hits[cid].lex_rank = rank
+            fused[cid] = fused.get(cid, 0.0) + 1.0 / (RRF_K + rank)
+
+    ordered = []
+    for cid, score in sorted(fused.items(), key=lambda kv: -kv[1]):
+        hit = hits[cid]
+        if track and hit.track != track:
+            continue
+        hit.score = score
+        ordered.append(hit)
+
+    return SearchResult(
+        query=query,
+        hits=ordered[:k],
+        terms=terms,
+        attested=attested,
+        dense_max=dense_max,
+        dense_mean_top=dense_mean,
+        n_vectors=int(store.get_meta(conn, "n_vectors", "0") or 0),
+        n_chunks=store.chunk_count(conn),
+        dense_available=dense_available,
+    )

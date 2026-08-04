@@ -114,6 +114,15 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # users never pay this import.
     "provider.azure_identity": ("azure-identity==1.25.3",),
 
+    # ─── Offline knowledge base (digit kb) ─────────────────────────────────
+    # The KB stores its embeddings as a float32 .npy slab and scores queries
+    # with an exact brute-force dot product; at ~10^4 chunks that is a few
+    # milliseconds and needs no vector database. numpy is the only
+    # third-party import under digit_cli/kb, and only the slab touches it —
+    # chunking, FTS5 search and `kb status` work without it. Pin tracks the
+    # `voice`/`wake` extras in pyproject.toml; bump all three together.
+    "kb": ("numpy==2.4.3",),
+
     # ─── Web search backends ───────────────────────────────────────────────
     "search.exa": ("exa-py==2.10.2",),
     "search.firecrawl": ("firecrawl-py==4.17.0",),

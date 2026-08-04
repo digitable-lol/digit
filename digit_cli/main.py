@@ -10608,7 +10608,7 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "computer-use",
         "config", "console", "cron", "curator", "dashboard", "serve", "debug", "doctor",
         "dump", "egress", "fallback", "gateway", "hooks", "import", "import-agent", "insights",
-        "gui", "desktop", "kanban", "login", "logout", "logs", "lsp", "mcp", "memory", "migrate", "moa",
+        "gui", "desktop", "kanban", "kb", "login", "logout", "logs", "lsp", "mcp", "memory", "migrate", "moa",
         "journey", "memory-graph", "learning",
         "model", "monitoring", "pairing", "pets", "plugins", "portal", "profile",
         "project", "proxy",
@@ -11508,6 +11508,12 @@ def main():
     # =========================================================================
     from digit_cli.portal_cli import add_parser as _add_portal_parser
     _add_portal_parser(subparsers)
+
+    # =========================================================================
+    # kb command — offline knowledge base (RAG) over the Digitable corpus
+    # =========================================================================
+    from digit_cli.kb import add_parser as _add_kb_parser
+    _add_kb_parser(subparsers)
 
     # =========================================================================
     # kanban command — multi-profile collaboration board
