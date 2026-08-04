@@ -4506,6 +4506,14 @@ async def speak_stream_ws(ws: "WebSocket") -> None:
                ``{"stop": true}`` or disconnect = barge-in
       server → ``{"type": "start", "sample_rate": N, "channels": 1}``,
                binary PCM frames, then ``{"type": "end"}``
+      server → ``{"type": "mark", "index": k, "start": i, "end": j,
+                 "text": "..."}`` immediately before the PCM of sentence *k*,
+               where ``start``/``end`` index the reply text the client sent.
+               That position in the stream *is* the timing: whatever the
+               client schedules next begins at that sentence, so the
+               highlight needs no alignment pass and no clock of its own.
+               ``start``/``end`` are null when the sentence could not be
+               traced back — the client then simply does not highlight it.
       server → ``{"type": "fallback"}`` when the configured provider has no
                chunked API — the client uses the POST endpoint instead.
     """
@@ -4555,10 +4563,14 @@ async def speak_stream_ws(ws: "WebSocket") -> None:
     chunks: asyncio.Queue = asyncio.Queue()  # PCM out; None = synthesis done
 
     def _produce():
+        from tools.speech_marks import SourceTracker
         from tools.tts_streaming import SentenceChunker
         from tools.tts_tool import _strip_markdown_for_tts
 
         chunker = SentenceChunker()
+        # Follows the same deltas the chunker eats, so every sentence can be
+        # pointed back at the text the client already drew.
+        tracker = SourceTracker()
 
         # The session stays open for a whole agent turn, and the client only
         # sends `done` when the turn ends. During tool execution no text
@@ -4588,13 +4600,28 @@ async def speak_stream_ws(ws: "WebSocket") -> None:
                 if delta is None:
                     yield from chunker.flush()
                     return
+                tracker.feed(delta)
                 yield from chunker.feed(delta)
 
         try:
-            for sentence in _sentences():
+            for index, sentence in enumerate(_sentences()):
                 cleaned = _strip_markdown_for_tts(sentence)
                 if not cleaned:
                     continue
+                mark_start, mark_end = tracker.locate(sentence)
+                # The mark rides the stream just ahead of its own audio, so
+                # the client can hang the highlight off the same schedule it
+                # already computes for playback.
+                loop.call_soon_threadsafe(
+                    chunks.put_nowait,
+                    {
+                        "type": "mark",
+                        "index": index,
+                        "start": mark_start,
+                        "end": mark_end,
+                        "text": cleaned,
+                    },
+                )
                 for piece in _split_text_for_speak_stream(cleaned, cap):
                     for chunk in streamer.stream(piece):
                         if stop.is_set():
@@ -4630,6 +4657,9 @@ async def speak_stream_ws(ws: "WebSocket") -> None:
             chunk = await chunks.get()
             if chunk is None:
                 break
+            if isinstance(chunk, dict):
+                await ws.send_json(chunk)
+                continue
             await ws.send_bytes(chunk)
         if not stop.is_set():
             await ws.send_json({"type": "end"})

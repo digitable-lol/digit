@@ -12466,6 +12466,61 @@ _tts_stream_lock = threading.Lock()
 _tts_stream_state: Optional[dict] = None
 
 
+# Bands in the TUI meter and the ceiling on how often levels go over the
+# wire. The terminal repaints on every event, so the wire rate is the frame
+# rate: 12 updates a second reads as motion and costs about a kilobyte.
+SPEECH_METER_BANDS = 12
+SPEECH_METER_INTERVAL = 0.08
+SPEECH_METER_STEPS = 8
+
+
+def _tts_speech_callback():
+    """Observe audible speech and forward it to the TUI as ``voice.speech``.
+
+    Two payload shapes, one event:
+
+    * ``{"state": "speaking", "text": …}`` — the sentence now leaving the
+      speaker, so the TUI can mark where the agent is in its own reply.
+    * ``{"state": "levels", "levels": […]}`` — band energies quantised to
+      whole steps. Integers, not floats, because the wire value is a block
+      index in the terminal and nothing finer survives being drawn.
+
+    Never raises: ``stream_tts_to_speaker`` swallows callback failures, but
+    the guard here keeps a broken meter from even reaching that path.
+    """
+    from tools.speech_marks import bar_levels
+
+    last = {"at": 0.0}
+
+    def _observe(event: str, payload) -> None:
+        try:
+            if event == "cue":
+                _voice_emit(
+                    "voice.speech", {"state": "speaking", "text": str(payload or "")}
+                )
+                return
+            if event != "pcm" or not payload:
+                return
+            now = time.monotonic()
+            if now - last["at"] < SPEECH_METER_INTERVAL:
+                return
+            last["at"] = now
+            levels = bar_levels(bytes(payload), SPEECH_METER_BANDS)
+            _voice_emit(
+                "voice.speech",
+                {
+                    "state": "levels",
+                    "levels": [
+                        int(round(level * SPEECH_METER_STEPS)) for level in levels
+                    ],
+                },
+            )
+        except Exception:
+            logger.debug("voice.speech emit failed", exc_info=True)
+
+    return _observe
+
+
 def _tts_stream_begin() -> Optional[queue.Queue]:
     """Start a per-turn streaming TTS consumer; None when TTS can't stream."""
     if not _voice_tts_enabled():
@@ -12482,9 +12537,19 @@ def _tts_stream_begin() -> Optional[queue.Queue]:
     text_queue: queue.Queue = queue.Queue()
     stop = threading.Event()
     done = threading.Event()
-    threading.Thread(
-        target=stream_tts_to_speaker, args=(text_queue, stop, done), daemon=True
-    ).start()
+
+    def _run() -> None:
+        try:
+            stream_tts_to_speaker(
+                text_queue, stop, done, speech_callback=_tts_speech_callback()
+            )
+        finally:
+            # One idle event covers both endings — the reply finished, or the
+            # user talked over it — so the TUI never leaves a stale bar on
+            # screen after the speaker has gone quiet.
+            _voice_emit("voice.speech", {"state": "idle"})
+
+    threading.Thread(target=_run, daemon=True).start()
 
     global _tts_stream_state
     with _tts_stream_lock:

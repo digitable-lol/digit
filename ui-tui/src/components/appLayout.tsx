@@ -34,6 +34,7 @@ import { Journey } from './journey.js'
 import { MessageLine } from './messageLine.js'
 import { PetKitty, PetSprite } from './petSprite.js'
 import { QueuedMessages } from './queuedMessages.js'
+import { SpeechBar } from './speechBar.js'
 import { LiveTodoPanel, StreamingAssistant } from './streamingAssistant.js'
 import { TextInput, type TextInputMouseApi } from './textInput.js'
 
@@ -361,6 +362,11 @@ const ComposerPane = memo(function ComposerPane({
       ) : (
         <Box height={1} onMouseDown={captureInputDrag} onMouseDrag={dragFromSpacer} onMouseUp={endInputDrag} />
       )}
+
+      {/* Sits directly above the composer, so the sentence being spoken is
+          next to the box you would type in to interrupt it. Renders nothing
+          at all while the speaker is quiet. */}
+      <SpeechBar t={ui.theme} width={composer.cols} />
 
       <StatusRulePane at="top" composer={composer} status={status} />
       <AmbientDock placement="dock-top" />

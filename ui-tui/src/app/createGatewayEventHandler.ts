@@ -29,6 +29,7 @@ import { applyDelegationStatus, getDelegationState } from './delegationStore.js'
 import type { GatewayEventHandlerContext } from './interfaces.js'
 import { getOverlayState, patchOverlayState } from './overlayStore.js'
 import { flashGoodVibes, flashPet } from './petFlashStore.js'
+import { clearSpeech, setSpeechCue, setSpeechLevels } from './speechStore.js'
 import { turnController } from './turnController.js'
 import { getTurnState } from './turnStore.js'
 import { getUiState, patchUiState } from './uiStore.js'
@@ -908,6 +909,26 @@ export function createGatewayEventHandler(ctx: GatewayEventHandlerContext): (ev:
         } else {
           setVoiceRecording(false)
           setVoiceProcessing(false)
+        }
+
+        return
+      }
+
+      case 'voice.speech': {
+        // The other half of voice mode: not what was heard, but what is being
+        // said. `speaking` carries the sentence now leaving the speaker (the
+        // playback worker announces it, so it is in step with the sound);
+        // `levels` carries band energies already quantised to block steps.
+        const state = String(ev.payload?.state ?? '')
+
+        if (state === 'speaking') {
+          setSpeechCue(String(ev.payload?.text ?? ''))
+        } else if (state === 'levels') {
+          const levels = ev.payload?.levels
+
+          setSpeechLevels(Array.isArray(levels) ? levels.map(Number) : [])
+        } else {
+          clearSpeech()
         }
 
         return

@@ -4720,6 +4720,7 @@ class DigitCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         self._voice_tts_done = threading.Event()
         self._voice_tts_done.set()
         self._voice_tts_stop = None  # active streaming pipeline's stop event
+        self._speech_view = None  # live "what is being spoken" line, when the terminal can carry one
         self._voice_barge_capture = threading.Event()  # barge monitor is capturing the interruption
 
         # Status bar visibility (toggled via /statusbar)
@@ -13821,10 +13822,31 @@ class DigitCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                         _cprint(f"{_STREAM_PAD}{sentence.rstrip()}")
                     _tts_display_cb = display_callback
 
+                # The answer is already in the scrollback and cannot be
+                # restyled, so the terminal shows what is being spoken on one
+                # rewritten line below it: the sentence currently leaving the
+                # speaker, plus bars computed from the PCM actually reaching
+                # the device. It erases itself when the turn ends, and it is a
+                # no-op wherever the terminal can't carry it (piped output,
+                # NO_COLOR, dumb TERM).
+                _speech_cb = None
+                try:
+                    from digit_cli.speech_view import make_speech_view
+
+                    _view = make_speech_view()
+                    if _view.enabled:
+                        self._speech_view = _view
+                        _speech_cb = _view.handle
+                except Exception:
+                    self._speech_view = None
+
                 tts_thread = threading.Thread(
                     target=stream_tts_to_speaker,
                     args=(text_queue, stop_event, self._voice_tts_done),
-                    kwargs={"display_callback": _tts_display_cb},
+                    kwargs={
+                        "display_callback": _tts_display_cb,
+                        "speech_callback": _speech_cb,
+                    },
                     daemon=True,
                 )
                 tts_thread.start()
@@ -14433,7 +14455,17 @@ class DigitCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
                 stop_event.set()
             if tts_thread is not None and tts_thread.is_alive():
                 tts_thread.join(timeout=5)
-    
+            # Erase the live speech line last: it is drawn by the playback
+            # worker, so wiping it before the worker stops would leave the
+            # last frame stranded on screen.
+            view = getattr(self, "_speech_view", None)
+            if view is not None:
+                try:
+                    view.close()
+                except Exception:
+                    pass
+                self._speech_view = None
+
     def _clear_terminal_on_exit(self):
         """Clear screen + scrollback so nothing is stranded above the exit summary.
 
