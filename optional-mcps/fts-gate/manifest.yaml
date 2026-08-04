@@ -4,7 +4,7 @@ manifest_version: 1
 
 name: fts-gate
 description: Structurally verify FTS executable specifications and list domain morphisms.
-source: https://github.com/digitable/fts-gate
+source: https://github.com/digitable-lol/fts-gate
 
 # First-party server, built in-tree rather than fetched from a registry, so it
 # uses `install.type: local`: the path is resolved and existence-checked at
@@ -15,7 +15,7 @@ source: https://github.com/digitable/fts-gate
 # checkout used by the Digitable toolchain.
 install:
   type: local
-  path: "${DIGIT_FTS_GATE_HOME:-/home/a/projects/digit-ml/fts-gate}"
+  path: "${DIGIT_FTS_GATE_HOME:?требуется путь к сборке fts-gate}"
 
 transport:
   type: stdio

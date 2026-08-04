@@ -4,7 +4,7 @@ manifest_version: 1
 
 name: digit-tools
 description: Route to 95 deterministic developer utilities — encoding, crypto, converters, network.
-source: https://github.com/digit-ml/tools-core
+source: https://github.com/digitable-lol/tools-core
 
 # First-party server shipped as a self-contained compiled binary (bun
 # --compile), so there is no runtime to resolve and no node_modules to install.
@@ -12,7 +12,7 @@ source: https://github.com/digit-ml/tools-core
 # cloned and nothing is executed at install time.
 install:
   type: local
-  path: "${DIGIT_TOOLS_CORE_HOME:-/home/a/projects/digit-ml/tools-core}"
+  path: "${DIGIT_TOOLS_CORE_HOME:?требуется путь к сборке tools-core}"
 
 transport:
   type: stdio
