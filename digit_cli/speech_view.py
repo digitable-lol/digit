@@ -126,6 +126,7 @@ class SpeechView:
         # Never throttle the first frame: the line has to appear the moment
         # speech starts, not one interval later.
         self._last_frame = float("-inf")
+        self._last_meter = float("-inf")
         self._drawn = False
 
     # -- state -----------------------------------------------------------
@@ -159,6 +160,17 @@ class SpeechView:
     def feed_pcm(self, pcm: bytes) -> None:
         if not pcm:
             return
+        # Gate the measurement, not just the drawing. PCM arrives in whatever
+        # chunks the provider felt like sending — a Goertzel pass per chunk
+        # would burn CPU producing frames nobody can see. Sampling the audio
+        # at the frame rate is exactly as informative and costs a comparison.
+        # Kept separate from the draw clock so a forced redraw (a new cue)
+        # does not also skip the next measurement.
+        now = self._clock()
+        if now - self._last_meter < FRAME_INTERVAL:
+            return
+        self._last_meter = now
+
         fresh = bar_levels(bytes(pcm), self._bands, sample_rate=self._sample_rate)
         # Rise instantly, fall gently: a meter that drops as fast as it climbs
         # reads as noise rather than as a voice.
@@ -201,6 +213,9 @@ class SpeechView:
         self._drawn = False
         self._cue = ""
         self._levels = [0.0] * self._bands
+        # A reused view starts speaking again without waiting out a frame.
+        self._last_frame = float("-inf")
+        self._last_meter = float("-inf")
 
     def _write(self, text: str) -> None:
         try:

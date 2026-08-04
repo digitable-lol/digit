@@ -238,3 +238,55 @@ class TestEventContract:
         with SpeechView(terminal, enabled=True) as view:
             view.set_cue("Spoken inside the block.")
         assert terminal.getvalue().endswith("\r\x1b[2K")
+
+
+class TestMeterCost:
+    def test_the_meter_samples_at_the_frame_rate_not_at_the_chunk_rate(self, terminal, monkeypatch):
+        """PCM arrives in whatever chunks the provider felt like sending.
+
+        Measuring every one of them would burn CPU producing frames nobody can
+        see, so the Goertzel pass is gated by the same interval as the drawing.
+        """
+        import digit_cli.speech_view as module
+
+        calls = []
+        real = module.bar_levels
+
+        def counted(*args, **kwargs):
+            calls.append(1)
+
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(module, "bar_levels", counted)
+
+        clock = _Clock()
+        view = SpeechView(terminal, enabled=True, clock=clock)
+
+        for _ in range(20):
+            view.feed_pcm(_tone())
+
+        assert len(calls) == 1
+
+        clock.advance(FRAME_INTERVAL * 2)
+        view.feed_pcm(_tone())
+        assert len(calls) == 2
+
+    def test_a_forced_redraw_does_not_cost_the_next_measurement(self, terminal):
+        """The cue clock and the meter clock are separate on purpose."""
+        clock = _Clock()
+        view = SpeechView(terminal, enabled=True, clock=clock)
+
+        view.set_cue("A sentence that forces a redraw.")
+        view.feed_pcm(_tone())
+
+        assert max(view.levels) > 0.0
+
+    def test_a_reused_view_starts_drawing_again_immediately(self, terminal):
+        clock = _Clock()
+        view = SpeechView(terminal, enabled=True, clock=clock)
+
+        view.feed_pcm(_tone())
+        view.close()
+        view.feed_pcm(_tone())
+
+        assert max(view.levels) > 0.0
