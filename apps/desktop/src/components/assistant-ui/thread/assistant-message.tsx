@@ -22,6 +22,8 @@ import { formatMessageTimestamp } from '@/components/assistant-ui/thread/timesta
 import { useMessageReactions, useTapbackDoubleClick } from '@/components/assistant-ui/thread/use-message-reactions'
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button'
 import { PreviewAttachment } from '@/components/chat/preview-attachment'
+import { SpeechBars } from '@/components/voice/speech-bars'
+import { useSpeechHighlight } from '@/components/voice/use-speech-highlight'
 import { Codicon } from '@/components/ui/codicon'
 import { CopyButton } from '@/components/ui/copy-button'
 import { useI18n } from '@/i18n'
@@ -33,6 +35,7 @@ import { useEnterAnimation } from '@/lib/use-enter-animation'
 import { cn } from '@/lib/utils'
 import { playSpeechText, stopVoicePlayback } from '@/lib/voice-playback'
 import { notifyError } from '@/store/notifications'
+import { $speechCue } from '@/store/speech-cue'
 import { $voicePlayback } from '@/store/voice-playback'
 
 // Stable empty identity for the settled-parts selector — a fresh [] per render
@@ -112,6 +115,13 @@ export const AssistantMessage: FC<{
 
   const enterRef = useEnterAnimation(isRunning, `assistant-message:${messageId}`)
 
+  // Speech marks the reply as it reads it: the sentence now leaving the
+  // speaker is painted over the rendered markdown (no wrapper elements, so
+  // selection and layout are untouched), and the spectrum appears under it.
+  const speechRef = useSpeechHighlight(messageId)
+  const speechCue = useStore($speechCue)
+  const isSpokenHere = Boolean(speechCue) && (!speechCue?.messageId || speechCue.messageId === messageId)
+
   // Double-click the reply to heart it (iMessage). Undefined while reactions
   // are off, so the root carries no listener at all.
   const onDoubleClick = useTapbackDoubleClick(messageId, 'assistant')
@@ -128,9 +138,13 @@ export const AssistantMessage: FC<{
       <div
         className="wrap-anywhere min-w-0 max-w-full overflow-hidden text-pretty text-[length:var(--conversation-text-font-size)] leading-(--dt-line-height) text-foreground"
         data-slot="aui_assistant-message-content"
+        ref={speechRef}
       >
         {/* Todos render in the composer status stack now, not inline. */}
         <MessagePrimitive.Parts components={MESSAGE_PARTS_COMPONENTS} />
+        {/* Spectrum of the audio actually leaving the speaker — present only
+            while this message is the one being spoken. */}
+        {isSpokenHere && <SpeechBars className="mt-2 max-w-64" />}
         {isLastMessage && (isPlaceholder ? <ResponseLoadingIndicator /> : isRunning && <StreamStallIndicator />)}
         {previewTargets.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">

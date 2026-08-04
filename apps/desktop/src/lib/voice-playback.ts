@@ -1,6 +1,7 @@
 import { resolveGatewayWsUrl } from '@digit/shared'
 
 import { getApiRequestProfile, speakText } from '@/digit'
+import { clearSpeechCue, setSpeechCue } from '@/store/speech-cue'
 import {
   $voicePlayback,
   setVoicePlaybackState,
@@ -8,6 +9,7 @@ import {
   type VoicePlaybackState
 } from '@/store/voice-playback'
 
+import { openSpeechAnalyser, setSpeechAnalyser } from './speech-analyser'
 import { sanitizeTextForSpeech } from './speech-text'
 
 // Free Edge TTS occasionally hands back audio that never fires `playing`/`ended`
@@ -73,6 +75,8 @@ export function stopVoicePlayback() {
   sequence += 1
   currentStop?.()
   currentStop = null
+  clearSpeechCue()
+  setSpeechAnalyser(null)
 
   if (currentAudio) {
     currentAudio.pause()
@@ -129,6 +133,19 @@ async function resolveSpeakStreamUrl(): Promise<null | string> {
   }
 }
 
+/**
+ * A `mark` frame: the sentence about to be spoken and where it sits in the
+ * reply text this client sent. `start`/`end` are null when the backend could
+ * not trace it back — the sentence is still announced, just not highlighted.
+ */
+export interface SpeechMarkFrame {
+  end?: null | number
+  index?: number
+  start?: null | number
+  text?: string
+  type: 'mark'
+}
+
 export interface SpeechStreamSession {
   /** Feed more reply text as it streams in. Safe after `finish` (no-op). */
   append: (text: string) => void
@@ -153,6 +170,7 @@ function openSpeechStream(wsUrl: string, options: VoicePlaybackOptions): SpeechS
   ws.binaryType = 'arraybuffer'
 
   let context: AudioContext | null = null
+  let analyser: AnalyserNode | null = null
   let streamRate = 24_000
   let nextStartAt = 0
   let carry: null | Uint8Array = null
@@ -160,6 +178,13 @@ function openSpeechStream(wsUrl: string, options: VoicePlaybackOptions): SpeechS
   let settled = false
   let finished = false
   const pendingSends: string[] = []
+
+  // A `mark` frame arrives just ahead of the audio it describes, so it waits
+  // here until the next buffer is scheduled and can tell it exactly when it
+  // becomes audible. Nothing else knows that instant — the socket is ahead of
+  // the speaker by however much has been buffered.
+  let pendingMark: null | SpeechMarkFrame = null
+  const cueTimers: number[] = []
 
   let settle: (value: 'done' | 'fallback') => void = () => undefined
 
@@ -177,6 +202,14 @@ function openSpeechStream(wsUrl: string, options: VoicePlaybackOptions): SpeechS
       } catch {
         // already closed
       }
+
+      // Cues are scheduled ahead of the sound; a barge-in has to cancel the
+      // ones that would otherwise light up after the speaker went quiet.
+      cueTimers.splice(0).forEach(timer => window.clearTimeout(timer))
+      pendingMark = null
+      clearSpeechCue()
+      setSpeechAnalyser(null)
+      analyser = null
 
       void context?.close().catch(() => undefined)
       context = null
@@ -239,10 +272,36 @@ function openSpeechStream(wsUrl: string, options: VoicePlaybackOptions): SpeechS
 
     const source = context.createBufferSource()
     source.buffer = buffer
-    source.connect(context.destination)
+    // Through the analyser when there is one, so the visualiser sees exactly
+    // what the speaker does; straight to the destination when there isn't,
+    // because bars are never worth losing sound over.
+    source.connect(analyser ?? context.destination)
 
     const startAt = Math.max(context.currentTime + 0.05, nextStartAt)
     source.start(startAt)
+
+    // This buffer is the first of a marked sentence: now, and only now, is
+    // the moment that sentence becomes audible known. Hang the cue off it.
+    if (pendingMark) {
+      const mark = pendingMark
+      pendingMark = null
+      const delayMs = Math.max(0, (startAt - context.currentTime) * 1_000)
+
+      cueTimers.push(
+        window.setTimeout(() => {
+          if (!settled) {
+            setSpeechCue({
+              end: typeof mark.end === 'number' ? mark.end : null,
+              index: typeof mark.index === 'number' ? mark.index : 0,
+              messageId: options.messageId ?? null,
+              start: typeof mark.start === 'number' ? mark.start : null,
+              text: mark.text ?? ''
+            })
+          }
+        }, delayMs)
+      )
+    }
+
     nextStartAt = startAt + buffer.duration
 
     if (!started) {
@@ -262,11 +321,27 @@ function openSpeechStream(wsUrl: string, options: VoicePlaybackOptions): SpeechS
       return
     }
 
-    let frame: { channels?: number; sample_rate?: number; type?: string }
+    let frame: {
+      channels?: number
+      end?: null | number
+      index?: number
+      sample_rate?: number
+      start?: null | number
+      text?: string
+      type?: string
+    }
 
     try {
       frame = JSON.parse(event.data) as typeof frame
     } catch {
+      return
+    }
+
+    if (frame.type === 'mark') {
+      // Held, not applied: the audio it describes has not been scheduled yet,
+      // and applying it now would light up a sentence before it is heard.
+      pendingMark = frame as SpeechMarkFrame
+
       return
     }
 
@@ -283,6 +358,7 @@ function openSpeechStream(wsUrl: string, options: VoicePlaybackOptions): SpeechS
         void context.resume().catch(() => undefined)
       }
 
+      analyser = openSpeechAnalyser(context)
       nextStartAt = 0
     } else if (frame.type === 'end') {
       finishWhenDrained()

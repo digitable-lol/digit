@@ -585,6 +585,22 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   SPOKEN SENTENCE — where the agent is in its own reply while it reads it
+   aloud.
+
+   Painted with the Custom Highlight API over the existing text nodes, so the
+   rendered markdown is never wrapped, re-laid-out, or made unselectable just
+   to say "this bit, right now". Deliberately quieter than ::selection: the
+   user's own selection has to stay the louder mark on the page, even
+   mid-sentence.
+   ───────────────────────────────────────────────────────────────────────── */
+
+::highlight(digit-speech) {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  color: inherit;
+}
+
 .dither {
   background: repeating-conic-gradient(currentColor 0% 25%, transparent 0% 50%) 0 0 / 0.125rem 0.125rem;
 }
