@@ -97,6 +97,15 @@ but the repeated *listen*: pressing read-aloud again, replaying a message,
 re-hearing an answer while scrolling. Those cost nothing and start
 instantly. On a remote synthesizer they also cost no GPU and no round trip.
 
+`marks` in the sidecar is the synthesizer's to fill, and stays empty until
+one does. The reader-audio contract has the synthesizer return sentence
+timings in seconds beside the audio, and the field is kept so a provider that
+reports them drops straight in. Today's whole-file providers report nothing,
+so it is `[]` — not an estimate. A guessed timing is worse than none: the
+highlight would drift, which is exactly what an alignment-free design exists
+to avoid. Live speech never needs this field; it takes its cues from the
+stream instead, as described below.
+
 Switches: `DIGIT_SPEECH_CACHE=0` and `tts.cache: false` turn it off,
 `DIGIT_SPEECH_CACHE_DIR` moves it, `DIGIT_SPEECH_CACHE_MAX_MB` caps it (512
 MB by default, least-recently-spoken pruned first — reading an entry keeps it

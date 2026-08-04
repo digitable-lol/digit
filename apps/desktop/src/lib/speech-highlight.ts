@@ -152,10 +152,27 @@ export function rangeForSpan(projection: Projection, span: [number, number]): nu
   return range
 }
 
-function highlightRegistry(): HighlightRegistry | null {
-  const registry = (CSS as unknown as { highlights?: HighlightRegistry }).highlights
+// Structural, rather than leaning on lib.dom: the Custom Highlight API is a
+// recent addition whose typings move between TypeScript releases, while the
+// two calls actually used here have been stable since it shipped. The runtime
+// probe below is the real gate anyway — a browser without the API has to
+// degrade to no highlight, not to a compile error.
+interface HighlightRegistryLike {
+  delete: (name: string) => void
+  set: (name: string, highlight: unknown) => void
+}
 
-  return registry && typeof Highlight === 'function' ? registry : null
+function highlightRegistry(): HighlightRegistryLike | null {
+  const registry = (CSS as unknown as { highlights?: HighlightRegistryLike }).highlights
+  const constructor = (globalThis as unknown as { Highlight?: unknown }).Highlight
+
+  return registry && typeof constructor === 'function' ? registry : null
+}
+
+function makeHighlight(range: Range): unknown {
+  const { Highlight } = globalThis as unknown as { Highlight: new (...ranges: Range[]) => unknown }
+
+  return new Highlight(range)
 }
 
 /** Remove any speech highlight currently painted. */
@@ -190,7 +207,7 @@ export function paintSpeechHighlight(root: Element | null, spoken: string): bool
     return false
   }
 
-  registry.set(SPEECH_HIGHLIGHT_NAME, new Highlight(range))
+  registry.set(SPEECH_HIGHLIGHT_NAME, makeHighlight(range))
 
   return true
 }

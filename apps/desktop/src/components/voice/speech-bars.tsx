@@ -1,8 +1,8 @@
 import { useStore } from '@nanostores/react'
 import { useEffect, useRef } from 'react'
 
-import { $speechAnalyser, foldBands, SPEECH_BAND_COUNT } from '@/lib/speech-analyser'
 import { createRendererLoopPauseController } from '@/lib/renderer-loop-pause'
+import { $speechAnalyser, foldBands, SPEECH_BAND_COUNT } from '@/lib/speech-analyser'
 import { cn } from '@/lib/utils'
 
 /**
@@ -42,6 +42,12 @@ export function SpeechBars({ className, height = 24 }: { className?: string; hei
     }
 
     const bins = new Uint8Array(analyser.frequencyBinCount)
+    // currentColor, so the bars inherit whatever tone the surrounding message
+    // uses in either theme — no palette of their own to keep in sync. Read
+    // once, not once per frame: getComputedStyle forces a style recalculation,
+    // and doing that sixty times a second to re-read a colour that only
+    // changes with the theme is the expensive half of this loop.
+    const tone = getComputedStyle(canvas).color
     let frame = 0
 
     const pauseController = createRendererLoopPauseController(
@@ -79,9 +85,7 @@ export function SpeechBars({ className, height = 24 }: { className?: string; hei
       const bands = foldBands(bins, SPEECH_BAND_COUNT)
       const barWidth = Math.max(1, (width - BAR_GAP * (bands.length - 1)) / bands.length)
 
-      // currentColor, so the bars inherit whatever tone the surrounding
-      // message uses in either theme — no palette of its own to keep in sync.
-      context.fillStyle = getComputedStyle(canvas).color
+      context.fillStyle = tone
 
       bands.forEach((level, index) => {
         const barHeight = Math.max(MIN_BAR_HEIGHT, level * height)
