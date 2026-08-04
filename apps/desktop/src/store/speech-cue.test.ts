@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { cueBelongsHere } from '@/components/voice/use-speech-highlight'
+
 import { $speechCue, clearSpeechCue, setSpeechCue } from './speech-cue'
 
 beforeEach(() => {
@@ -39,5 +41,25 @@ describe('the spoken-sentence slot', () => {
     clearSpeechCue()
 
     expect(seen).toHaveLength(1)
+  })
+})
+
+describe('which message a cue belongs to', () => {
+  it('a named cue lights only the message it names', () => {
+    const cue = { messageId: 'm2' }
+
+    expect(cueBelongsHere(cue, 'm2', false)).toBe(true)
+    expect(cueBelongsHere(cue, 'm1', true)).toBe(false)
+  })
+
+  it('an unnamed cue falls to the last message — voice conversation names none', () => {
+    const cue = { messageId: null }
+
+    expect(cueBelongsHere(cue, 'm9', true)).toBe(true)
+    expect(cueBelongsHere(cue, 'm1', false)).toBe(false)
+  })
+
+  it('no cue lights nothing', () => {
+    expect(cueBelongsHere(null, 'm1', true)).toBe(false)
   })
 })

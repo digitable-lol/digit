@@ -25,7 +25,7 @@ import { PreviewAttachment } from '@/components/chat/preview-attachment'
 import { Codicon } from '@/components/ui/codicon'
 import { CopyButton } from '@/components/ui/copy-button'
 import { SpeechBars } from '@/components/voice/speech-bars'
-import { useSpeechHighlight } from '@/components/voice/use-speech-highlight'
+import { cueBelongsHere, useSpeechHighlight } from '@/components/voice/use-speech-highlight'
 import { useI18n } from '@/i18n'
 import { triggerHaptic } from '@/lib/haptics'
 import { AudioLines, GitForkIcon, Loader2Icon, RefreshCwIcon, SmilePlusIcon, VolumeXIcon, XIcon } from '@/lib/icons'
@@ -118,9 +118,9 @@ export const AssistantMessage: FC<{
   // Speech marks the reply as it reads it: the sentence now leaving the
   // speaker is painted over the rendered markdown (no wrapper elements, so
   // selection and layout are untouched), and the spectrum appears under it.
-  const speechRef = useSpeechHighlight(messageId)
+  const speechRef = useSpeechHighlight(messageId, isLastMessage)
   const speechCue = useStore($speechCue)
-  const isSpokenHere = Boolean(speechCue) && (!speechCue?.messageId || speechCue.messageId === messageId)
+  const isSpokenHere = cueBelongsHere(speechCue, messageId, isLastMessage)
 
   // Double-click the reply to heart it (iMessage). Undefined while reactions
   // are off, so the root carries no listener at all.
