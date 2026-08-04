@@ -6,7 +6,7 @@ author: Digitable
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
-  hermes:
+  digit:
     tags: [blender, mcp, 3d, glb, gltf, modelling, rendering, game-assets, headless, xvfb, procedural-geometry]
     related_skills: [touchdesigner-mcp, digitable-workbench, digitable-courses]
 ---
@@ -49,7 +49,7 @@ On a headless host, run the real GUI under `xvfb`.
 ## Setup
 
 ```bash
-bash "${HERMES_SKILL_DIR:-$HOME/.digit/skills/creative/blender-mcp}/scripts/setup.sh"
+bash "${DIGIT_SKILL_DIR:-$HOME/.digit/skills/creative/blender-mcp}/scripts/setup.sh"
 ```
 
 The script checks for Blender, `xvfb` and `uvx`, clones the headless launcher if
