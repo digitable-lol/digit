@@ -27,9 +27,10 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
         "kb",
         help="Offline knowledge base over the Digitable courses corpus",
         description=(
-            "A self-hosted retrieval-augmented knowledge base built from the "
-            "Digitable corpus (course articles, SDD documents, workbench "
-            "templates).\n\n"
+            "A self-hosted retrieval-augmented knowledge base built from "
+            "several checkouts: the Digitable corpus (course articles, SDD "
+            "documents, workbench templates) and the flang language "
+            "documentation. `kb corpora` shows which are present.\n\n"
             "Embeddings run on our own Qwen3-Embedding-8B server and answer "
             "synthesis on a loopback ollama. Both endpoints are checked "
             "against an allowlist, so the corpus can only ever go to "
@@ -39,7 +40,8 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
             "  digit kb index                 # first full build\n"
             "  digit kb update                # incremental, only changed files\n"
             "  digit kb search \"горутины\"     # ranked passages with sources\n"
-            "  digit kb ask \"...?\"            # cited answer, or an honest refusal"
+            "  digit kb ask \"...?\"            # cited answer, or an honest refusal\n"
+            "  digit kb verify prog.flang     # machine verdict on flang source"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -71,6 +73,11 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
     _common(p_index)
     p_index.add_argument("--corpus", default=None,
                          help="path to the courses checkout (default: autodetect / $DIGIT_KB_CORPUS)")
+    p_index.add_argument("--corpus-root", action="append", default=[],
+                         metavar="NAME=PATH",
+                         help="point one repository at a checkout, e.g. "
+                              "--corpus-root flang=/path/to/flang (repeatable); "
+                              "`kb corpora` lists the names and their env vars")
     p_index.add_argument("--track", action="append", default=[],
                          help="restrict to a track (repeatable), e.g. --track golang")
     p_index.add_argument("--rebuild", action="store_true",
@@ -93,6 +100,8 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
     )
     _common(p_update)
     p_update.add_argument("--corpus", default=None)
+    p_update.add_argument("--corpus-root", action="append", default=[],
+                          metavar="NAME=PATH")
     p_update.add_argument("--track", action="append", default=[])
     p_update.add_argument("--limit", type=int, default=0)
     p_update.add_argument("--batch-size", type=int, default=32)
@@ -141,6 +150,49 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
                        help="print the full text of each cited passage")
     p_ask.add_argument("--json", action="store_true", dest="as_json")
 
+    # -- verify -----------------------------------------------------------
+    p_verify = sub.add_parser(
+        "verify", help="Run flang's own checker over flang source",
+        description=(
+            "flang is days old, so nothing a model writes in it is knowledge — "
+            "it is a guess that reads like knowledge. The language ships a "
+            "checker, so the guess can be graded in milliseconds instead of "
+            "shown to someone and hoped about.\n\n"
+            "Runs `flang check` (parse, types, totality) and then `flang test` "
+            "(every declared example) and reports one of three verdicts:\n"
+            "  OK          both passed — the examples were actually executed\n"
+            "  FAILED      the checker rejected it; diagnostics carry code and line\n"
+            "  UNVERIFIED  the checker could not run at all\n\n"
+            "The third is not a rounding error of the other two. Exit codes: "
+            "0 verified, 1 rejected, 4 not verified — so a script can never "
+            "read a missing toolchain as a passing grade.\n\n"
+            "  digit kb verify prog.flang\n"
+            "  digit kb verify --stdin --dir . < snippet.flang\n"
+            "  digit kb verify --json prog.flang | jq .verdict"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p_verify.add_argument("paths", nargs="*", metavar="FILE",
+                          help=".flang (or .fts/.json) source to verify")
+    p_verify.add_argument("--stdin", action="store_true",
+                          help="read the source from stdin instead of a file")
+    p_verify.add_argument("--dir", default=None, metavar="DIR",
+                          help="directory a --stdin snippet is written to "
+                               "(default: cwd). Module imports resolve relative "
+                               "to the file, so this decides whether "
+                               "`использует … из \"…\"` can be found at all")
+    p_verify.add_argument("--flang", default=None, metavar="PATH",
+                          help="flang checkout (default: autodetect / $DIGIT_KB_FLANG)")
+    p_verify.add_argument("--timeout", type=float, default=None,
+                          help="seconds per checker invocation (default 30); "
+                               "a timeout is reported as UNVERIFIED, never as a pass")
+    p_verify.add_argument("--no-tests", action="store_true",
+                          help="run `check` only — types agree, nothing is executed")
+    p_verify.add_argument("--require-examples", action="store_true",
+                          help="treat a file that declares no examples as a failure")
+    p_verify.add_argument("--json", action="store_true", dest="as_json",
+                          help="machine-readable output")
+
     # -- housekeeping -----------------------------------------------------
     p_status = sub.add_parser("status", help="Index size, model, freshness, tracks")
     p_status.add_argument("--json", action="store_true", dest="as_json")
@@ -150,6 +202,17 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
     _common(p_doctor)
 
     sub.add_parser("tracks", help="List indexed tracks with chunk counts")
+
+    sub.add_parser(
+        "corpora",
+        help="List the repositories the corpus is made of and whether each is here",
+        description=(
+            "The corpus spans several checkouts. This shows, for each, the "
+            "override name, the environment variable, and the path that "
+            "resolved — or that it is absent, in which case its already "
+            "indexed files are left alone rather than treated as deleted."
+        ),
+    )
 
     p_reset = sub.add_parser("reset", help="Delete the index (keeps the corpus)")
     p_reset.add_argument("--yes", "-y", action="store_true", help="skip confirmation")
@@ -231,10 +294,14 @@ def kb_command(args) -> int:
             return _cmd_search(args)
         if command == "ask":
             return _cmd_ask(args)
+        if command == "verify":
+            return _cmd_verify(args)
         if command == "status":
             return _cmd_status(args)
         if command == "tracks":
             return _cmd_tracks(args)
+        if command == "corpora":
+            return _cmd_corpora(args)
         if command == "doctor":
             return _cmd_doctor(args)
         if command == "reset":
@@ -264,6 +331,24 @@ def kb_command(args) -> int:
     return 2
 
 
+def _parse_corpus_roots(args) -> dict:
+    """Turn ``--corpus-root NAME=PATH`` into the overrides mapping."""
+    from digit_cli.kb import store
+
+    out: dict = {}
+    for item in getattr(args, "corpus_root", []) or []:
+        name, sep, path = str(item).partition("=")
+        if not sep or not name.strip() or not path.strip():
+            raise store.KBError(
+                f"--corpus-root expects NAME=PATH, got {item!r}"
+            )
+        out[name.strip()] = path.strip()
+    # ``--corpus`` is the older, courses-specific spelling of the same thing.
+    if getattr(args, "corpus", None):
+        out.setdefault("courses", args.corpus)
+    return out
+
+
 def _cmd_index(args, *, is_update: bool) -> int:
     _require_numpy()
     from digit_cli.kb import indexer, store
@@ -272,7 +357,13 @@ def _cmd_index(args, *, is_update: bool) -> int:
     quiet = bool(getattr(args, "quiet", False))
     progress = (lambda m: None) if quiet else (lambda m: print(m, flush=True))
 
-    root = indexer.corpus_root(getattr(args, "corpus", None))
+    corpus = indexer.resolve_corpus(_parse_corpus_roots(args))
+    root = corpus.roots[indexer.COURSES_REPO.name]
+    # Printed to stderr and not through ``progress``: a repository that is
+    # not here is exactly the thing --quiet must not be able to hide, or the
+    # run reports success over a corpus that is quietly smaller than it looks.
+    for note in corpus.missing:
+        print(f"kb: {note}", file=sys.stderr)
     client = _client(args)
 
     try:
@@ -295,6 +386,7 @@ def _cmd_index(args, *, is_update: bool) -> int:
             conn=conn,
             progress=progress,
             dry_run=getattr(args, "dry_run", False),
+            corpus=corpus,
         )
         stats = store.index_stats(conn)
 
@@ -466,6 +558,70 @@ def _cmd_ask(args) -> int:
     return 0 if answer.grounded else 3
 
 
+def _cmd_verify(args) -> int:
+    from pathlib import Path
+
+    from digit_cli.kb import verify as V
+
+    timeout = getattr(args, "timeout", None) or V.DEFAULT_TIMEOUT
+    run_tests = not getattr(args, "no_tests", False)
+    paths = [Path(p) for p in (getattr(args, "paths", []) or []) if p != "-"]
+    use_stdin = bool(getattr(args, "stdin", False)) or "-" in (
+        getattr(args, "paths", []) or []
+    )
+
+    if not paths and not use_stdin:
+        print("kb verify: give a file, or --stdin", file=sys.stderr)
+        return 2
+
+    reports = []
+    if use_stdin:
+        source = sys.stdin.read()
+        if not source.strip():
+            print("kb verify: nothing on stdin", file=sys.stderr)
+            return 2
+        reports.append(V.verify_source(
+            source, directory=getattr(args, "dir", None),
+            root=getattr(args, "flang", None),
+            timeout=timeout, run_tests=run_tests,
+        ))
+    if paths:
+        reports.extend(V.verify_paths(
+            paths, root=getattr(args, "flang", None),
+            timeout=timeout, run_tests=run_tests,
+        ))
+
+    # A file that declares no examples passed its types and executed nothing.
+    # Under --require-examples that is not good enough to call verified, and
+    # the demotion has to happen before anything prints "OK".
+    if getattr(args, "require_examples", False):
+        for r in reports:
+            if r.untested:
+                r.verdict = V.FAILED
+                r.reason = "не объявлено ни одного примера (--require-examples)"
+
+    if getattr(args, "as_json", False):
+        import json
+
+        payload = [r.as_dict() for r in reports]
+        print(json.dumps(payload[0] if len(payload) == 1 else payload,
+                         ensure_ascii=False, indent=2))
+    else:
+        for r in reports:
+            for line in V.render(r):
+                print(line)
+            print()
+
+    # Rank: anything unverified dominates. A caller that collapses "the
+    # checker never ran" into "your code is wrong" (or the reverse) is
+    # exactly the confusion the three verdicts exist to prevent.
+    if any(r.verdict == V.UNAVAILABLE for r in reports):
+        return V.EXIT_UNAVAILABLE
+    if any(r.verdict == V.FAILED for r in reports):
+        return V.EXIT_FAILED
+    return V.EXIT_OK
+
+
 def _cmd_status(args) -> int:
     from digit_cli.kb import store
 
@@ -513,6 +669,27 @@ def _cmd_tracks(args) -> int:
     for row in rows:
         print(f"{row['track']:<26}{row['files']:>7}{row['chunks']:>9}")
     return 0
+
+
+def _cmd_corpora(args) -> int:
+    from digit_cli.kb import indexer
+
+    rc = 0
+    print(f"{'name':<12}{'env var':<20}{'required':<10}status")
+    for spec in indexer.REPOS:
+        try:
+            root = indexer._resolve_root(spec)
+            status = str(root)
+        except indexer.MissingCheckout as exc:
+            status = f"ABSENT — {exc}"
+            if spec.required:
+                rc = 1
+        except Exception as exc:  # noqa: BLE001 — a bad env var is a status too
+            status = f"ERROR — {exc}"
+            rc = 1
+        print(f"{spec.name:<12}{spec.env_var:<20}"
+              f"{'yes' if spec.required else 'no':<10}{status}")
+    return rc
 
 
 def _cmd_doctor(args) -> int:

@@ -30,34 +30,181 @@ interrupted after 900 of 1200 files resumes at file 901.
 
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Callable, Dict, Iterator, List, Mapping, Optional, Sequence
 
 from digit_cli.kb import store
-from digit_cli.kb.chunker import chunk_markdown, file_digest, iter_corpus_files
+from digit_cli.kb.chunker import chunk_markdown, file_digest
 from digit_cli.kb.embed import EmbedClient, EmbedError
 
 # --------------------------------------------------------------------------
 # Corpus definition
 # --------------------------------------------------------------------------
+#
+# The corpus is *several* checkouts, not one. It started as one — the
+# Digitable ``courses`` repository — and every slice was expressed as a path
+# relative to that single root. flang broke that: it is a different
+# repository, on its own release cadence, and a language a day old that the
+# generator has never seen, so retrieval is the only way it can be known at
+# all.
+#
+# The shape below therefore separates two things the old tuple conflated:
+#
+# * a **repository** (:class:`RepoSpec`) — how to find a checkout, and
+#   whether the index is allowed to exist without it;
+# * a **slice** of one (:class:`SourceSpec`) — which directory and which
+#   files inside it, and what the resulting ``rel_path`` looks like.
+#
+# ``rel_path`` is the identity key between disk and store: :func:`plan`
+# diffs against it, so perturbing one for an already-indexed file reads as
+# "deleted + new" and re-embeds it. The courses paths below are byte-for-byte
+# what the single-root code produced — the ``prefix`` field just makes the
+# old ``if source != "courses"`` special case explicit data.
 
 DEFAULT_CORPUS_ENV = "DIGIT_KB_CORPUS"
+FLANG_CORPUS_ENV = "DIGIT_KB_FLANG"
 
-#: (source label, path relative to the courses checkout).
-CORPUS_SOURCES: tuple[tuple[str, str], ...] = (
-    ("courses", "content/post"),
-    ("sdd", "docs/sdd"),
-    ("workbench", "products/workbench/templates"),
+
+@dataclass(frozen=True)
+class SourceSpec:
+    """One indexable slice of a checkout.
+
+    ``base`` is a directory relative to the repository root and ``rel_path``
+    is relative to *that*, which is why the first segment of a courses path
+    is the track name (``golang/04-concurrency.md``). ``prefix`` is prepended
+    afterwards, so a slice can be namespaced without its files pretending to
+    live somewhere they do not.
+    """
+
+    source: str
+    base: str = ""
+    prefix: str = ""
+    include: tuple[str, ...] = ("**/*.md",)
+
+
+@dataclass(frozen=True)
+class RepoSpec:
+    """A checkout contributing documents to the index.
+
+    ``marker`` is a path that must exist inside a candidate directory for it
+    to count as this repository — a bare ``is_dir()`` would happily accept an
+    empty directory of the right name and then index nothing.
+
+    ``required=False`` means the index is valid without it. That is not
+    politeness: an optional checkout that is merely *absent right now* must
+    not be mistaken for content that was *deleted*, or an unmounted disk
+    silently drops chunks and the run still reports success. See
+    ``protected`` in :class:`ResolvedCorpus`.
+    """
+
+    name: str
+    env_var: str
+    marker: str
+    default_roots: tuple[Path, ...]
+    sources: tuple[SourceSpec, ...]
+    required: bool = True
+
+
+COURSES_SOURCES: tuple[SourceSpec, ...] = (
+    SourceSpec("courses", "content/post"),
+    SourceSpec("sdd", "docs/sdd", prefix="sdd"),
+    SourceSpec("workbench", "products/workbench/templates", prefix="workbench"),
 )
 
-_DEFAULT_ROOTS = (
-    Path.home() / "projects" / "courses",
-    Path("/home/m/projects/courses"),
+#: Backwards-compatible view of :data:`COURSES_SOURCES` in its original
+#: ``(source label, path relative to the courses checkout)`` form.
+CORPUS_SOURCES: tuple[tuple[str, str], ...] = tuple(
+    (s.source, s.base) for s in COURSES_SOURCES
 )
+
+FLANG_SOURCES: tuple[SourceSpec, ...] = (
+    SourceSpec(
+        source="flang",
+        prefix="flang",
+        # Markdown only, and enumerated rather than swept. The checkout also
+        # holds ``.flang`` sources, JS implementation files and per-tool
+        # READMEs; ``docs/`` plus the four top-level documents and the
+        # language spec are the prose that answers questions about the
+        # language. ``README.ru.md`` is listed next to ``README.md`` because
+        # the corpus and its queries are Russian and the two files are
+        # separate documents, not translations of each other's chunks.
+        include=(
+            "README.md",
+            "README.ru.md",
+            "AGENTS.md",
+            "CONTRIBUTING.md",
+            "flang/SPEC.md",
+            "docs/**/*.md",
+        ),
+    ),
+)
+
+COURSES_REPO = RepoSpec(
+    name="courses",
+    env_var=DEFAULT_CORPUS_ENV,
+    marker="content/post",
+    default_roots=(
+        Path.home() / "projects" / "courses",
+        Path("/home/m/projects/courses"),
+    ),
+    sources=COURSES_SOURCES,
+    required=True,
+)
+
+FLANG_REPO = RepoSpec(
+    name="flang",
+    env_var=FLANG_CORPUS_ENV,
+    marker="flang/SPEC.md",
+    # Only checkouts owned by this account. Other people's clones of flang
+    # exist on this machine and move under them; indexing one would make the
+    # KB's answers depend on somebody else's uncommitted work.
+    default_roots=(
+        Path.home() / "flang",
+        Path("/home/u/flang"),
+    ),
+    sources=FLANG_SOURCES,
+    required=False,
+)
+
+REPOS: tuple[RepoSpec, ...] = (COURSES_REPO, FLANG_REPO)
+
+
+class MissingCheckout(Exception):
+    """A repository could not be located. Fatal only if it is required."""
+
+    def __init__(self, spec: RepoSpec, message: str):
+        super().__init__(message)
+        self.spec = spec
+
+
+def _resolve_root(spec: RepoSpec, explicit: Optional[str] = None) -> Path:
+    """``explicit`` → ``$<env_var>`` → the conventional checkout paths."""
+    if explicit:
+        root = Path(explicit).expanduser()
+        if not root.exists():
+            raise store.KBError(f"corpus root does not exist: {root}")
+        return root
+    env = os.environ.get(spec.env_var, "").strip()
+    if env:
+        root = Path(env).expanduser()
+        if not root.exists():
+            raise store.KBError(f"{spec.env_var} points at a missing path: {root}")
+        return root
+    for candidate in spec.default_roots:
+        if (candidate / spec.marker).exists():
+            return candidate
+    looked = ", ".join(str(p) for p in spec.default_roots)
+    raise MissingCheckout(
+        spec,
+        f"no {spec.name} checkout found"
+        + (f" (looked for {spec.marker} under {looked})" if looked else "")
+        + f"; set {spec.env_var} to index it",
+    )
 
 
 def corpus_root(explicit: Optional[str] = None) -> Path:
@@ -65,26 +212,95 @@ def corpus_root(explicit: Optional[str] = None) -> Path:
 
     ``--corpus`` → ``DIGIT_KB_CORPUS`` → the conventional checkout paths.
     """
-    if explicit:
-        root = Path(explicit).expanduser()
-        if not root.exists():
-            raise store.KBError(f"corpus root does not exist: {root}")
-        return root
-    env = os.environ.get(DEFAULT_CORPUS_ENV, "").strip()
-    if env:
-        root = Path(env).expanduser()
-        if not root.exists():
-            raise store.KBError(
-                f"{DEFAULT_CORPUS_ENV} points at a missing path: {root}"
-            )
-        return root
-    for candidate in _DEFAULT_ROOTS:
-        if (candidate / "content" / "post").is_dir():
-            return candidate
-    raise store.KBError(
-        "cannot find the courses corpus. Pass --corpus /path/to/courses or "
-        f"set {DEFAULT_CORPUS_ENV}."
-    )
+    try:
+        return _resolve_root(COURSES_REPO, explicit)
+    except MissingCheckout:
+        raise store.KBError(
+            "cannot find the courses corpus. Pass --corpus /path/to/courses or "
+            f"set {DEFAULT_CORPUS_ENV}."
+        ) from None
+
+
+@dataclass(frozen=True)
+class ResolvedSource:
+    """A :class:`SourceSpec` bound to an actual directory on this machine."""
+
+    source: str
+    base: Path
+    prefix: str = ""
+    include: tuple[str, ...] = ("**/*.md",)
+
+
+@dataclass
+class ResolvedCorpus:
+    """Everything a run needs to know about where documents come from."""
+
+    sources: List[ResolvedSource] = field(default_factory=list)
+    roots: Dict[str, Path] = field(default_factory=dict)
+    #: Human-readable notes about optional repositories that were skipped.
+    missing: List[str] = field(default_factory=list)
+    #: ``rel_path`` prefixes exempt from deletion detection this run, because
+    #: the checkout that owns them is not here to be scanned.
+    protected: List[str] = field(default_factory=list)
+
+
+def sources_for(
+    root: Path, spec: Optional[RepoSpec] = None
+) -> List[ResolvedSource]:
+    """Bind one repository's slices to a concrete checkout directory."""
+    spec = spec if spec is not None else COURSES_REPO
+    return [
+        ResolvedSource(
+            source=s.source,
+            base=root / s.base if s.base else root,
+            prefix=s.prefix,
+            include=s.include,
+        )
+        for s in spec.sources
+    ]
+
+
+def resolve_corpus(
+    overrides: Optional[Mapping[str, str]] = None,
+    *,
+    repos: Optional[Sequence[RepoSpec]] = None,
+) -> ResolvedCorpus:
+    """Locate every repository in ``repos`` (default: :data:`REPOS`).
+
+    A missing *required* repository is a hard error; a missing optional one
+    is recorded in ``missing`` and its ``rel_path`` prefixes are added to
+    ``protected`` so this run cannot mistake absence for deletion.
+
+    ``repos`` defaults to ``None`` rather than to :data:`REPOS` directly: a
+    default argument is bound once, at import, so ``REPOS`` as the default
+    would keep answering with the import-time registry no matter what a
+    caller (or a test) had replaced it with — a divergence with no symptom.
+    """
+    repos = repos if repos is not None else REPOS
+    over = dict(overrides or {})
+    unknown = set(over) - {r.name for r in repos}
+    if unknown:
+        raise store.KBError(
+            "unknown corpus name(s): " + ", ".join(sorted(unknown))
+            + "; known: " + ", ".join(r.name for r in repos)
+        )
+
+    out = ResolvedCorpus()
+    for spec in repos:
+        try:
+            root = _resolve_root(spec, over.get(spec.name))
+        except MissingCheckout as exc:
+            if spec.required:
+                raise store.KBError(str(exc)) from None
+            out.missing.append(str(exc))
+            out.protected.extend(s.prefix for s in spec.sources if s.prefix)
+            continue
+        # A path the user named explicitly (override or env var) that does not
+        # exist stays a hard error even for an optional repo: they asked for
+        # it by name, so silently indexing without it would be a lie.
+        out.roots[spec.name] = root
+        out.sources.extend(sources_for(root, spec))
+    return out
 
 
 @dataclass
@@ -94,29 +310,76 @@ class CorpusFile:
     source: str
 
 
-def discover(root: Path, tracks: Sequence[str] = ()) -> List[CorpusFile]:
-    """Enumerate every Markdown file in the corpus, sorted and deduplicated.
+def _iter_source_files(base: Path, include: Sequence[str]) -> Iterator[Path]:
+    """Yield the files matching ``include`` under ``base``, deduplicated.
 
-    ``rel_path`` is relative to the *source* directory, so the first segment
-    is the track name (``golang/04-concurrency.md``) — which is what the
-    chunker derives ``track`` from and what citations show.
+    Deduplication is by *resolved* path so a symlinked document is indexed
+    once, and patterns are expanded in the order given so an explicit file
+    always wins over a later sweep.
+    """
+    seen: set[Path] = set()
+    for pattern in include:
+        for path in sorted(base.glob(pattern)):
+            if not path.is_file():
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            yield path
+
+
+def discover_sources(
+    sources: Sequence[ResolvedSource], tracks: Sequence[str] = ()
+) -> List[CorpusFile]:
+    """Enumerate every Markdown file of ``sources``, sorted and deduplicated.
+
+    ``rel_path`` is relative to the source's base directory, so the first
+    segment is the track name (``golang/04-concurrency.md``, ``sdd/0001.md``,
+    ``flang/docs/language.ru.md``) — which is what the chunker derives
+    ``track`` from and what citations show.
     """
     found: List[CorpusFile] = []
+    claimed: Dict[str, Path] = {}
     wanted = {t.lower() for t in tracks}
-    for source, rel in CORPUS_SOURCES:
-        base = root / rel
-        if not base.exists():
+    for src in sources:
+        if not src.base.exists():
             continue
-        for path in iter_corpus_files([base]):
-            rel_path = str(path.relative_to(base))
-            if source != "courses":
-                rel_path = f"{source}/{rel_path}"
-            track = rel_path.split("/")[0] if "/" in rel_path else source
+        for path in _iter_source_files(src.base, src.include):
+            rel_path = str(path.relative_to(src.base))
+            if src.prefix:
+                rel_path = f"{src.prefix}/{rel_path}"
+            # Two repositories can legitimately share a track — the courses
+            # corpus has a ``flang`` track of its own, and having both it and
+            # the upstream documents answer ``--track flang`` is the point.
+            # Two *files* sharing a rel_path cannot: rel_path is the primary
+            # key of ``files``, so one would overwrite the other's row and
+            # the index would quietly hold whichever was scanned last.
+            prior = claimed.get(rel_path)
+            if prior is not None and prior != path:
+                raise store.KBError(
+                    f"two corpus files claim the same identity {rel_path!r}: "
+                    f"{prior} and {path}. Give one of their sources a "
+                    f"different prefix before indexing."
+                )
+            claimed[rel_path] = path
+            track = rel_path.split("/")[0] if "/" in rel_path else src.source
             if wanted and track.lower() not in wanted:
                 continue
-            found.append(CorpusFile(path=path, rel_path=rel_path, source=source))
+            found.append(CorpusFile(path=path, rel_path=rel_path, source=src.source))
     found.sort(key=lambda f: f.rel_path)
     return found
+
+
+def discover(root: Path, tracks: Sequence[str] = ()) -> List[CorpusFile]:
+    """Enumerate the *courses* checkout at ``root``.
+
+    Deliberately single-repository: callers that pass a bare root (tests,
+    one-off scans) must get exactly that root's files and never reach out to
+    whatever other checkouts happen to exist on the machine. Multi-repository
+    runs go through :func:`resolve_corpus` + :func:`discover_sources`.
+    """
+    return discover_sources(sources_for(root), tracks)
 
 
 # --------------------------------------------------------------------------
@@ -141,18 +404,32 @@ class IndexPlan:
         return not self.new and not self.changed and not self.deleted
 
 
+def _under_any(rel_path: str, prefixes: Sequence[str]) -> bool:
+    return any(
+        rel_path == p or rel_path.startswith(p + "/") for p in prefixes if p
+    )
+
+
 def plan(
     conn,
     files: Sequence[CorpusFile],
     *,
     force: bool = False,
     scoped: bool = False,
+    protected_prefixes: Sequence[str] = (),
 ) -> IndexPlan:
     """Diff the corpus against the store.
 
     ``scoped`` suppresses deletion detection: when the caller restricted the
     scan with ``--track``, files outside that scope are absent from ``files``
     but must not be interpreted as deleted.
+
+    ``protected_prefixes`` is the same idea for a whole repository. When an
+    optional checkout is not on this machine, its already-indexed files are
+    likewise absent from ``files`` — and dropping their chunks would turn an
+    unmounted disk or a renamed directory into silent, invisible data loss
+    that the run still reports as success. They are left alone until the
+    checkout is back and can actually be compared against.
     """
     known = store.known_files(conn)
     result = IndexPlan()
@@ -171,7 +448,10 @@ def plan(
             result.unchanged.append(cf)
 
     if not scoped:
-        result.deleted = sorted(set(known) - seen)
+        gone = set(known) - seen
+        if protected_prefixes:
+            gone = {r for r in gone if not _under_any(r, protected_prefixes)}
+        result.deleted = sorted(gone)
     return result
 
 
@@ -220,19 +500,26 @@ def run_index(
     conn=None,
     progress: Optional[Callable[[str], None]] = None,
     dry_run: bool = False,
+    corpus: Optional[ResolvedCorpus] = None,
 ) -> IndexReport:
-    """Index (or incrementally update) the corpus. Returns what it did."""
+    """Index (or incrementally update) the corpus. Returns what it did.
+
+    ``corpus`` carries the resolved multi-repository layout. Without it the
+    run covers exactly the courses checkout at ``root`` and nothing else —
+    which is what a caller passing a bare ``root`` means, and keeps a scan of
+    one directory from silently pulling in unrelated checkouts.
+    """
     if conn is None:
         with store.connect() as own:
             return _run_index(
                 root=root, tracks=tracks, force=force, limit=limit,
                 batch_size=batch_size, client=client or EmbedClient(),
-                conn=own, progress=progress, dry_run=dry_run,
+                conn=own, progress=progress, dry_run=dry_run, corpus=corpus,
             )
     return _run_index(
         root=root, tracks=tracks, force=force, limit=limit,
         batch_size=batch_size, client=client or EmbedClient(),
-        conn=conn, progress=progress, dry_run=dry_run,
+        conn=conn, progress=progress, dry_run=dry_run, corpus=corpus,
     )
 
 
@@ -252,20 +539,32 @@ def _run_index(
     conn,
     progress: Optional[Callable[[str], None]],
     dry_run: bool,
+    corpus: Optional[ResolvedCorpus] = None,
 ) -> IndexReport:
     started = time.time()
     report = IndexReport()
 
+    if corpus is None:
+        corpus = ResolvedCorpus(
+            sources=sources_for(root), roots={COURSES_REPO.name: root}
+        )
+
     scoped = bool(tracks)
-    files = discover(root, tracks)
+    files = discover_sources(corpus.sources, tracks)
+    where = ", ".join(str(p) for p in corpus.roots.values()) or str(root)
     if not files:
         raise store.KBError(
-            f"no Markdown files found under {root} "
+            f"no Markdown files found under {where} "
             f"{'for tracks ' + ', '.join(tracks) if tracks else ''}".strip()
         )
 
-    _emit(progress, f"corpus: {len(files)} markdown files under {root}")
-    the_plan = plan(conn, files, force=force, scoped=scoped)
+    for note in corpus.missing:
+        _emit(progress, f"corpus: skipping — {note}")
+    _emit(progress, f"corpus: {len(files)} markdown files under {where}")
+    the_plan = plan(
+        conn, files, force=force, scoped=scoped,
+        protected_prefixes=corpus.protected,
+    )
     report.files_new = len(the_plan.new)
     report.files_changed = len(the_plan.changed)
     report.files_unchanged = len(the_plan.unchanged)
@@ -288,7 +587,16 @@ def _run_index(
         store.set_meta(conn, "schema_version", store.SCHEMA_VERSION)
         store.set_meta(conn, "embed_model", client.embed_model)
         store.set_meta(conn, "embed_dim", str(client.embed_dim))
+        # ``corpus_root`` stays the courses checkout for compatibility with
+        # anything reading the old single-root key; ``corpus_roots`` records
+        # the full layout so a later run can say which repositories the
+        # index actually covers.
         store.set_meta(conn, "corpus_root", str(root))
+        store.set_meta(
+            conn, "corpus_roots",
+            json.dumps({k: str(v) for k, v in corpus.roots.items()},
+                       ensure_ascii=False, sort_keys=True),
+        )
 
     # Files that vanished from disk are dropped up front — there is nothing
     # to replace them with, so holding their stale chunks helps nobody.

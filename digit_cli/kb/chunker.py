@@ -1,12 +1,16 @@
 """Markdown-aware chunking for the Digitable knowledge base.
 
 The corpus (``courses/content/post/**``, ``courses/docs/sdd``,
-``courses/products/workbench/templates``) is Hugo-style Markdown: a YAML
-front matter block followed by a body organised with ATX headings. Blind
-character-window chunking would cut mid-sentence and, worse, strip the
-section heading away from the text it introduces — and the heading *is*
-part of the meaning ("## Горутины" over a paragraph that never repeats the
-word "горутина").
+``courses/products/workbench/templates``, and the flang repository's
+documentation) is Markdown: usually a YAML front matter block followed by a
+body organised with ATX headings. Blind character-window chunking would cut
+mid-sentence and, worse, strip the section heading away from the text it
+introduces — and the heading *is* part of the meaning ("## Горутины" over a
+paragraph that never repeats the word "горутина").
+
+Files without front matter (the flang documents are plain READMEs and specs)
+lose only the ``title`` field, which falls back to the file stem; the
+heading path still carries the structure, so they chunk the same way.
 
 So chunking here is structural:
 
@@ -40,7 +44,7 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Sequence
+from typing import List, Optional, Sequence
 
 # --------------------------------------------------------------------------
 # Tunables
@@ -423,21 +427,3 @@ def file_digest(path: Path) -> str:
         for block in iter(lambda: fh.read(1 << 20), b""):
             h.update(block)
     return h.hexdigest()
-
-
-def iter_corpus_files(roots: Iterable[Path]) -> Iterator[Path]:
-    """Yield every Markdown file under ``roots``, sorted and de-duplicated."""
-    seen: set[Path] = set()
-    for root in roots:
-        if not root.exists():
-            continue
-        if root.is_file():
-            candidates: Iterable[Path] = [root]
-        else:
-            candidates = sorted(root.rglob("*.md"))
-        for path in candidates:
-            resolved = path.resolve()
-            if resolved in seen or not path.is_file():
-                continue
-            seen.add(resolved)
-            yield path

@@ -565,3 +565,508 @@ def test_index_with_chunks_but_no_recorded_encoder_is_refused(
         assert store.chunk_count(conn) > 0
         with pytest.raises(store.KBError, match="records no embedding model"):
             store.assert_compatible(conn, FakeClient.embed_model, FAKE_DIM)
+
+
+# --------------------------------------------------------------------------
+# Multi-repository corpus
+# --------------------------------------------------------------------------
+#
+# The corpus grew from one checkout to several when flang was added. The
+# tests below pin the two things that refactor could break silently: the
+# identity (``rel_path``) of everything that was already indexed, and the
+# rule that an absent optional checkout is not the same as deleted content.
+
+SDD_DOC = """---
+title: "Решение 0001"
+---
+
+# Контекст
+
+Документ инженерного решения с достаточным количеством слов, чтобы чанкер
+счёл его самостоятельным фрагментом, а не обрезком заголовка без тела.
+"""
+
+FLANG_DOC = """# flang
+
+Язык описан спецификацией, которая исполняется. Абзац намеренно длиннее
+минимального размера фрагмента, чтобы чанкер выдал хотя бы один чанк и
+файл попал в индекс, а не был молча пропущен как пустой.
+"""
+
+
+@pytest.fixture()
+def wide_corpus(tmp_path: Path) -> Path:
+    """A courses checkout with all three of its slices populated."""
+    root = tmp_path / "courses"
+    post = root / "content" / "post" / "golang"
+    post.mkdir(parents=True)
+    (post / "01-intro.md").write_text(ARTICLE, encoding="utf-8")
+    sdd = root / "docs" / "sdd"
+    sdd.mkdir(parents=True)
+    (sdd / "0001-decision.md").write_text(SDD_DOC, encoding="utf-8")
+    tpl = root / "products" / "workbench" / "templates"
+    tpl.mkdir(parents=True)
+    (tpl / "brief.md").write_text(SDD_DOC, encoding="utf-8")
+    return root
+
+
+def _fake_flang_checkout(tmp_path: Path) -> Path:
+    root = tmp_path / "flang-checkout"
+    (root / "flang").mkdir(parents=True)
+    (root / "flang" / "SPEC.md").write_text(FLANG_DOC, encoding="utf-8")
+    (root / "docs").mkdir()
+    (root / "docs" / "language.ru.md").write_text(FLANG_DOC, encoding="utf-8")
+    (root / "README.md").write_text(FLANG_DOC, encoding="utf-8")
+    # Not in the include list: the checkout is full of code and per-tool
+    # READMEs, and sweeping them in would bury the language documentation.
+    (root / "src").mkdir()
+    (root / "src" / "NOTES.md").write_text(FLANG_DOC, encoding="utf-8")
+    return root
+
+
+def test_courses_rel_paths_survived_the_multi_root_refactor(wide_corpus):
+    """``rel_path`` is the identity key — perturbing one re-embeds the file.
+
+    ``plan()`` diffs disk against the store by ``rel_path``, so a path that
+    changes shape reads as "deleted + new" and costs a full re-encode of a
+    file whose bytes never moved. The prefixes below are exactly what the
+    single-root code produced.
+    """
+    got = {f.rel_path: f.source for f in indexer.discover(wide_corpus)}
+    assert got == {
+        "golang/01-intro.md": "courses",
+        "sdd/0001-decision.md": "sdd",
+        "workbench/brief.md": "workbench",
+    }
+
+
+def test_a_bare_root_never_reaches_into_another_checkout(
+    tmp_path, wide_corpus, monkeypatch
+):
+    """``discover(root)`` means *that* root and nothing else.
+
+    A caller scanning one directory — a test, a one-off — must not silently
+    acquire whatever other repositories happen to exist on the machine.
+    """
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(_fake_flang_checkout(tmp_path)))
+    assert all(f.source != "flang" for f in indexer.discover(wide_corpus))
+
+
+def test_flang_documents_carry_their_own_source_and_track(
+    tmp_path, wide_corpus, monkeypatch
+):
+    monkeypatch.setenv("DIGIT_KB_CORPUS", str(wide_corpus))
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(_fake_flang_checkout(tmp_path)))
+
+    resolved = indexer.resolve_corpus()
+    assert set(resolved.roots) == {"courses", "flang"}
+    assert resolved.missing == []
+
+    files = indexer.discover_sources(resolved.sources)
+    flang = {f.rel_path for f in files if f.source == "flang"}
+    # Path-preserving, so a citation maps onto the repository layout, and
+    # ``src/NOTES.md`` is absent because only documentation is included.
+    assert flang == {
+        "flang/README.md",
+        "flang/docs/language.ru.md",
+        "flang/flang/SPEC.md",
+    }
+    assert {f.rel_path for f in files if f.source != "flang"} == {
+        "golang/01-intro.md", "sdd/0001-decision.md", "workbench/brief.md",
+    }
+    # One track, so `--track flang` reaches all of it.
+    assert {f.rel_path for f in indexer.discover_sources(resolved.sources, ["flang"])} \
+        == flang
+
+
+def test_two_files_claiming_one_rel_path_are_refused(tmp_path):
+    """``rel_path`` is the primary key of ``files``; a clash is data loss.
+
+    The courses corpus already has a ``flang`` track of its own, so the two
+    sources share a namespace by design. Sharing a *name* is different: one
+    row would overwrite the other and the index would hold whichever was
+    scanned last, with no sign that anything was dropped.
+    """
+    a = tmp_path / "a"
+    b = tmp_path / "b"
+    for base in (a, b):
+        base.mkdir()
+        (base / "same.md").write_text(FLANG_DOC, encoding="utf-8")
+    sources = [
+        indexer.ResolvedSource(source="a", base=a, prefix="x"),
+        indexer.ResolvedSource(source="b", base=b, prefix="x"),
+    ]
+    with pytest.raises(store.KBError, match="same identity"):
+        indexer.discover_sources(sources)
+
+
+def test_an_absent_optional_checkout_keeps_its_chunks(
+    tmp_path, wide_corpus, monkeypatch
+):
+    """Absence is not deletion.
+
+    An optional repository that is merely not mounted right now looks
+    exactly like one whose files were removed. Treating the two the same
+    turns an unplugged disk into silent data loss that the run still
+    reports as a success — so the missing repo's paths are left alone
+    until it is back and can actually be compared against.
+    """
+    import dataclasses
+
+    monkeypatch.setenv("DIGIT_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("DIGIT_KB_CORPUS", str(wide_corpus))
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(_fake_flang_checkout(tmp_path)))
+
+    def flang_chunks(conn) -> int:
+        return conn.execute(
+            "SELECT COUNT(*) AS n FROM chunks WHERE rel_path LIKE 'flang/%'"
+        ).fetchone()["n"]
+
+    with store.connect() as conn:
+        indexer.run_index(
+            root=wide_corpus, corpus=indexer.resolve_corpus(),
+            client=FakeClient(), conn=conn,
+        )
+        indexed = flang_chunks(conn)
+        assert indexed > 0
+
+        # The checkout vanishes: no env var, no conventional path.
+        monkeypatch.delenv("DIGIT_KB_FLANG")
+        nowhere = dataclasses.replace(indexer.FLANG_REPO, default_roots=())
+        absent = indexer.resolve_corpus(
+            repos=(indexer.COURSES_REPO, nowhere)
+        )
+        assert absent.missing, "a skipped repository must be reported"
+        assert absent.protected == ["flang"]
+
+        report = indexer.run_index(
+            root=wide_corpus, corpus=absent, client=FakeClient(), conn=conn,
+        )
+        assert report.files_deleted == 0
+        assert flang_chunks(conn) == indexed
+
+
+def test_a_file_deleted_from_a_present_checkout_is_still_dropped(
+    tmp_path, wide_corpus, monkeypatch
+):
+    """The protection above is per-absent-repository, not a blanket amnesty."""
+    monkeypatch.setenv("DIGIT_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("DIGIT_KB_CORPUS", str(wide_corpus))
+    flang = _fake_flang_checkout(tmp_path)
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(flang))
+
+    with store.connect() as conn:
+        indexer.run_index(
+            root=wide_corpus, corpus=indexer.resolve_corpus(),
+            client=FakeClient(), conn=conn,
+        )
+        (flang / "docs" / "language.ru.md").unlink()
+        report = indexer.run_index(
+            root=wide_corpus, corpus=indexer.resolve_corpus(),
+            client=FakeClient(), conn=conn,
+        )
+        assert report.files_deleted == 1
+        assert conn.execute(
+            "SELECT COUNT(*) AS n FROM chunks WHERE rel_path = ?",
+            ("flang/docs/language.ru.md",),
+        ).fetchone()["n"] == 0
+
+
+def test_a_named_but_missing_checkout_is_a_hard_error(tmp_path, monkeypatch):
+    """Naming a path explicitly and having it ignored would be a lie."""
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(tmp_path / "not-here"))
+    with pytest.raises(store.KBError, match="DIGIT_KB_FLANG"):
+        indexer.resolve_corpus()
+
+
+def test_the_missing_courses_corpus_message_is_unchanged(monkeypatch):
+    import dataclasses
+
+    monkeypatch.delenv("DIGIT_KB_CORPUS", raising=False)
+    monkeypatch.setattr(
+        indexer, "COURSES_REPO",
+        dataclasses.replace(indexer.COURSES_REPO, default_roots=()),
+    )
+    with pytest.raises(store.KBError, match="cannot find the courses corpus"):
+        indexer.corpus_root()
+
+
+# --------------------------------------------------------------------------
+# flang verification
+# --------------------------------------------------------------------------
+#
+# Every flang snippet below is run through flang's own checker rather than
+# eyeballed. That is not ceremony: this suite's author wrote flang from
+# memory once and produced a file that reads perfectly and does not parse.
+# A snippet asserted correct by a human is exactly the artefact the
+# verifier exists to distrust.
+
+import shutil  # noqa: E402
+
+from digit_cli.kb import verify  # noqa: E402
+
+
+def _live_checker():
+    try:
+        return verify.find_checker()
+    except verify.CheckerUnavailable:
+        return None
+
+
+CHECKER = _live_checker()
+needs_flang = pytest.mark.skipif(
+    CHECKER is None, reason="no flang checkout or no node on this machine"
+)
+
+GOOD_FLANG = """модуль «Проба»
+
+тотальная функция «Удвоить»
+  принимает n: число
+  возвращает число
+  пример «Два»
+    дано n равно 2
+    ожидается 4
+  n умножить на 2
+"""
+
+BROKEN_FLANG = """модуль «Битый»
+
+тотальная функция «Ой»
+  принимает n: число
+  возвращает строка
+  то n плюс
+"""
+
+WRONG_FLANG = """модуль «Провал»
+
+тотальная функция «Удвоить»
+  принимает n: число
+  возвращает число
+  пример «Неверный»
+    дано n равно 2
+    ожидается 5
+  n умножить на 2
+"""
+
+NO_EXAMPLES_FLANG = """модуль «Без примеров»
+
+тотальная функция «Удвоить»
+  принимает n: число
+  возвращает число
+  n умножить на 2
+"""
+
+
+@pytest.mark.parametrize("verdict", [verify.FAILED, verify.UNAVAILABLE])
+def test_only_a_real_pass_counts_as_ok(verdict):
+    """``ok`` is not "not failed"."""
+    report = verify.VerifyReport(verdict=verdict)
+    assert not report.ok
+    assert report.exit_code != verify.EXIT_OK
+
+
+def test_the_three_exit_codes_are_distinct():
+    """A script must be able to tell "wrong" from "never checked".
+
+    Collapsing them either sends someone debugging correct code or ships
+    code nobody looked at; the exit codes are the only channel a caller
+    that does not parse the JSON has.
+    """
+    assert len({verify.EXIT_OK, verify.EXIT_FAILED, verify.EXIT_UNAVAILABLE}) == 3
+
+
+def test_no_checkout_is_unverified_rather_than_ok(tmp_path, monkeypatch):
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(tmp_path / "not-a-checkout"))
+    report = verify.verify_file(tmp_path / "whatever.flang")
+    assert report.verdict == verify.UNAVAILABLE
+    assert not report.ok and not report.available
+    assert report.exit_code == verify.EXIT_UNAVAILABLE
+    assert "DIGIT_KB_FLANG" in report.reason
+
+
+def test_a_directory_without_the_cli_is_unverified(tmp_path, monkeypatch):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(empty))
+    report = verify.verify_file(tmp_path / "whatever.flang")
+    assert report.verdict == verify.UNAVAILABLE
+    assert "flang/bin/flang.mjs" in report.reason
+
+
+def test_a_missing_node_is_unverified(tmp_path, monkeypatch):
+    monkeypatch.setenv("DIGIT_FLANG_NODE", str(tmp_path / "no-node"))
+    report = verify.verify_file(tmp_path / "whatever.flang")
+    assert report.verdict == verify.UNAVAILABLE
+    assert not report.ok
+
+
+def test_render_of_an_unverified_report_says_so_out_loud():
+    text = "\n".join(verify.render(
+        verify.VerifyReport(verdict=verify.UNAVAILABLE, path="x.flang",
+                            reason="no node")
+    ))
+    assert "UNVERIFIED" in text
+    assert "НЕ подтверждён" in text
+
+
+@needs_flang
+def test_a_correct_snippet_passes_check_and_runs_its_examples(tmp_path):
+    report = verify.verify_source(GOOD_FLANG, directory=tmp_path, checker=CHECKER)
+    assert report.verdict == verify.OK, report.reason
+    assert report.module == "Проба"
+    assert report.functions == [{"name": "Удвоить", "total": True}]
+    assert (report.examples_total, report.examples_passed) == (1, 1)
+
+
+@needs_flang
+def test_a_broken_snippet_is_rejected_with_a_place_to_look(tmp_path):
+    report = verify.verify_source(BROKEN_FLANG, directory=tmp_path, checker=CHECKER)
+    assert report.verdict == verify.FAILED
+    assert report.exit_code == verify.EXIT_FAILED
+    diag = report.diagnostics[0]
+    assert diag.code == "FLANG_PARSE"
+    assert diag.stage == "check"
+    # "что-то не так" is not a diagnostic. A line and column are.
+    assert diag.line == 6 and diag.column == 3
+
+
+@needs_flang
+def test_code_that_type_checks_but_computes_wrongly_still_fails(tmp_path):
+    """``check`` alone is not verification — the examples have to run."""
+    check_only = verify.verify_source(
+        WRONG_FLANG, directory=tmp_path, checker=CHECKER, run_tests=False
+    )
+    assert check_only.verdict == verify.OK
+
+    report = verify.verify_source(WRONG_FLANG, directory=tmp_path, checker=CHECKER)
+    assert report.verdict == verify.FAILED
+    assert report.examples_failed == 1
+    failure = report.failures[0]
+    assert (failure.expected, failure.actual) == (5, 4)
+
+
+@needs_flang
+def test_a_snippet_with_no_examples_is_flagged_as_unexercised(tmp_path):
+    """Types agreeing is not the same as anything having been computed."""
+    report = verify.verify_source(
+        NO_EXAMPLES_FLANG, directory=tmp_path, checker=CHECKER
+    )
+    assert report.verdict == verify.OK
+    assert report.untested
+    assert "ни одного" in "\n".join(verify.render(report))
+
+
+@needs_flang
+def test_an_import_resolves_against_the_snippets_directory(tmp_path):
+    """Where the snippet is written decides whether its imports exist.
+
+    ``использует «Списки» из "../stdlib/lists.flang"`` is resolved relative
+    to the file, so a snippet materialised in the wrong directory fails for
+    a reason that has nothing to do with the code.
+    """
+    checkout = CHECKER.script.parent.parent
+    example = checkout / "examples" / "import-check.flang"
+    if not example.is_file():  # pragma: no cover - checkout without examples
+        pytest.skip("this flang checkout has no examples/import-check.flang")
+    source = example.read_text(encoding="utf-8")
+
+    here = verify.verify_source(
+        source, directory=example.parent, checker=CHECKER
+    )
+    assert here.verdict == verify.OK, here.reason
+
+    elsewhere = verify.verify_source(source, directory=tmp_path, checker=CHECKER)
+    assert elsewhere.verdict == verify.FAILED
+    assert elsewhere.diagnostics[0].code == "FLANG_IMPORT_NOT_FOUND"
+
+
+@needs_flang
+def test_every_flang_source_in_the_checkout_verifies(tmp_path):
+    """Smoke test against real inputs, not just hand-written snippets."""
+    checkout = CHECKER.script.parent.parent
+    files = sorted(checkout.glob("stdlib/*.flang")) + sorted(
+        checkout.glob("core/*.flang")
+    )
+    if not files:  # pragma: no cover - a checkout without a stdlib
+        pytest.skip("this flang checkout ships no stdlib")
+    reports = verify.verify_paths(files)
+    bad = [(r.path, r.verdict, r.reason) for r in reports if not r.ok]
+    assert not bad, bad
+    assert sum(r.examples_passed for r in reports) > 0
+
+
+def test_verify_paths_reports_per_file_when_the_checker_is_missing(
+    tmp_path, monkeypatch
+):
+    """A missing checker must not abort the batch into an exception.
+
+    The caller has to be able to see, per file, that nothing was verified —
+    inferring it from a traceback is how "unverified" turns into "fine".
+    """
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(tmp_path / "gone"))
+    reports = verify.verify_paths([tmp_path / "a.flang", tmp_path / "b.flang"])
+    assert len(reports) == 2
+    assert all(r.verdict == verify.UNAVAILABLE for r in reports)
+
+
+@pytest.mark.parametrize("code,is_verdict", [
+    ("FLANG_PARSE", True),
+    ("FLANG_TYPE", True),
+    ("FLANG_NOT_TOTAL", True),
+    ("FLANG_IMPORT_NOT_FOUND", True),
+    ("FTS_UTILITY_PROPERTY", True),
+    # Inside the family but about the tool, not the program.
+    ("FLANG_INTERNAL", False),
+    ("FLANG_CLI", False),
+    # Node's, not flang's — the checker crashed before judging anything.
+    ("ERR_MODULE_NOT_FOUND", False),
+])
+def test_a_crash_is_told_apart_from_a_rejection(code, is_verdict):
+    """Blaming the author for a broken toolchain is the same bug, reversed.
+
+    ``flang.mjs`` returns one JSON shape for both, so the code family is the
+    only signal: an unbuilt checkout answers ``ERR_MODULE_NOT_FOUND`` for a
+    perfectly good ``.fts`` model, and calling that "your code is wrong"
+    sends someone debugging a file that is fine.
+    """
+    diag = verify.Diagnostic(code=code, message="…")
+    assert verify._is_a_verdict([diag]) is is_verdict
+
+
+def test_a_failing_example_is_a_verdict_even_with_no_diagnostics():
+    """``flang test`` reports a bad example through ``results``, not diagnostics."""
+    assert verify._is_a_verdict([]) is True
+
+
+needs_node = pytest.mark.skipif(
+    shutil.which("node") is None, reason="node is not on PATH"
+)
+
+STUB_CRASHING_CLI = """\
+process.stderr.write(JSON.stringify({
+  error: "Cannot find module 'dist/src/index.js'",
+  diagnostics: [{ code: "ERR_MODULE_NOT_FOUND",
+                  message: "Cannot find module 'dist/src/index.js'",
+                  severity: "error" }],
+}))
+process.exit(1)
+"""
+
+
+@needs_node
+def test_a_checker_that_crashes_reports_unverified_not_failed(tmp_path, monkeypatch):
+    """End-to-end version of the rule above, against a real subprocess."""
+    checkout = tmp_path / "checkout"
+    (checkout / "flang" / "bin").mkdir(parents=True)
+    (checkout / "flang" / "bin" / "flang.mjs").write_text(
+        STUB_CRASHING_CLI, encoding="utf-8"
+    )
+    (checkout / "flang" / "SPEC.md").write_text("# spec\n", encoding="utf-8")
+    source = tmp_path / "prog.flang"
+    source.write_text(GOOD_FLANG, encoding="utf-8")
+
+    monkeypatch.setenv("DIGIT_KB_FLANG", str(checkout))
+    report = verify.verify_file(source)
+    assert report.verdict == verify.UNAVAILABLE
+    assert report.exit_code == verify.EXIT_UNAVAILABLE
+    assert "ERR_MODULE_NOT_FOUND" in report.reason

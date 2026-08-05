@@ -1,22 +1,28 @@
 """Digit knowledge base — self-hosted RAG over the Digitable corpus.
 
-``digit kb`` indexes the Digitable ``courses`` checkout (course articles,
-SDD engineering documents, workbench templates) into a local store and
-answers questions from it with citations. Retrieval uses our own
-Qwen3-Embedding-8B server; answer synthesis uses a loopback ollama.
+``digit kb`` indexes several checkouts (course articles, SDD engineering
+documents, workbench templates, the flang language documentation) into a
+local store and answers questions from them with citations. Retrieval uses
+our own Qwen3-Embedding-8B server; answer synthesis uses a loopback ollama.
 
 No third party ever sees the corpus: every endpoint is validated on
 construction against an allowlist of loopback plus a short, exactly-matched
 list of our own machines (see :mod:`~digit_cli.kb.embed`).
+
+Retrieval is the whole answer for a language the generator has never seen:
+flang is days old, so there is nothing to fine-tune against and the target
+moves anyway. Indexing its documents makes it *knowable*; ``digit kb verify``
+makes the resulting code *checkable*, which is the half retrieval cannot do.
 
 Modules
 -------
 :mod:`~digit_cli.kb.chunker`  Markdown/front-matter aware chunking.
 :mod:`~digit_cli.kb.store`    SQLite metadata + FTS5 + the ``.npy`` slab.
 :mod:`~digit_cli.kb.embed`    Allowlisted encoder + generator client.
-:mod:`~digit_cli.kb.indexer`  Corpus discovery, incremental (re)index.
+:mod:`~digit_cli.kb.indexer`  Multi-repository discovery, incremental (re)index.
 :mod:`~digit_cli.kb.search`   Dense + BM25 hybrid retrieval (RRF).
 :mod:`~digit_cli.kb.ask`      Retrieval-gated, cited answering.
+:mod:`~digit_cli.kb.verify`   flang's own checker, as a three-state verdict.
 :mod:`~digit_cli.kb.cli`      ``digit kb …`` parser and handlers.
 
 Imports here are deliberately lazy: ``digit_cli.main`` imports
