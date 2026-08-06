@@ -10614,7 +10614,7 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "project", "proxy",
         "prompt-size",
         "send", "sessions", "setup",
-        "skin", "skills", "slack", "status", "sync", "tools", "uninstall", "update",
+        "skin", "skills", "slack", "status", "sync", "tasks", "tools", "uninstall", "update",
         "version", "webhook", "whatsapp", "whatsapp-cloud", "chat", "secrets", "security",
         # Help-ish invocations — plugin commands not being listed in
         # top-level --help is an acceptable trade-off for skipping an
@@ -11514,6 +11514,12 @@ def main():
     # =========================================================================
     from digit_cli.kb import add_parser as _add_kb_parser
     _add_kb_parser(subparsers)
+
+    # =========================================================================
+    # tasks command — the shared .digitable-tasks tracker, uuid-addressed
+    # =========================================================================
+    from digit_cli.tasks_cli import add_parser as _add_tasks_parser
+    _add_tasks_parser(subparsers)
 
     # =========================================================================
     # kanban command — multi-profile collaboration board

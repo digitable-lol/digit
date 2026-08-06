@@ -2264,6 +2264,18 @@ DEFAULT_CONFIG = {
         "dispatch_stale_timeout_seconds": 14400,
     },
 
+    # `digit tasks` — the shared Digitable tracker (a Taskwarrior database
+    # several agents and the owner work at once). Distinct from `kanban` above:
+    # kanban is Digit's own SQLite board for dispatching work to profiles,
+    # while this is the human-owned backlog that lives beside the checkouts.
+    "tasks": {
+        # Taskwarrior data directory. Empty means "find it": $TASKDATA if the
+        # user already exports it for their own `task` usage, otherwise the
+        # first `.digitable-tasks/data` directory found walking up from the
+        # working directory. Set this to pin one tracker regardless of cwd.
+        "data_dir": "",
+    },
+
     # execute_code settings — controls the tool used for programmatic tool calls.
     "code_execution": {
         # Execution mode:
