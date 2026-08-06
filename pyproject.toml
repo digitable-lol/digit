@@ -173,6 +173,17 @@ matrix = ["mautrix[encryption]==0.21.0", "aiosqlite==0.22.1", "asyncpg==0.31.0",
 # and XXE. aiohttp/httpx are already in [messaging]; defusedxml lands
 # here to keep the dependency local to wecom_callback's threat model.
 wecom = ["defusedxml==0.7.1"]
+# Русский разбор запроса правилами — первый каскад маршрутизации
+# (digit_cli/ruleparse/). Необязателен по двум причинам. Первая: словарь
+# OpenCorpora весит 16 МБ, и платить за него должен только тот, кто говорит
+# с Digit по-русски. Вторая лицензионная: словарь скомпилирован из корпуса
+# OpenCorpora под CC BY-SA, а Digit под MIT — отдельной необязательной
+# зависимостью он приезжает пользователю с PyPI сам, и Digit не
+# перераспространяет ни байта его данных. Указание авторства обязательно и
+# записано в digit_cli/ruleparse/NOTICE.
+# Отсутствие пакета не ломает ничего: каскад молча уступает модели.
+# Зеркалится в tools/lazy_deps.py, ключ `ruleparse` — двигать вместе.
+ruleparse = ["pymorphy3==2.0.6", "pymorphy3-dicts-ru==2.4.417150.4580142"]
 cli = ["simple-term-menu==1.6.6"]
 tts-premium = ["elevenlabs==1.59.0"]
 voice = [
@@ -390,7 +401,11 @@ py-modules = [
 include = ["agent", "agent.*", "tools", "tools.*", "digit_cli", "digit_cli.*", "gateway", "gateway.*", "tui_gateway", "tui_gateway.*", "cron", "cron.*", "acp_adapter", "plugins", "plugins.*", "providers", "providers.*"]
 
 [tool.setuptools.package-data]
-digit_cli = ["observability/schemas/*.json"]
+# ruleparse/tool_catalog.json — не украшение, а вход алгоритма: лексикон
+# каскада правил выведен из него целиком, и без файла разбор не поднимется.
+# ruleparse/NOTICE едет рядом, потому что указание авторства OpenCorpora
+# обязано быть в поставке, а не только в git.
+digit_cli = ["observability/schemas/*.json", "ruleparse/tool_catalog.json", "ruleparse/NOTICE"]
 # gateway/assets/ ships status_phrases.yaml and the Telegram BotFather
 # screenshot. Without this, sealed venvs (uv2nix) silently lose both —
 # status phrases fall back to the tiny hardcoded set and the Telegram

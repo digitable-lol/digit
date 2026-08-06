@@ -1,0 +1,579 @@
+#!/usr/bin/env python3
+"""Argument extraction: pull VERBATIM literals out of the query.
+
+Two principles, both of which exist to make silent errors impossible:
+
+  * Nothing is ever generated. Every argument value is a substring of the user's
+    own text (or a number read off it). The system cannot invent a hash input
+    because it has no mechanism for inventing anything.
+  * If a required argument cannot be located, the tool is not called. The parse
+    fails and the system says so. Missing argument -> refusal, never a guess.
+
+The Russian-specific machinery here is the "slot marker" idea: «строку X»,
+«пароль X», «с ключом X», «для сообщения X». A marker noun in the accusative or
+instrumental introduces its literal, and the literal ends at the next marker or
+at a script change (a Latin literal ends where Cyrillic prose resumes).
+"""
+from __future__ import annotations
+
+import re
+
+from . import entities as E
+from .morph import Token, normalize
+
+# Nouns that introduce a literal. Lemma -> canonical slot name.
+MARKERS: dict[str, str] = {
+    "строка": "text", "текст": "text", "слово": "text", "фраза": "text",
+    "сообщение": "text", "надпись": "text", "заголовок": "title",
+    "название": "title", "фамилия": "text", "значение": "text",
+    "пароль": "password", "логин": "login", "юзер": "login",
+    "пользователь": "login", "имя": "login",
+    "ключ": "secret", "секрет": "secret", "токен": "token",
+    "алгоритм": "algo", "функция": "algo", "шрифт": "font",
+    "длина": "length", "раунд": "rounds", "отступ": "indent",
+    "страна": "country", "сеть": "ssid", "ssid": "ssid",
+    "префикс": "prefix", "энтропия": "entropy", "число": "number",
+    "адрес": "address", "url": "url", "ссылка": "url", "юрл": "url", "урл": "url",
+    "расширение": "ext", "код": "code", "формат": "format",
+    "выражение": "expr", "запрос": "query", "регулярка": "regex",
+}
+# A literal stops when one of these lemmas is reached: it opens the next slot.
+BOUNDARY = set(MARKERS) | {
+    "система", "счисление", "вид", "кодировка", "стандарт", "бит", "символ",
+    "штука", "абзац", "раз", "формате", "через", "плз",
+}
+
+RE_IDENT = re.compile(r"[A-Za-z][A-Za-z0-9_.\-+@!#$%^&*]{2,}")
+RE_TITLECASE_RUN = re.compile(r"(?:\b[А-ЯЁ][а-яё]+\b[ \t]+){1,}\b[А-ЯЁ][а-яё]+\b")
+CYRILLIC = re.compile(r"[А-Яа-яЁё]")
+LATIN = re.compile(r"[A-Za-z]")
+
+RU_NUMERALS = {
+    "один": 1, "два": 2, "три": 3, "четыре": 4, "пять": 5, "шесть": 6,
+    "семь": 7, "восемь": 8, "девять": 9, "десять": 10, "одиннадцать": 11,
+    "двенадцать": 12, "шестнадцать": 16, "двадцать": 20, "тридцать": 30,
+    "сорок": 40, "пятьдесят": 50, "шестьдесят": 60, "сто": 100, "двести": 200,
+    "первый": 1, "второй": 2, "третий": 3, "четвертый": 4, "пятый": 5,
+    "шестой": 6, "седьмой": 7, "восьмой": 8, "девятый": 9, "десятый": 10,
+}
+BASE_WORDS = {
+    "десятичный": 10, "decimal": 10, "шестнадцатеричный": 16, "hex": 16,
+    "двоичный": 2, "бинарный": 2, "binary": 2, "восьмеричный": 8, "octal": 8,
+    "base64": 64,
+}
+HASH_ALGOS = {"md5": "MD5", "sha1": "SHA1", "sha224": "SHA224", "sha256": "SHA256",
+              "sha384": "SHA384", "sha512": "SHA512", "sha3": "SHA3",
+              "ripemd160": "RIPEMD160"}
+CIPHERS = {"aes": "AES", "tripledes": "TripleDES", "rabbit": "Rabbit", "rc4": "RC4"}
+
+
+def valid_literal(s: str | None) -> str | None:
+    """Reject "literals" that are really part of the instruction.
+
+    Three failure modes seen on red-team queries, all of which produced a
+    confident tool call on nothing:
+      «сделай хэш SHA-256»            -> the algorithm name became the payload
+      «захэшируй пароль bcrypt-ом»    -> the tool name became the payload
+      «совпадает ли пароль с этим хэшем» -> pure function words became the payload
+    A literal must contain at least one word that is not a stopword, not a slot
+    marker and not the name of a format, algorithm or tool.
+    """
+    if not s:
+        return None
+    from .morph import STOPWORDS, tokenize as _tok
+    flat = re.sub(r"[^a-z0-9а-я]", "", normalize(s))
+    if flat in SKIP_IDENTS or flat in HASH_ALGOS or flat in BASE_WORDS:
+        return None
+    content = [t for t in _tok(s)
+               if t.norm not in STOPWORDS and t.lemma not in MARKERS
+               and t.lemma not in BOUNDARY
+               and re.sub(r"[^a-z0-9]", "", t.norm) not in SKIP_IDENTS
+               and t.norm not in HASH_ALGOS]
+    return s if content else None
+
+
+def _strip(s: str) -> str:
+    """Trim framing punctuation but keep sentence punctuation.
+
+    «Привет, мир!» is the string the user wants hashed - exclamation mark and
+    all. Stripping it would change the digest, which is the exact kind of quiet
+    corruption this system is supposed to be incapable of.
+    """
+    return s.strip(" \t\n\r,;:—–«»\"'()")
+
+
+def literal_after(query: str, tokens: list[Token], slot: str) -> str | None:
+    """Text introduced by a marker of `slot`, ending at the next slot boundary.
+
+    Every marker of the slot is tried and the longest usable literal wins:
+    «сколько символов и слов в тексте Мы отправили заказ» has two `text`
+    markers («слов», «тексте») and only the second one introduces anything.
+
+    Stopping rules, in order:
+      1. the next token that opens a DIFFERENT slot («... с ключом ...»);
+      2. a script change, when the literal started in Latin and Cyrillic prose
+         resumes («SMIRNOV, помоги с рацией» -> «SMIRNOV»);
+      3. end of query.
+    """
+    best: str | None = None
+    for i, tok in enumerate(tokens):
+        if MARKERS.get(tok.lemma) != slot:
+            continue
+        # A capitalised word mid-sentence is part of the literal, not a marker:
+        # in «сделай из Моя Длинная Строка кебаб-кейс», «Строка» is the payload.
+        if i > 0 and tok.text[:1].isupper() and not tok.is_latin:
+            continue
+        rest = tokens[i + 1:]
+        if not rest:
+            continue
+        # A marker directly followed by another marker introduces nothing:
+        # «сколько символов и слов в тексте ...» - «слов» opens no literal.
+        head = next((t for t in rest[:2] if not t.is_prep), None)
+        if head is not None and head.lemma in BOUNDARY:
+            continue
+        start = rest[0].start
+        end = len(query)
+        for j, nxt in enumerate(rest):
+            if j == 0:
+                continue
+            opens_other = nxt.lemma in BOUNDARY and MARKERS.get(nxt.lemma) != slot
+            if opens_other:
+                end = nxt.start
+                break
+            if nxt.is_prep and j + 1 < len(rest):
+                after = rest[j + 1]
+                if after.lemma in BOUNDARY and MARKERS.get(after.lemma) != slot:
+                    end = nxt.start
+                    break
+        chunk = query[start:end]
+        if LATIN.match(chunk.lstrip()[:1] or " "):
+            m = CYRILLIC.search(chunk)
+            if m:
+                chunk = chunk[:m.start()]
+        out = valid_literal(_strip(chunk))
+        if out and (best is None or len(out) > len(best)):
+            best = out
+    return best
+
+
+def all_marker_literals(query: str, tokens: list[Token]) -> set[str]:
+    """Every literal introduced by an explicit slot marker.
+
+    An argument the user labelled («в тексте X», «с ключом Y») is trustworthy
+    even inside a question: naming the role IS the disambiguation.
+    """
+    out = set()
+    for slot in set(MARKERS.values()):
+        val = literal_after(query, tokens, slot)
+        if val:
+            out.add(val)
+    return out
+
+
+def main_literal(query: str, tokens: list[Token], ents: list[E.Ent]) -> str | None:
+    """The one literal the query is obviously about, when no marker is present.
+
+    Structured blobs are consulted BEFORE quoted spans: the `"name"` inside a
+    pasted JSON object is a key, not a quotation, and picking it would send the
+    key alone to the converter.
+    """
+    for kind in ("json", "yaml", "toml", "xml", "markdown", "sql", "docker_run",
+                 "user_agent", "jwt", "base64", "binary", "entity_named",
+                 "entity_numeric", "percent_enc", "tag"):
+        hit = [e for e in ents if e.kind == kind]
+        if hit:
+            return hit[0].value
+    q = E.quoted_spans(query)
+    if q:
+        return q[0].value
+    for kind in ("url",):
+        hit = [e for e in ents if e.kind == kind]
+        if hit:
+            return hit[0].value
+    # after a trailing colon: «переведи этот yaml в json:\nname: api»
+    m = re.search(r":\s*\n(.+)$", query, re.S)
+    if m and len(m.group(1).strip()) > 2:
+        return m.group(1).strip()
+    m = re.search(r":\s+(\S.*)$", query, re.S)
+    if m and len(m.group(1).strip()) > 2 and not re.match(r"//", m.group(1)):
+        return _strip(m.group(1))
+    for m in RE_IDENT.finditer(query):
+        cand = m.group(0)
+        low = re.sub(r"[^a-z0-9]", "", normalize(cand))
+        if low in SKIP_IDENTS or low in BASE_WORDS or low in HASH_ALGOS:
+            continue
+        # `SPV-` in «SPV-кошелёк» is the Latin half of a Russian compound, not
+        # a literal the user pasted.
+        if CYRILLIC.match(query[m.end():m.end() + 1] or " "):
+            continue
+        return cand
+    m = RE_TITLECASE_RUN.search(query)
+    if m:
+        return valid_literal(_strip(m.group(0)))
+    return None
+
+
+SKIP_IDENTS = {
+    "base64", "json", "yaml", "yml", "toml", "xml", "csv", "html", "markdown",
+    "http", "https", "url", "jwt", "hmac", "bcrypt", "uuid", "ulid", "rsa",
+    "aes", "sha", "md5", "otp", "totp", "mac", "ipv4", "ipv6", "cidr", "iban",
+    "mime", "cron", "crontab", "regex", "sql", "ascii", "unicode", "nato",
+    "camelcase", "camel", "kebab", "snake", "pascal", "slug", "lorem", "ipsum",
+    "docker", "compose", "wifi", "qrcode", "safelink", "outlook", "utf",
+    "standard", "pem", "bip39", "user_first_name_PLACEHOLDER",
+}
+
+
+def numbers(tokens: list[Token]) -> list[int]:
+    return [int(t.norm) for t in tokens if t.is_digit]
+
+
+def number_near(tokens: list[Token], lemmas: set[str]) -> int | None:
+    """The digit standing next to one of `lemmas` («12 раундами», «отступ 4»).
+
+    Surface form is checked as well as the lemma: OpenCorpora reads «бит» as a
+    form of «битый», so «на 4096 бит» would otherwise find nothing.
+    """
+    for i, tok in enumerate(tokens):
+        if tok.lemma in lemmas or tok.norm in lemmas:
+            for j in (i - 1, i + 1, i - 2, i + 2):
+                if 0 <= j < len(tokens) and tokens[j].is_digit:
+                    return int(tokens[j].norm)
+    return None
+
+
+def ru_number_near(tokens: list[Token], lemmas: set[str]) -> int | None:
+    """«шестьдесят четвёртой системе» -> 64. Numerals spelled out in words."""
+    for i, tok in enumerate(tokens):
+        if tok.lemma not in lemmas:
+            continue
+        acc, seen = 0, False
+        for j in range(max(0, i - 3), i):
+            val = RU_NUMERALS.get(tokens[j].lemma)
+            if val is not None:
+                acc += val
+                seen = True
+        if seen:
+            return acc
+    return None
+
+
+def _ent(ents: list[E.Ent], *kinds: str) -> str | None:
+    for kind in kinds:
+        for e in ents:
+            if e.kind == kind:
+                return e.value
+    return None
+
+
+def _ents_all(ents: list[E.Ent], kind: str) -> list[str]:
+    return [e.value for e in ents if e.kind == kind]
+
+
+# ---------------------------------------------------------------------------
+def extract(tool_id: str, query: str, tokens: list[Token],
+            ents: list[E.Ent], lem: set[str], ops: set[str]) -> dict:
+    """Best-effort argument dict. Missing keys are the caller's problem."""
+    g = lambda *k: _ent(ents, *k)                                    # noqa: E731
+    lit = lambda slot: literal_after(query, tokens, slot)            # noqa: E731
+    args: dict = {}
+
+    def put(key, value):
+        if value is not None and value != "":
+            args[key] = value
+
+    if tool_id == "hash-text":
+        put("clearText", lit("text") or main_literal(query, tokens, ents))
+        for a, name in HASH_ALGOS.items():
+            if a in lem:
+                put("algorithm", name)
+    elif tool_id == "hmac-generator":
+        put("plainText", g("json") or lit("text") or main_literal(query, tokens, ents))
+        put("secret", lit("secret"))
+        for a, name in HASH_ALGOS.items():
+            if a in lem:
+                put("hashFunction", name)
+    elif tool_id == "bcrypt":
+        if g("bcrypt_hash"):
+            put("compareHash", g("bcrypt_hash"))
+            put("compareString", lit("password") or lit("text"))
+        else:
+            put("input", lit("password") or lit("text") or main_literal(query, tokens, ents))
+            put("saltCount", number_near(tokens, {"раунд", "round", "соль"}))
+    elif tool_id == "password-strength-analyser":
+        put("password", lit("password") or main_literal(query, tokens, ents))
+    elif tool_id == "encryption":
+        blob = g("base64")
+        # «её шифровали AES ... верни исходный текст» is a decryption request
+        # even though the only verb in it is «шифровали».
+        if blob and ({"исходный", "вернуть", "восстановить", "первоначальный",
+                      "обратно", "оригинальный"} & lem):
+            ops = ops | {"decrypt"}
+        if "decrypt" in ops and blob:
+            put("decryptInput", blob)
+            put("decryptSecret", lit("secret"))
+            for a, name in CIPHERS.items():
+                if a in lem:
+                    put("decryptAlgo", name)
+        else:
+            put("cypherInput", lit("text") or main_literal(query, tokens, ents))
+            put("cypherSecret", lit("secret"))
+            for a, name in CIPHERS.items():
+                if a in lem:
+                    put("cypherAlgo", name)
+    elif tool_id == "rsa-key-pair-generator":
+        put("bits", number_near(tokens, {"бит", "bit"}))
+    elif tool_id == "bip39-generator":
+        put("entropy", lit("entropy") or g("base64") or
+            (re.search(r"\b[0-9a-f]{16,}\b", query).group(0)
+             if re.search(r"\b[0-9a-f]{16,}\b", query) else None))
+    elif tool_id == "token-generator":
+        put("length", number_near(tokens, {"символ", "длина", "знак"}))
+    elif tool_id == "uuid-generator":
+        if not re.search(r"верси\w*\s+\d", normalize(query)):
+            put("count", number_near(tokens, {"uuid", "штука", "гуид"}))
+    elif tool_id == "ulid-generator":
+        put("amount", number_near(tokens, {"ulid", "штука", "идентификатор"}))
+    elif tool_id == "otp-generator":
+        # A TOTP secret has a shape (base32); prefer the shape over the slot
+        # marker, which here tends to swallow the surrounding sentence.
+        m = E.RE_TOTP_SECRET.search(query)
+        put("secret", (m.group(0) if m else None) or lit("secret"))
+    elif tool_id == "base64-string-converter":
+        blob = g("base64")
+        if not blob and ("decode" in ops or "parse" in ops):
+            cand = main_literal(query, tokens, ents)
+            if cand and re.fullmatch(r"[A-Za-z0-9+/=]{4,}", cand or ""):
+                blob = cand
+        # You do not base64-encode something that is already base64: a detected
+        # blob means decode unless the user explicitly asked to encode.
+        if blob and "encode" not in ops:
+            put("base64Input", blob)
+        elif ("decode" in ops or "parse" in ops) and blob:
+            put("base64Input", blob)
+        else:
+            put("textInput", lit("text") or main_literal(query, tokens, ents))
+            if {"safe", "url", "урл", "urlsafe"} & lem or "url safe" in normalize(query):
+                put("encodeUrlSafe", True)
+    elif tool_id == "url-encoder":
+        pe = g("percent_enc")
+        if pe and ("decode" in ops or "parse" in ops or "encode" not in ops):
+            put("decodeInput", pe)
+        else:
+            put("encodeInput", lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "html-entities":
+        he = g("entity_named")
+        if he:
+            put("unescapeInput", he)
+        else:
+            put("escapeInput", g("tag") or lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "text-to-binary":
+        b = g("binary")
+        if b:
+            put("inputBinary", b)
+        else:
+            put("inputText", lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "text-to-unicode":
+        u = g("entity_numeric")
+        if u:
+            put("inputUnicode", u)
+        else:
+            put("inputText", lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "text-to-nato-alphabet":
+        put("input", lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "base-converter":
+        nums = numbers(tokens)
+        put("input", str(nums[0]) if nums else None)
+        src = dst = None
+        from .morph import prep_frames
+        for role, _prep, head in prep_frames(tokens):
+            base = BASE_WORDS.get(head.lemma)
+            if base is None:
+                base = ru_number_near(tokens, {"система", "счисление"}) \
+                    if head.lemma in {"система", "счисление"} else None
+            if base is None:
+                continue
+            if role == "source" and src is None:
+                src = base
+            elif role == "target" and dst is None:
+                dst = base
+        if dst is None:
+            dst = ru_number_near(tokens, {"система", "счисление"})
+        put("inputBase", src or 10)
+        put("outputBase", dst)
+    elif tool_id == "date-converter":
+        put("inputDate", g("timestamp", "iso_date"))
+    elif tool_id == "case-converter":
+        put("input", lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "roman-numeral-converter":
+        r = g("roman")
+        if r:
+            put("inputRoman", r)
+        else:
+            nums = numbers(tokens)
+            put("inputNumeral", nums[0] if nums else None)
+    elif tool_id in {"json-to-yaml-converter", "yaml-to-json-converter", "json-to-toml",
+                     "toml-to-json", "toml-to-yaml", "yaml-to-toml", "xml-to-json",
+                     "json-to-xml", "json-to-csv", "json-minify", "xml-formatter",
+                     "list-converter"}:
+        put("input", main_literal(query, tokens, ents))
+        if tool_id == "xml-formatter":
+            put("indentSize", number_near(tokens, {"отступ", "пробел"}))
+    elif tool_id == "markdown-to-html":
+        put("inputMarkdown", g("markdown") or main_literal(query, tokens, ents))
+    elif tool_id == "json-prettify":
+        put("rawJson", g("json"))
+        put("indentSize", number_near(tokens, {"отступ", "пробел"}))
+    elif tool_id == "yaml-prettify":
+        put("rawYaml", g("yaml") or main_literal(query, tokens, ents))
+        put("indentSize", number_near(tokens, {"отступ", "пробел"}))
+    elif tool_id == "sql-prettify":
+        put("rawSQL", g("sql") or main_literal(query, tokens, ents))
+    elif tool_id == "json-diff":
+        blobs = _ents_all(ents, "json")
+        if len(blobs) >= 2:
+            put("rawLeftJson", blobs[0])
+            put("rawRightJson", blobs[1])
+    elif tool_id == "crontab-generator":
+        put("cron", g("cron"))
+    elif tool_id == "jwt-parser":
+        put("rawJwt", g("jwt"))
+    elif tool_id == "url-parser":
+        put("urlToParse", g("url"))
+    elif tool_id == "safelink-decoder":
+        put("inputSafeLinkUrl", g("safelink", "url"))
+    elif tool_id == "user-agent-parser":
+        put("ua", g("user_agent"))
+    elif tool_id == "iban-validator-and-parser":
+        put("rawIban", g("iban"))
+    elif tool_id == "phone-parser-and-formatter":
+        put("rawPhone", g("phone"))
+        m = re.search(r"\bстран[аыу]?\s+([A-Z]{2})\b", query)
+        if m:
+            put("defaultCountryCode", m.group(1))
+    elif tool_id == "email-normalizer":
+        mails = _ents_all(ents, "email")
+        if mails:
+            first = query.find(mails[0])
+            put("emails", _strip(query[first:]))
+    elif tool_id == "ipv4-subnet-calculator":
+        put("ip", g("cidr"))
+    elif tool_id == "ipv4-address-converter":
+        put("rawIpAddress", g("ipv4"))
+    elif tool_id == "ipv4-range-expander":
+        ips = _ents_all(ents, "ipv4")
+        if len(ips) >= 2:
+            put("rawStartAddress", ips[0])
+            put("rawEndAddress", ips[1])
+    elif tool_id == "ipv6-ula-generator":
+        put("macAddress", g("mac"))
+    elif tool_id == "mac-address-lookup":
+        put("macAddress", g("mac"))
+    elif tool_id == "mac-address-generator":
+        put("amount", number_near(tokens, {"адрес", "штука", "мак", "mac"}))
+        put("macAddressPrefix", g("mac"))
+    elif tool_id == "basic-auth-generator":
+        put("username", lit("login"))
+        put("password", lit("password"))
+    elif tool_id == "mime-types":
+        m = re.search(r"расширени\w*\s+([A-Za-z0-9]{2,5})", query) or \
+            re.search(r"\.([a-z0-9]{2,5})\b", query)
+        put("selectedExtension", m.group(1) if m else None)
+    elif tool_id == "http-status-codes":
+        m = re.search(r"\b([1-5]\d\d)\b", query)
+        put("search", m.group(1) if m else None)
+    elif tool_id == "slugify-string":
+        put("input", lit("title") or lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "text-statistics":
+        put("text", lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "string-obfuscator":
+        put("str", lit("token") or lit("secret") or main_literal(query, tokens, ents))
+        put("keepFirst", number_near(tokens, {"первый"}))
+        put("keepLast", number_near(tokens, {"последний"}))
+    elif tool_id == "numeronym-generator":
+        put("word", lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "lorem-ipsum-generator":
+        put("paragraphs", number_near(tokens, {"абзац", "параграф"}))
+        put("words", number_near(tokens, {"слово"}))
+        put("sentences", number_near(tokens, {"предложение"}))
+    elif tool_id == "ascii-text-drawer":
+        put("input", lit("text") or main_literal(query, tokens, ents))
+        m = re.search(r"шрифт\w*\s+([A-Za-z][A-Za-z0-9_\-]*)", query)
+        put("font", m.group(1) if m else None)
+    elif tool_id == "math-evaluator":
+        m = E.RE_MATH.search(query)
+        if m:
+            expr = _strip(m.group(0))
+            expr = re.sub(r"\s+", " ", expr).strip(" ?")
+            put("expression", expr or None)
+    elif tool_id == "percentage-calculator":
+        m = re.search(r"(\d+(?:[.,]\d+)?)\s*%\s*от\s*(\d+(?:[.,]\d+)?)", query)
+        if m:
+            put("percentageX", float(m.group(1)) if "." in m.group(1) else int(m.group(1)))
+            put("percentageY", float(m.group(2)) if "." in m.group(2) else int(m.group(2)))
+        else:
+            m2 = re.search(r"\bс\s+(\d+(?:[.,]\d+)?)\s+до\s+(\d+(?:[.,]\d+)?)", query)
+            if m2:
+                put("numberFrom", int(m2.group(1)))
+                put("numberTo", int(m2.group(2)))
+    elif tool_id == "eta-calculator":
+        nums = numbers(tokens)
+        put("unitCount", nums[0] if len(nums) > 0 else None)
+        put("unitPerTimeSpan", nums[1] if len(nums) > 1 else None)
+        put("timeSpan", nums[2] if len(nums) > 2 else None)
+    elif tool_id == "regex-tester":
+        m = re.search(r"(?:[\\][a-zA-Z]|\[[^\]]+\]|\S)*(?:\{\d+(?:,\d*)?\}|\+|\*)(?:[^\s,]|\\.)*",
+                      query)
+        put("regex", m.group(0) if m and re.search(r"[\\{\[]", m.group(0)) else None)
+        put("text", lit("text"))
+    elif tool_id == "docker-run-to-docker-compose-converter":
+        put("dockerRun", g("docker_run"))
+    elif tool_id == "qrcode-generator":
+        put("text", g("url") or lit("text") or main_literal(query, tokens, ents))
+    elif tool_id == "wifi-qrcode-generator":
+        put("ssid", lit("ssid"))
+        put("password", lit("password"))
+    elif tool_id == "chmod-calculator":
+        perms = _chmod(query, tokens)
+        put("permissions", perms)
+    elif tool_id == "text-diff":
+        # Two operands or no call: «сравни с моим текстом: «…»» supplies one.
+        pair = len(E.quoted_spans(query)) >= 2 or bool(
+            {"два", "две", "оба", "обе", "двумя", "старый", "новый"} & lem)
+        put("_operands", "2" if pair else None)
+    elif tool_id == "color-converter":
+        put("input", g("hexcolor"))
+    elif tool_id == "temperature-converter":
+        nums = numbers(tokens)
+        put("value", nums[0] if nums else None)
+        scales = {"цельсий", "фаренгейт", "кельвин", "ранкин", "делиль",
+                  "ньютон", "реомюр", "ремер"} & lem
+        put("scale", sorted(scales)[0] if scales else None)
+    return args
+
+
+WHO = {"владелец": "owner", "владельцу": "owner", "группа": "group",
+       "группе": "group", "остальные": "public", "остальным": "public",
+       "все": "public", "прочие": "public", "другой": "public"}
+WHAT = {"чтение": "read", "читать": "read", "запись": "write", "писать": "write",
+        "выполнение": "execute", "выполнять": "execute", "исполнение": "execute"}
+
+
+def _chmod(query: str, tokens: list[Token]) -> dict | None:
+    """«владельцу чтение, запись и выполнение, группе чтение...» -> permission map."""
+    perms = {who: {"read": False, "write": False, "execute": False}
+             for who in ("owner", "group", "public")}
+    current = None
+    seen = False
+    for tok in tokens:
+        who = WHO.get(tok.lemma) or WHO.get(tok.norm)
+        if who:
+            current = who
+            continue
+        what = WHAT.get(tok.lemma) or WHAT.get(tok.norm)
+        if what and current:
+            perms[current][what] = True
+            seen = True
+        if tok.lemma in {"ничто", "ничего"} and current:
+            seen = True
+    return perms if seen else None

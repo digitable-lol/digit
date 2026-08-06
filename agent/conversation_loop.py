@@ -25,6 +25,7 @@ import ssl
 import time
 from typing import Any, Dict, List, Optional
 
+from agent import rule_cascade
 from agent.codex_responses_adapter import _summarize_user_message_for_log
 from agent.conversation_compression import (
     COMPRESSION_RETRY_CONTEXT_REDUCED_STATUS_TEMPLATE,
@@ -1312,6 +1313,31 @@ def run_conversation(
             effective_task_id=effective_task_id,
             should_review_memory=_should_review_memory,
         )
+
+    # ── Первый каскад маршрутизации: правила пробуются раньше модели ──
+    # Русский запрос, разобранный детерминированными правилами за ~1 мс, не
+    # нуждается в модели, чтобы выбрать утилиту и её аргументы: на общем
+    # измерительном наборе слой правил берёт 96,0 % выбора инструмента против
+    # 85,0 % у обученного роутера и 100,0 % точности аргументов против 90,1 %.
+    #
+    # Каскад отвечает, ТОЛЬКО если все обязательные аргументы найдены в тексте
+    # пользователя дословно и исполнитель принял вызов по своей схеме. Во всех
+    # остальных случаях он возвращает None и ход идёт обычным путём — отказ
+    # правил не имеет права стать отказом пользователю. См. agent/rule_cascade.py.
+    #
+    # Место выбрано так, чтобы уступка ничего не стоила: пролог хода уже
+    # записал сообщение пользователя, а до первого обращения к провайдеру
+    # ещё ничего не потрачено.
+    _cascade_result = rule_cascade.try_turn(
+        agent,
+        original_user_message,
+        messages,
+        conversation_history,
+        task_id=effective_task_id,
+        turn_id=turn_id,
+    )
+    if _cascade_result is not None:
+        return _cascade_result
 
     while (api_call_count < agent.max_iterations and agent.iteration_budget.remaining > 0) or agent._budget_grace_call:
         _redirect_text = agent._drain_pending_redirect()

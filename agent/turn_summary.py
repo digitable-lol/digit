@@ -99,6 +99,14 @@ class TurnTally:
     # True once at least one edit tool reported a countable diff, so the
     # formatter knows the difference between "+0 -0" and "unknown".
     has_line_deltas: bool = False
+    # Кто ответил в этом ходу: "" (обычный ход через модель) либо "rules",
+    # когда ход закрыл первый каскад маршрутизации, ни разу не позвав
+    # провайдера. Без этой отметки выигрыш каскада виден только в замерах
+    # задержки, то есть на практике не виден никому.
+    answered_by: str = ""
+    # Что именно сработало — идентификатор утилиты. Нужен, чтобы «ответило
+    # правило» можно было проверить, а не просто прочитать.
+    answered_by_detail: str = ""
 
     @property
     def total_tools(self) -> int:
@@ -211,6 +219,16 @@ class TurnSummaryCollector:
                 self._tally.lines_removed += removed
                 self._tally.has_line_deltas = True
 
+    def record_provenance(self, answered_by: str | None, detail: str | None = None) -> None:
+        """Запомнить, кто закрыл ход: каскад правил или обычный путь.
+
+        Вызывается из CLI по полю ``answered_by`` результата хода. Пустое
+        значение оставляет ход обычным — специально, чтобы отсутствие поля
+        никогда не читалось как «ответило правило».
+        """
+        self._tally.answered_by = str(answered_by or "")
+        self._tally.answered_by_detail = str(detail or "")
+
     @property
     def tally(self) -> TurnTally:
         return self._tally
@@ -280,7 +298,17 @@ def format_turn_summary(
     if tally.other_tools:
         segments.append(f"called {_pluralize(tally.other_tools, 'tools')}")
 
-    if not segments and tally.total_tools == 0 and elapsed_seconds < _MIN_TOOLLESS_SECONDS:
+    # Происхождение ответа идёт ПЕРВЫМ сегментом и печатается всегда, даже
+    # когда ход не сделал ничего другого. Ход каскада длится миллисекунды и
+    # не вызывает инструментов через обычный путь, поэтому по общим правилам
+    # футер для него был бы пустым — то есть самый быстрый ход оказался бы
+    # единственным, про который человеку не сказали ничего.
+    if tally.answered_by:
+        mark = f"answered by {tally.answered_by}"
+        if tally.answered_by_detail:
+            mark += f" ({tally.answered_by_detail})"
+        segments.insert(0, mark)
+    elif not segments and tally.total_tools == 0 and elapsed_seconds < _MIN_TOOLLESS_SECONDS:
         return ""
 
     if max_segments > 0 and len(segments) > max_segments:

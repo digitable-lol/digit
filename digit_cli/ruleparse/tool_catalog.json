@@ -1,0 +1,2076 @@
+{
+  "source": "/home/m/projects/it-tools/src/tools",
+  "count": 86,
+  "categories": [
+    "Converter",
+    "Crypto",
+    "Data",
+    "Development",
+    "Images and videos",
+    "Math",
+    "Measurement",
+    "Network",
+    "Text",
+    "Web"
+  ],
+  "tools": [
+    {
+      "tool_id": "ascii-text-drawer",
+      "dir": "ascii-text-drawer",
+      "path": "/ascii-text-drawer",
+      "category": "Text",
+      "title_ru": "Генератор ASCII-арта из текста",
+      "description_ru": "Текст в виде ASCII-арта с выбором шрифта и стиля.",
+      "keywords": [
+        "ascii",
+        "asciiart",
+        "text",
+        "drawer"
+      ],
+      "args": [
+        "errored",
+        "font",
+        "input",
+        "output",
+        "processing",
+        "width"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "base64-file-converter",
+      "dir": "base64-file-converter",
+      "path": "/base64-file-converter",
+      "category": "Converter",
+      "title_ru": "Файл в base64",
+      "description_ru": "Перевод строки, файла или изображения в представление base64.",
+      "keywords": [
+        "base64",
+        "converter",
+        "upload",
+        "image",
+        "file",
+        "conversion",
+        "web",
+        "data",
+        "format"
+      ],
+      "args": [
+        "base64Input",
+        "fileExtension",
+        "fileInput",
+        "fileName"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "base64-string-converter",
+      "dir": "base64-string-converter",
+      "path": "/base64-string-converter",
+      "category": "Converter",
+      "title_ru": "Кодирование строк в base64",
+      "description_ru": "Кодирование и декодирование строк в base64.",
+      "keywords": [
+        "base64",
+        "converter",
+        "conversion",
+        "web",
+        "data",
+        "format",
+        "atob",
+        "btoa"
+      ],
+      "args": [
+        "base64Input",
+        "decodeUrlSafe",
+        "encodeUrlSafe",
+        "textInput"
+      ],
+      "redirect_from": [
+        "/file-to-base64",
+        "/base64-converter"
+      ],
+      "registered": true
+    },
+    {
+      "tool_id": "basic-auth-generator",
+      "dir": "basic-auth-generator",
+      "path": "/basic-auth-generator",
+      "category": "Web",
+      "title_ru": "Генератор basic auth",
+      "description_ru": "Генерация заголовка basic auth в base64 по имени пользователя и паролю.",
+      "keywords": [
+        "basic",
+        "auth",
+        "generator",
+        "username",
+        "password",
+        "base64",
+        "authentication",
+        "header",
+        "authorization"
+      ],
+      "args": [
+        "password",
+        "username"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "bcrypt",
+      "dir": "bcrypt",
+      "path": "/bcrypt",
+      "category": "Crypto",
+      "title_ru": "Bcrypt",
+      "description_ru": "Хеширование и сверка строк по bcrypt — функции хеширования паролей на основе шифра Blowfish.",
+      "keywords": [
+        "bcrypt",
+        "hash",
+        "compare",
+        "password",
+        "salt",
+        "round",
+        "storage",
+        "crypto"
+      ],
+      "args": [
+        "compareHash",
+        "compareString",
+        "input",
+        "saltCount"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "benchmark-builder",
+      "dir": "benchmark-builder",
+      "path": "/benchmark-builder",
+      "category": "Measurement",
+      "title_ru": "Сравнение замеров",
+      "description_ru": "Простое сравнение времени выполнения нескольких задач.",
+      "keywords": [
+        "benchmark",
+        "builder",
+        "execution",
+        "duration",
+        "mean",
+        "variance"
+      ],
+      "args": [
+        "suites",
+        "unit"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "bip39-generator",
+      "dir": "bip39-generator",
+      "path": "/bip39-generator",
+      "category": "Crypto",
+      "title_ru": "Генератор парольной фразы BIP39",
+      "description_ru": "Парольная фраза BIP39 из готовой или случайной мнемоники, а также обратное получение мнемоники.",
+      "keywords": [
+        "BIP39",
+        "passphrase",
+        "generator",
+        "mnemonic",
+        "entropy"
+      ],
+      "args": [
+        "entropy",
+        "language",
+        "passphraseInput"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "camera-recorder",
+      "dir": "camera-recorder",
+      "path": "/camera-recorder",
+      "category": "Images and videos",
+      "title_ru": "Запись с камеры",
+      "description_ru": "Снимок или видео с веб-камеры.",
+      "keywords": [
+        "camera",
+        "recoder"
+      ],
+      "args": [
+        "currentCamera",
+        "currentMicrophone",
+        "medias",
+        "permissionCannotBePrompted",
+        "video"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "case-converter",
+      "dir": "case-converter",
+      "path": "/case-converter",
+      "category": "Converter",
+      "title_ru": "Конвертер регистра",
+      "description_ru": "Смена регистра строки с выбором формата записи.",
+      "keywords": [
+        "case",
+        "converter",
+        "camelCase",
+        "capitalCase",
+        "constantCase",
+        "dotCase",
+        "headerCase",
+        "noCase",
+        "paramCase",
+        "pascalCase",
+        "pathCase",
+        "sentenceCase",
+        "snakeCase"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "chmod-calculator",
+      "dir": "chmod-calculator",
+      "path": "/chmod-calculator",
+      "category": "Development",
+      "title_ru": "Калькулятор chmod",
+      "description_ru": "Расчёт прав доступа и готовой команды chmod.",
+      "keywords": [
+        "chmod",
+        "calculator",
+        "file",
+        "permission",
+        "files",
+        "directory",
+        "folder",
+        "recursive",
+        "generator",
+        "octal"
+      ],
+      "args": [
+        "permissions"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "chronometer",
+      "dir": "chronometer",
+      "path": "/chronometer",
+      "category": "Measurement",
+      "title_ru": "Секундомер",
+      "description_ru": "Замер длительности: обычный секундомер с базовыми функциями.",
+      "keywords": [
+        "chronometer",
+        "time",
+        "lap",
+        "duration",
+        "measure",
+        "pause",
+        "resume",
+        "stopwatch"
+      ],
+      "args": [
+        "counter",
+        "isRunning"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "color-converter",
+      "dir": "color-converter",
+      "path": "/color-converter",
+      "category": "Converter",
+      "title_ru": "Конвертер цветов",
+      "description_ru": "Перевод цвета между форматами (hex, rgb, hsl и имя цвета CSS).",
+      "keywords": [
+        "color",
+        "converter"
+      ],
+      "args": [],
+      "redirect_from": [
+        "/color-picker-converter"
+      ],
+      "registered": true
+    },
+    {
+      "tool_id": "crontab-generator",
+      "dir": "crontab-generator",
+      "path": "/crontab-generator",
+      "category": "Development",
+      "title_ru": "Генератор crontab",
+      "description_ru": "Проверка и генерация строки crontab, а также описание расписания человеческим языком.",
+      "keywords": [
+        "crontab",
+        "generator",
+        "cronjob",
+        "cron",
+        "schedule",
+        "parse",
+        "expression",
+        "year",
+        "month",
+        "week",
+        "day",
+        "minute",
+        "second"
+      ],
+      "args": [
+        "cron"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "date-converter",
+      "dir": "date-time-converter",
+      "path": "/date-converter",
+      "category": "Converter",
+      "title_ru": "Конвертер даты и времени",
+      "description_ru": "Перевод даты и времени между различными форматами.",
+      "keywords": [
+        "date",
+        "time",
+        "converter",
+        "iso",
+        "utc",
+        "timezone",
+        "year",
+        "month",
+        "day",
+        "minute",
+        "seconde"
+      ],
+      "args": [
+        "formatIndex",
+        "inputDate"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "device-information",
+      "dir": "device-information",
+      "path": "/device-information",
+      "category": "Web",
+      "title_ru": "Информация об устройстве",
+      "description_ru": "Сведения о текущем устройстве: размер экрана, pixel-ratio, user agent и прочее.",
+      "keywords": [
+        "device",
+        "information",
+        "screen",
+        "pixel",
+        "ratio",
+        "status",
+        "data",
+        "computer",
+        "size",
+        "user",
+        "agent"
+      ],
+      "args": [],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "docker-run-to-docker-compose-converter",
+      "dir": "docker-run-to-docker-compose-converter",
+      "path": "/docker-run-to-docker-compose-converter",
+      "category": "Development",
+      "title_ru": "docker run в docker compose",
+      "description_ru": "Преобразование команд «docker run» в файлы docker-compose.",
+      "keywords": [
+        "docker",
+        "run",
+        "compose",
+        "yaml",
+        "yml",
+        "convert",
+        "deamon"
+      ],
+      "args": [
+        "dockerRun"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "email-normalizer",
+      "dir": "email-normalizer",
+      "path": "/email-normalizer",
+      "category": "Development",
+      "title_ru": "Нормализация адресов почты",
+      "description_ru": "Приведение адресов электронной почты к единому виду для сравнения. Полезно при дедупликации и очистке данных.",
+      "keywords": [
+        "email",
+        "normalizer"
+      ],
+      "args": [
+        "emails"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "emoji-picker",
+      "dir": "emoji-picker",
+      "path": "/emoji-picker",
+      "category": "Text",
+      "title_ru": "Выбор эмодзи",
+      "description_ru": "Копирование эмодзи, а также их значения в Unicode и кодовые точки.",
+      "keywords": [
+        "emoji",
+        "picker",
+        "unicode",
+        "copy",
+        "paste"
+      ],
+      "args": [],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "encryption",
+      "dir": "encryption",
+      "path": "/encryption",
+      "category": "Crypto",
+      "title_ru": "Шифрование и расшифровка текста",
+      "description_ru": "Шифрование и расшифровка текста алгоритмами AES, TripleDES, Rabbit и RC4.",
+      "keywords": [
+        "cypher",
+        "encipher",
+        "text",
+        "AES",
+        "TripleDES",
+        "Rabbit",
+        "RC4"
+      ],
+      "args": [
+        "cypherAlgo",
+        "cypherInput",
+        "cypherSecret",
+        "decryptAlgo",
+        "decryptInput",
+        "decryptSecret"
+      ],
+      "redirect_from": [
+        "/cypher"
+      ],
+      "registered": true
+    },
+    {
+      "tool_id": "eta-calculator",
+      "dir": "eta-calculator",
+      "path": "/eta-calculator",
+      "category": "Math",
+      "title_ru": "Калькулятор времени завершения",
+      "description_ru": "Расчёт примерного времени завершения задачи — например, окончания и длительности загрузки файла.",
+      "keywords": [
+        "eta",
+        "calculator",
+        "estimated",
+        "time",
+        "arrival",
+        "average"
+      ],
+      "args": [
+        "startedAt",
+        "timeSpan",
+        "timeSpanUnitMultiplier",
+        "unitCount",
+        "unitPerTimeSpan"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "git-memo",
+      "dir": "git-memo",
+      "path": "/git-memo",
+      "category": "Development",
+      "title_ru": "Шпаргалка по Git",
+      "description_ru": "Git — децентрализованная система контроля версий. Шпаргалка даёт быстрый доступ к самым частым командам.",
+      "keywords": [
+        "git",
+        "push",
+        "force",
+        "pull",
+        "commit",
+        "amend",
+        "rebase",
+        "merge",
+        "reset",
+        "soft",
+        "hard",
+        "lease"
+      ],
+      "args": [],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "hash-text",
+      "dir": "hash-text",
+      "path": "/hash-text",
+      "category": "Crypto",
+      "title_ru": "Хеширование текста",
+      "description_ru": "Хеширование строки нужной функцией: MD5, SHA1, SHA256, SHA224, SHA512, SHA384, SHA3 или RIPEMD160.",
+      "keywords": [
+        "hash",
+        "digest",
+        "crypto",
+        "security",
+        "text",
+        "MD5",
+        "SHA1",
+        "SHA256",
+        "SHA224",
+        "SHA512",
+        "SHA384",
+        "SHA3",
+        "RIPEMD160"
+      ],
+      "args": [
+        "clearText"
+      ],
+      "redirect_from": [
+        "/hash"
+      ],
+      "registered": true
+    },
+    {
+      "tool_id": "hmac-generator",
+      "dir": "hmac-generator",
+      "path": "/hmac-generator",
+      "category": "Crypto",
+      "title_ru": "Генератор HMAC",
+      "description_ru": "Код аутентификации сообщения (HMAC) по секретному ключу и выбранной хеш-функции.",
+      "keywords": [
+        "hmac",
+        "generator",
+        "MD5",
+        "SHA1",
+        "SHA256",
+        "SHA224",
+        "SHA512",
+        "SHA384",
+        "SHA3",
+        "RIPEMD160"
+      ],
+      "args": [
+        "encoding",
+        "hashFunction",
+        "plainText",
+        "secret"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "html-entities",
+      "dir": "html-entities",
+      "path": "/html-entities",
+      "category": "Web",
+      "title_ru": "Экранирование HTML-сущностей",
+      "description_ru": "",
+      "keywords": [
+        "html",
+        "entities",
+        "escape",
+        "unescape",
+        "special",
+        "characters",
+        "tags"
+      ],
+      "args": [
+        "escapeInput",
+        "unescapeInput"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "html-wysiwyg-editor",
+      "dir": "html-wysiwyg-editor",
+      "path": "/html-wysiwyg-editor",
+      "category": "Web",
+      "title_ru": "Визуальный редактор HTML",
+      "description_ru": "Визуальный редактор HTML, который сразу показывает исходный код содержимого.",
+      "keywords": [
+        "html",
+        "wysiwyg",
+        "editor",
+        "p",
+        "ul",
+        "ol",
+        "converter",
+        "live"
+      ],
+      "args": [
+        "html"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "http-status-codes",
+      "dir": "http-status-codes",
+      "path": "/http-status-codes",
+      "category": "Web",
+      "title_ru": "Коды состояния HTTP",
+      "description_ru": "Список всех кодов состояния HTTP с названиями и значением.",
+      "keywords": [
+        "http",
+        "status",
+        "codes"
+      ],
+      "args": [
+        "search"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "iban-validator-and-parser",
+      "dir": "iban-validator-and-parser",
+      "path": "/iban-validator-and-parser",
+      "category": "Data",
+      "title_ru": "Проверка и разбор IBAN",
+      "description_ru": "Проверка корректности IBAN и разбор номера: страна, BBAN, признак QR-IBAN и удобный формат записи.",
+      "keywords": [
+        "iban",
+        "validator",
+        "and",
+        "parser",
+        "bic",
+        "bank"
+      ],
+      "args": [
+        "rawIban"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "base-converter",
+      "dir": "integer-base-converter",
+      "path": "/base-converter",
+      "category": "Converter",
+      "title_ru": "Конвертер систем счисления",
+      "description_ru": "Перевод числа между системами счисления: десятичная, шестнадцатеричная, двоичная, восьмеричная, base64 и другие.",
+      "keywords": [
+        "integer",
+        "number",
+        "base",
+        "conversion",
+        "decimal",
+        "hexadecimal",
+        "binary",
+        "octal",
+        "base64"
+      ],
+      "args": [
+        "input",
+        "inputBase",
+        "outputBase"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "ipv4-address-converter",
+      "dir": "ipv4-address-converter",
+      "path": "/ipv4-address-converter",
+      "category": "Network",
+      "title_ru": "Конвертер адресов IPv4",
+      "description_ru": "Перевод IP-адреса в десятичное, двоичное, шестнадцатеричное и даже IPv6-представление.",
+      "keywords": [
+        "ipv4",
+        "address",
+        "converter",
+        "decimal",
+        "hexadecimal",
+        "binary",
+        "ipv6"
+      ],
+      "args": [
+        "rawIpAddress"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "ipv4-range-expander",
+      "dir": "ipv4-range-expander",
+      "path": "/ipv4-range-expander",
+      "category": "Network",
+      "title_ru": "Расширение диапазона IPv4",
+      "description_ru": "По начальному и конечному адресу IPv4 инструмент вычисляет корректную подсеть и её запись в нотации CIDR.",
+      "keywords": [
+        "ipv4",
+        "range",
+        "expander",
+        "subnet",
+        "creator",
+        "cidr"
+      ],
+      "args": [
+        "rawEndAddress",
+        "rawStartAddress"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "ipv4-subnet-calculator",
+      "dir": "ipv4-subnet-calculator",
+      "path": "/ipv4-subnet-calculator",
+      "category": "Network",
+      "title_ru": "Калькулятор подсетей IPv4",
+      "description_ru": "Разбор блока IPv4 в нотации CIDR со всей информацией о подсети.",
+      "keywords": [
+        "ipv4",
+        "subnet",
+        "calculator",
+        "mask",
+        "network",
+        "cidr",
+        "netmask",
+        "bitmask",
+        "broadcast",
+        "address"
+      ],
+      "args": [
+        "ip"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "ipv6-ula-generator",
+      "dir": "ipv6-ula-generator",
+      "path": "/ipv6-ula-generator",
+      "category": "Network",
+      "title_ru": "Генератор IPv6 ULA",
+      "description_ru": "Генерация собственных локальных немаршрутизируемых IP-адресов для сети по RFC4193.",
+      "keywords": [
+        "ipv6",
+        "ula",
+        "generator",
+        "rfc4193",
+        "network",
+        "private"
+      ],
+      "args": [
+        "macAddress"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "json-diff",
+      "dir": "json-diff",
+      "path": "/json-diff",
+      "category": "Web",
+      "title_ru": "Сравнение JSON",
+      "description_ru": "Сравнение двух объектов JSON и вывод различий между ними.",
+      "keywords": [
+        "json",
+        "diff",
+        "compare",
+        "difference",
+        "object",
+        "data"
+      ],
+      "args": [
+        "rawLeftJson",
+        "rawRightJson"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "json-minify",
+      "dir": "json-minify",
+      "path": "/json-minify",
+      "category": "Development",
+      "title_ru": "Минификация JSON",
+      "description_ru": "Сжатие JSON за счёт удаления лишних пробелов.",
+      "keywords": [
+        "json",
+        "minify",
+        "format"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "json-to-csv",
+      "dir": "json-to-csv",
+      "path": "/json-to-csv",
+      "category": "Development",
+      "title_ru": "JSON в CSV",
+      "description_ru": "Преобразование JSON в CSV с автоматическим определением заголовков.",
+      "keywords": [
+        "json",
+        "to",
+        "csv",
+        "convert"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "json-to-toml",
+      "dir": "json-to-toml",
+      "path": "/json-to-toml",
+      "category": "Converter",
+      "title_ru": "JSON в TOML",
+      "description_ru": "Разбор JSON и преобразование в TOML.",
+      "keywords": [
+        "json",
+        "parse",
+        "toml",
+        "convert",
+        "transform"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "json-to-xml",
+      "dir": "json-to-xml",
+      "path": "/json-to-xml",
+      "category": "Converter",
+      "title_ru": "JSON в XML",
+      "description_ru": "Преобразование JSON в XML.",
+      "keywords": [
+        "json",
+        "xml"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "json-to-yaml-converter",
+      "dir": "json-to-yaml-converter",
+      "path": "/json-to-yaml-converter",
+      "category": "Converter",
+      "title_ru": "JSON в YAML",
+      "description_ru": "Преобразование JSON в YAML на лету.",
+      "keywords": [
+        "yaml",
+        "to",
+        "json"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "json-prettify",
+      "dir": "json-viewer",
+      "path": "/json-prettify",
+      "category": "Development",
+      "title_ru": "Форматирование JSON",
+      "description_ru": "Приведение JSON к читаемому виду.",
+      "keywords": [
+        "json",
+        "viewer",
+        "prettify",
+        "format"
+      ],
+      "args": [
+        "indentSize",
+        "rawJson",
+        "sortKeys"
+      ],
+      "redirect_from": [
+        "/json-viewer"
+      ],
+      "registered": true
+    },
+    {
+      "tool_id": "jwt-parser",
+      "dir": "jwt-parser",
+      "path": "/jwt-parser",
+      "category": "Web",
+      "title_ru": "Разбор JWT",
+      "description_ru": "Разбор и декодирование JSON Web Token (jwt) с выводом содержимого.",
+      "keywords": [
+        "jwt",
+        "parser",
+        "decode",
+        "typ",
+        "alg",
+        "iss",
+        "sub",
+        "aud",
+        "exp",
+        "nbf",
+        "iat",
+        "jti",
+        "json",
+        "web",
+        "token"
+      ],
+      "args": [
+        "rawJwt"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "keycode-info",
+      "dir": "keycode-info",
+      "path": "/keycode-info",
+      "category": "Web",
+      "title_ru": "Коды клавиш",
+      "description_ru": "Javascript keycode, code, location и модификаторы для нажатой клавиши.",
+      "keywords": [
+        "keycode",
+        "info",
+        "code",
+        "javascript",
+        "event",
+        "keycodes",
+        "which",
+        "keyboard",
+        "press",
+        "modifier",
+        "alt",
+        "ctrl",
+        "meta",
+        "shift"
+      ],
+      "args": [
+        "event"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "list-converter",
+      "dir": "list-converter",
+      "path": "/list-converter",
+      "category": "Converter",
+      "title_ru": "Конвертер списков",
+      "description_ru": "Обработка данных по столбцам: транспонирование, добавление префикса и суффикса, разворот и сортировка списка, приведение к нижнему регистру, обрезка значений.",
+      "keywords": [
+        "list",
+        "converter",
+        "sort",
+        "reverse",
+        "prefix",
+        "suffix",
+        "lowercase",
+        "truncate"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "lorem-ipsum-generator",
+      "dir": "lorem-ipsum-generator",
+      "path": "/lorem-ipsum-generator",
+      "category": "Text",
+      "title_ru": "Генератор Lorem ipsum",
+      "description_ru": "Lorem ipsum — текст-заглушка, которым показывают вид документа или шрифта, не отвлекаясь на содержание.",
+      "keywords": [
+        "lorem",
+        "ipsum",
+        "dolor",
+        "sit",
+        "amet",
+        "placeholder",
+        "text",
+        "filler",
+        "random",
+        "generator"
+      ],
+      "args": [
+        "asHTML",
+        "paragraphs",
+        "sentences",
+        "startWithLoremIpsum",
+        "words"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "mac-address-generator",
+      "dir": "mac-address-generator",
+      "path": "/mac-address-generator",
+      "category": "Network",
+      "title_ru": "Генератор MAC-адресов",
+      "description_ru": "Генерация MAC-адресов по количеству и префиксу, в выбранном регистре.",
+      "keywords": [
+        "mac",
+        "address",
+        "generator",
+        "random",
+        "prefix"
+      ],
+      "args": [
+        "amount",
+        "caseTransformer",
+        "macAddressPrefix",
+        "separator"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "mac-address-lookup",
+      "dir": "mac-address-lookup",
+      "path": "/mac-address-lookup",
+      "category": "Network",
+      "title_ru": "Поиск по MAC-адресу",
+      "description_ru": "Определение вендора и производителя устройства по MAC-адресу.",
+      "keywords": [
+        "mac",
+        "address",
+        "lookup",
+        "vendor",
+        "parser",
+        "manufacturer"
+      ],
+      "args": [
+        "macAddress"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "markdown-to-html",
+      "dir": "markdown-to-html",
+      "path": "/markdown-to-html",
+      "category": "Converter",
+      "title_ru": "Markdown в HTML",
+      "description_ru": "Преобразование Markdown в HTML с возможностью печати в PDF.",
+      "keywords": [
+        "markdown",
+        "html",
+        "converter",
+        "pdf"
+      ],
+      "args": [
+        "inputMarkdown"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "math-evaluator",
+      "dir": "math-evaluator",
+      "path": "/math-evaluator",
+      "category": "Math",
+      "title_ru": "Вычислитель выражений",
+      "description_ru": "Калькулятор математических выражений с функциями sqrt, cos, sin, abs и другими.",
+      "keywords": [
+        "math",
+        "evaluator",
+        "calculator",
+        "expression",
+        "abs",
+        "acos",
+        "acosh",
+        "acot",
+        "acoth",
+        "acsc",
+        "acsch",
+        "asec",
+        "asech",
+        "asin",
+        "asinh",
+        "atan",
+        "atan2",
+        "atanh",
+        "cos",
+        "cosh",
+        "cot",
+        "coth",
+        "csc",
+        "csch",
+        "sec",
+        "sech",
+        "sin",
+        "sinh",
+        "sqrt",
+        "tan",
+        "tanh"
+      ],
+      "args": [
+        "expression"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "og-meta-generator",
+      "dir": "meta-tag-generator",
+      "path": "/og-meta-generator",
+      "category": "Web",
+      "title_ru": "Генератор Open Graph",
+      "description_ru": "Генерация HTML-метатегов open-graph и социальных сетей для сайта.",
+      "keywords": [
+        "meta",
+        "tag",
+        "generator",
+        "social",
+        "title",
+        "description",
+        "image",
+        "share",
+        "online",
+        "website",
+        "open",
+        "graph",
+        "og"
+      ],
+      "args": [
+        "metadata"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "mime-types",
+      "dir": "mime-types",
+      "path": "/mime-types",
+      "category": "Web",
+      "title_ru": "MIME-типы",
+      "description_ru": "Перевод MIME-типов в расширения файлов и обратно.",
+      "keywords": [
+        "mime",
+        "types",
+        "extension",
+        "content",
+        "type"
+      ],
+      "args": [
+        "selectedExtension",
+        "selectedMimeType"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "numeronym-generator",
+      "dir": "numeronym-generator",
+      "path": "/numeronym-generator",
+      "category": "Text",
+      "title_ru": "Генератор нумеронимов",
+      "description_ru": "Нумероним — слово, сокращённое числом. Например, «i18n» — нумероним слова «internationalization», где 18 — количество букв между первой i и последней n.",
+      "keywords": [
+        "numeronym",
+        "generator",
+        "abbreviation",
+        "i18n",
+        "a11y",
+        "l10n"
+      ],
+      "args": [
+        "word"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "otp-generator",
+      "dir": "otp-code-generator-and-validator",
+      "path": "/otp-generator",
+      "category": "Web",
+      "title_ru": "Генератор OTP-кодов",
+      "description_ru": "Генерация и проверка одноразовых паролей на основе времени (TOTP) для многофакторной аутентификации.",
+      "keywords": [
+        "otp",
+        "code",
+        "generator",
+        "validator",
+        "one",
+        "time",
+        "password",
+        "authentication",
+        "MFA",
+        "mobile",
+        "device",
+        "security",
+        "TOTP",
+        "Time",
+        "HMAC"
+      ],
+      "args": [
+        "secret"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "password-strength-analyser",
+      "dir": "password-strength-analyser",
+      "path": "/password-strength-analyser",
+      "category": "Crypto",
+      "title_ru": "Анализатор стойкости пароля",
+      "description_ru": "Оценка стойкости пароля и времени подбора. Работает целиком в браузере, пароль никуда не отправляется.",
+      "keywords": [
+        "password",
+        "strength",
+        "analyser",
+        "and",
+        "crack",
+        "time",
+        "estimation",
+        "brute",
+        "force",
+        "attack",
+        "entropy",
+        "cracking",
+        "hash",
+        "hashing",
+        "algorithm",
+        "algorithms",
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512",
+        "bcrypt",
+        "scrypt",
+        "argon2",
+        "argon2id",
+        "argon2i",
+        "argon2d"
+      ],
+      "args": [
+        "password"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "pdf-signature-checker",
+      "dir": "pdf-signature-checker",
+      "path": "/pdf-signature-checker",
+      "category": "Crypto",
+      "title_ru": "Проверка подписи PDF",
+      "description_ru": "Проверка подписей в файле PDF. Подписанный PDF содержит одну или несколько подписей, по которым видно, менялось ли содержимое файла после подписания.",
+      "keywords": [
+        "pdf",
+        "signature",
+        "checker",
+        "verify",
+        "validate",
+        "sign"
+      ],
+      "args": [
+        "file",
+        "signatures",
+        "status"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "percentage-calculator",
+      "dir": "percentage-calculator",
+      "path": "/percentage-calculator",
+      "category": "Math",
+      "title_ru": "Калькулятор процентов",
+      "description_ru": "Расчёт процентов: от значения к значению или от процента к значению.",
+      "keywords": [
+        "percentage",
+        "calculator",
+        "calculate",
+        "value",
+        "number",
+        "%"
+      ],
+      "args": [
+        "numberFrom",
+        "numberTo",
+        "numberX",
+        "numberY",
+        "percentageX",
+        "percentageY"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "phone-parser-and-formatter",
+      "dir": "phone-parser-and-formatter",
+      "path": "/phone-parser-and-formatter",
+      "category": "Data",
+      "title_ru": "Разбор и форматирование телефонов",
+      "description_ru": "Разбор, проверка и форматирование телефонных номеров с информацией о коде страны, типе номера и прочем.",
+      "keywords": [
+        "phone",
+        "parser",
+        "formatter",
+        "validate",
+        "format",
+        "number",
+        "telephone",
+        "mobile",
+        "cell",
+        "international",
+        "national"
+      ],
+      "args": [
+        "defaultCountryCode",
+        "rawPhone"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "qrcode-generator",
+      "dir": "qr-code-generator",
+      "path": "/qrcode-generator",
+      "category": "Images and videos",
+      "title_ru": "Генератор QR-кодов",
+      "description_ru": "Генерация и скачивание QR-кода для ссылки или произвольного текста с настройкой цвета фона и переднего плана.",
+      "keywords": [
+        "qr",
+        "code",
+        "generator",
+        "square",
+        "color",
+        "link",
+        "low",
+        "medium",
+        "quartile",
+        "high",
+        "transparent"
+      ],
+      "args": [
+        "background",
+        "errorCorrectionLevel",
+        "foreground",
+        "text"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "random-port-generator",
+      "dir": "random-port-generator",
+      "path": "/random-port-generator",
+      "category": "Development",
+      "title_ru": "Генератор случайных портов",
+      "description_ru": "Случайные номера портов за пределами диапазона «известных» портов (0-1023).",
+      "keywords": [
+        "system",
+        "port",
+        "lan",
+        "generator",
+        "random",
+        "development",
+        "computer"
+      ],
+      "args": [],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "regex-memo",
+      "dir": "regex-memo",
+      "path": "/regex-memo",
+      "category": "Development",
+      "title_ru": "Шпаргалка по регулярным выражениям",
+      "description_ru": "Шпаргалка по регулярным выражениям Javascript.",
+      "keywords": [
+        "regex",
+        "regular",
+        "expression",
+        "javascript",
+        "memo",
+        "cheatsheet"
+      ],
+      "args": [],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "regex-tester",
+      "dir": "regex-tester",
+      "path": "/regex-tester",
+      "category": "Development",
+      "title_ru": "Проверка регулярных выражений",
+      "description_ru": "Проверка регулярного выражения на тестовом тексте.",
+      "keywords": [
+        "regex",
+        "tester",
+        "sample",
+        "expression"
+      ],
+      "args": [
+        "dotAll",
+        "global",
+        "ignoreCase",
+        "multiline",
+        "regex",
+        "text",
+        "unicode",
+        "unicodeSets",
+        "visualizerSVG"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "roman-numeral-converter",
+      "dir": "roman-numeral-converter",
+      "path": "/roman-numeral-converter",
+      "category": "Converter",
+      "title_ru": "Конвертер римских чисел",
+      "description_ru": "Перевод римских чисел в арабские и обратно.",
+      "keywords": [
+        "roman",
+        "arabic",
+        "converter",
+        "X",
+        "I",
+        "V",
+        "L",
+        "C",
+        "D",
+        "M"
+      ],
+      "args": [
+        "inputNumeral",
+        "inputRoman"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "rsa-key-pair-generator",
+      "dir": "rsa-key-pair-generator",
+      "path": "/rsa-key-pair-generator",
+      "category": "Crypto",
+      "title_ru": "Генератор пары ключей RSA",
+      "description_ru": "Генерация новой случайной пары приватного и публичного ключей RSA в формате pem.",
+      "keywords": [
+        "rsa",
+        "key",
+        "pair",
+        "generator",
+        "public",
+        "private",
+        "secret",
+        "ssh",
+        "pem"
+      ],
+      "args": [
+        "bits"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "safelink-decoder",
+      "dir": "safelink-decoder",
+      "path": "/safelink-decoder",
+      "category": "Web",
+      "title_ru": "Декодер ссылок Outlook Safelink",
+      "description_ru": "Восстановление исходного адреса из ссылки Outlook SafeLink.",
+      "keywords": [
+        "outlook",
+        "safelink",
+        "decoder"
+      ],
+      "args": [
+        "inputSafeLinkUrl"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "slugify-string",
+      "dir": "slugify-string",
+      "path": "/slugify-string",
+      "category": "Web",
+      "title_ru": "Slug из строки",
+      "description_ru": "Приведение строки к виду, безопасному для URL, имени файла и идентификатора.",
+      "keywords": [
+        "slugify",
+        "string",
+        "escape",
+        "emoji",
+        "special",
+        "character",
+        "space",
+        "trim"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "sql-prettify",
+      "dir": "sql-prettify",
+      "path": "/sql-prettify",
+      "category": "Development",
+      "title_ru": "Форматирование SQL",
+      "description_ru": "Форматирование SQL-запросов с поддержкой разных диалектов.",
+      "keywords": [
+        "sql",
+        "prettify",
+        "beautify",
+        "GCP BigQuery",
+        "IBM DB2",
+        "Apache Hive",
+        "MariaDB",
+        "MySQL",
+        "Couchbase N1QL",
+        "Oracle PL/SQL",
+        "PostgreSQL",
+        "Amazon Redshift",
+        "Spark",
+        "SQL Server Transact-SQL"
+      ],
+      "args": [
+        "rawSQL"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "string-obfuscator",
+      "dir": "string-obfuscator",
+      "path": "/string-obfuscator",
+      "category": "Text",
+      "title_ru": "Маскирование строки",
+      "description_ru": "Маскирование строки (секрета, IBAN или токена), чтобы её можно было показать и опознать, не раскрывая содержимое.",
+      "keywords": [
+        "string",
+        "obfuscator",
+        "secret",
+        "token",
+        "hide",
+        "obscure",
+        "mask",
+        "masking"
+      ],
+      "args": [
+        "keepFirst",
+        "keepLast",
+        "keepSpace",
+        "str"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "svg-placeholder-generator",
+      "dir": "svg-placeholder-generator",
+      "path": "/svg-placeholder-generator",
+      "category": "Images and videos",
+      "title_ru": "Генератор SVG-заглушек",
+      "description_ru": "Генерация SVG-картинок для использования в качестве заглушек в приложении.",
+      "keywords": [
+        "svg",
+        "placeholder",
+        "generator",
+        "image",
+        "size",
+        "mockup"
+      ],
+      "args": [
+        "bgColor",
+        "customText",
+        "fgColor",
+        "fontSize",
+        "height",
+        "useExactSize",
+        "width"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "temperature-converter",
+      "dir": "temperature-converter",
+      "path": "/temperature-converter",
+      "category": "Measurement",
+      "title_ru": "Конвертер температур",
+      "description_ru": "Перевод температуры между шкалами Кельвина, Цельсия, Фаренгейта, Ранкина, Делиля, Ньютона, Реомюра и Рёмера.",
+      "keywords": [
+        "temperature",
+        "converter",
+        "degree",
+        "Kelvin",
+        "Celsius",
+        "Fahrenheit",
+        "Rankine",
+        "Delisle",
+        "Newton",
+        "Réaumur",
+        "Rømer"
+      ],
+      "args": [],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "text-diff",
+      "dir": "text-diff",
+      "path": "/text-diff",
+      "category": "Text",
+      "title_ru": "Сравнение текстов",
+      "description_ru": "Сравнение двух текстов и вывод различий между ними.",
+      "keywords": [
+        "text",
+        "diff",
+        "compare",
+        "string",
+        "text diff",
+        "code"
+      ],
+      "args": [],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "text-statistics",
+      "dir": "text-statistics",
+      "path": "/text-statistics",
+      "category": "Text",
+      "title_ru": "Статистика текста",
+      "description_ru": "Сведения о тексте: количество символов, количество слов, размер в байтах и прочее.",
+      "keywords": [
+        "text",
+        "statistics",
+        "length",
+        "characters",
+        "count",
+        "size",
+        "bytes"
+      ],
+      "args": [
+        "text"
+      ],
+      "redirect_from": [
+        "/text-stats"
+      ],
+      "registered": true
+    },
+    {
+      "tool_id": "text-to-binary",
+      "dir": "text-to-binary",
+      "path": "/text-to-binary",
+      "category": "Converter",
+      "title_ru": "Текст в двоичный ASCII",
+      "description_ru": "Перевод текста в двоичное представление ASCII и обратно.",
+      "keywords": [
+        "text",
+        "to",
+        "binary",
+        "converter",
+        "encode",
+        "decode",
+        "ascii"
+      ],
+      "args": [
+        "inputBinary",
+        "inputText"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "text-to-nato-alphabet",
+      "dir": "text-to-nato-alphabet",
+      "path": "/text-to-nato-alphabet",
+      "category": "Converter",
+      "title_ru": "Текст в алфавит НАТО",
+      "description_ru": "Перевод текста в фонетический алфавит НАТО для передачи голосом.",
+      "keywords": [
+        "string",
+        "nato",
+        "alphabet",
+        "phonetic",
+        "oral",
+        "transmission"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "text-to-unicode",
+      "dir": "text-to-unicode",
+      "path": "/text-to-unicode",
+      "category": "Converter",
+      "title_ru": "Текст в Unicode",
+      "description_ru": "Разбор и перевод текста в Unicode и обратно.",
+      "keywords": [
+        "text",
+        "to",
+        "unicode"
+      ],
+      "args": [
+        "inputText",
+        "inputUnicode"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "token-generator",
+      "dir": "token-generator",
+      "path": "/token-generator",
+      "category": "Crypto",
+      "title_ru": "Генератор токенов",
+      "description_ru": "Случайная строка из нужных символов: прописные и строчные буквы, цифры и знаки.",
+      "keywords": [
+        "token",
+        "random",
+        "string",
+        "alphanumeric",
+        "symbols",
+        "number",
+        "letters",
+        "lowercase",
+        "uppercase",
+        "password"
+      ],
+      "args": [],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "toml-to-json",
+      "dir": "toml-to-json",
+      "path": "/toml-to-json",
+      "category": "Converter",
+      "title_ru": "TOML в JSON",
+      "description_ru": "Разбор TOML и преобразование в JSON.",
+      "keywords": [
+        "toml",
+        "json",
+        "convert",
+        "online",
+        "transform",
+        "parser"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "toml-to-yaml",
+      "dir": "toml-to-yaml",
+      "path": "/toml-to-yaml",
+      "category": "Converter",
+      "title_ru": "TOML в YAML",
+      "description_ru": "Разбор TOML и преобразование в YAML.",
+      "keywords": [
+        "toml",
+        "yaml",
+        "convert",
+        "online",
+        "transform",
+        "parse"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "ulid-generator",
+      "dir": "ulid-generator",
+      "path": "/ulid-generator",
+      "category": "Crypto",
+      "title_ru": "Генератор ULID",
+      "description_ru": "Генерация случайных лексикографически сортируемых идентификаторов (ULID).",
+      "keywords": [
+        "ulid",
+        "generator",
+        "random",
+        "id",
+        "alphanumeric",
+        "identity",
+        "token",
+        "string",
+        "identifier",
+        "unique"
+      ],
+      "args": [
+        "amount"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "url-encoder",
+      "dir": "url-encoder",
+      "path": "/url-encoder",
+      "category": "Web",
+      "title_ru": "Кодирование строк для URL",
+      "description_ru": "Кодирование текста в формат URL (percent-encoding) и обратное декодирование.",
+      "keywords": [
+        "url",
+        "encode",
+        "decode",
+        "percent",
+        "%20",
+        "format"
+      ],
+      "args": [
+        "decodeInput",
+        "encodeInput"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "url-parser",
+      "dir": "url-parser",
+      "path": "/url-parser",
+      "category": "Web",
+      "title_ru": "Разбор URL",
+      "description_ru": "Разбор URL на составные части: протокол, origin, параметры, порт, имя пользователя и пароль.",
+      "keywords": [
+        "url",
+        "parser",
+        "protocol",
+        "origin",
+        "params",
+        "port",
+        "username",
+        "password",
+        "href"
+      ],
+      "args": [
+        "urlToParse"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "user-agent-parser",
+      "dir": "user-agent-parser",
+      "path": "/user-agent-parser",
+      "category": "Web",
+      "title_ru": "Разбор user-agent",
+      "description_ru": "Определение браузера, движка, ОС, процессора, типа и модели устройства по строке user-agent.",
+      "keywords": [
+        "user",
+        "agent",
+        "parser",
+        "browser",
+        "engine",
+        "os",
+        "cpu",
+        "device",
+        "user-agent",
+        "client"
+      ],
+      "args": [
+        "ua"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "uuid-generator",
+      "dir": "uuid-generator",
+      "path": "/uuid-generator",
+      "category": "Crypto",
+      "title_ru": "Генератор UUID",
+      "description_ru": "UUID — 128-битное число для идентификации данных в информационных системах. Возможных UUID — 16^32, то есть 2^128, около 3,4x10^38.",
+      "keywords": [
+        "uuid",
+        "v4",
+        "random",
+        "id",
+        "alphanumeric",
+        "identity",
+        "token",
+        "string",
+        "identifier",
+        "unique",
+        "v1",
+        "v3",
+        "v5",
+        "nil"
+      ],
+      "args": [
+        "count",
+        "v35Args"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "wifi-qrcode-generator",
+      "dir": "wifi-qr-code-generator",
+      "path": "/wifi-qrcode-generator",
+      "category": "Images and videos",
+      "title_ru": "Генератор QR-кодов для Wi-Fi",
+      "description_ru": "Генерация и скачивание QR-кодов для быстрого подключения к сетям Wi-Fi.",
+      "keywords": [
+        "qr",
+        "code",
+        "generator",
+        "square",
+        "color",
+        "link",
+        "low",
+        "medium",
+        "quartile",
+        "high",
+        "transparent",
+        "wifi"
+      ],
+      "args": [
+        "background",
+        "eapAnonymous",
+        "eapIdentity",
+        "eapMethod",
+        "eapPhase2Method",
+        "foreground",
+        "isHiddenSSID",
+        "password",
+        "ssid"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "xml-formatter",
+      "dir": "xml-formatter",
+      "path": "/xml-formatter",
+      "category": "Development",
+      "title_ru": "Форматирование XML",
+      "description_ru": "Приведение XML к читаемому виду.",
+      "keywords": [
+        "xml",
+        "prettify",
+        "format"
+      ],
+      "args": [
+        "collapseContent",
+        "indentSize",
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "xml-to-json",
+      "dir": "xml-to-json",
+      "path": "/xml-to-json",
+      "category": "Converter",
+      "title_ru": "XML в JSON",
+      "description_ru": "Преобразование XML в JSON.",
+      "keywords": [
+        "xml",
+        "json"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "yaml-to-json-converter",
+      "dir": "yaml-to-json-converter",
+      "path": "/yaml-to-json-converter",
+      "category": "Converter",
+      "title_ru": "YAML в JSON",
+      "description_ru": "Преобразование YAML в JSON на лету.",
+      "keywords": [
+        "yaml",
+        "to",
+        "json"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "yaml-to-toml",
+      "dir": "yaml-to-toml",
+      "path": "/yaml-to-toml",
+      "category": "Converter",
+      "title_ru": "YAML в TOML",
+      "description_ru": "Разбор YAML и преобразование в TOML.",
+      "keywords": [
+        "yaml",
+        "to",
+        "toml",
+        "convert",
+        "transform"
+      ],
+      "args": [
+        "input"
+      ],
+      "redirect_from": [],
+      "registered": true
+    },
+    {
+      "tool_id": "yaml-prettify",
+      "dir": "yaml-viewer",
+      "path": "/yaml-prettify",
+      "category": "Development",
+      "title_ru": "Форматирование YAML",
+      "description_ru": "Приведение YAML к читаемому виду.",
+      "keywords": [
+        "yaml",
+        "viewer",
+        "prettify",
+        "format"
+      ],
+      "args": [
+        "indentSize",
+        "rawYaml",
+        "sortKeys"
+      ],
+      "redirect_from": [],
+      "registered": true
+    }
+  ]
+}

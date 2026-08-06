@@ -5604,6 +5604,16 @@ class DigitCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         except Exception:
             pass
 
+    def _turn_summary_record_provenance(self, answered_by, detail=None) -> None:
+        """Записать в тальи хода, кто на него ответил."""
+        collector = getattr(self, "_turn_summary_collector", None)
+        if collector is None:
+            return
+        try:
+            collector.record_provenance(answered_by, detail)
+        except Exception:
+            pass
+
     def _turn_summary_emit(self) -> None:
         """Print the post-turn accounting line, when enabled for this surface."""
         collector = getattr(self, "_turn_summary_collector", None)
@@ -14178,6 +14188,18 @@ class DigitCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
 
             # Get the final response
             response = result.get("final_response", "") if result else ""
+
+            # Кто закрыл ход — правило или модель. Ход, который закрыл первый
+            # каскад маршрутизации, не делает ни одного обращения к провайдеру
+            # и не вызывает инструментов обычным путём, поэтому без этой
+            # отметки он выглядел бы в футере как ход, в котором не произошло
+            # ничего. См. agent/rule_cascade.py.
+            if result and result.get("answered_by"):
+                _cascade_meta = result.get("rule_cascade") or {}
+                self._turn_summary_record_provenance(
+                    result.get("answered_by"),
+                    _cascade_meta.get("tool_id") if isinstance(_cascade_meta, dict) else None,
+                )
 
             # Auto-generate session title after first exchange (non-blocking)
             if response and result and not result.get("failed") and not result.get("partial"):
