@@ -447,6 +447,7 @@ from digit_cli.subcommands.auth import build_auth_parser
 from digit_cli.subcommands.status import build_status_parser
 from digit_cli.subcommands.webhook import build_webhook_parser
 from digit_cli.subcommands.hooks import build_hooks_parser
+from digit_cli.subcommands.local import build_local_parser
 from digit_cli.subcommands.doctor import build_doctor_parser
 from digit_cli.subcommands.security import build_security_parser
 from digit_cli.subcommands.approvals import build_approvals_parser
@@ -2662,6 +2663,22 @@ def cmd_chat(args):
         print("You can run 'digit setup' at any time to configure.")
         sys.exit(1)
 
+    # Локальная модель поднимается сама, если конфиг указывает именно на неё.
+    # llama-server — обычный процесс, а не служба: после перезагрузки его нет, и
+    # без этого шага человек получал бы отказ соединения вместо ответа, хотя
+    # веса и бинарник лежат на диске. Ничего не скачивается — только запуск.
+    try:
+        from digit_cli.local_model import autostart_if_configured
+        from digit_cli.config import load_config as _load_config_for_local
+
+        if autostart_if_configured(
+            _load_config_for_local(),
+            on_progress=lambda message: print(f"  · {message}"),
+        ):
+            print("  · локальная модель поднята")
+    except Exception as exc:  # noqa: BLE001 — запуск чата важнее автоподъёма
+        logger.debug("Автоподъём локальной модели не состоялся: %s", exc)
+
     # Start update check in background (runs while other init happens).
     # On Termux this imports rich/prompt_toolkit in the foreground and then
     # competes for CPU on single-core devices, so keep it opt-in there.
@@ -4869,6 +4886,13 @@ def cmd_hooks(args):
     from digit_cli.hooks import hooks_command
 
     hooks_command(args)
+
+
+def cmd_local(args):
+    """Local llama.cpp model server that Digit installs and runs itself."""
+    from digit_cli.local_model import local_command
+
+    sys.exit(local_command(args))
 
 
 def cmd_doctor(args):
@@ -11550,6 +11574,11 @@ def main():
     # hooks command  (parser built in digit_cli/subcommands/hooks.py)
     # =========================================================================
     build_hooks_parser(subparsers, cmd_hooks=cmd_hooks)
+
+    # =========================================================================
+    # local command  (parser built in digit_cli/subcommands/local.py)
+    # =========================================================================
+    build_local_parser(subparsers, cmd_local=cmd_local)
 
     # =========================================================================
     # doctor command  (parser built in digit_cli/subcommands/doctor.py)

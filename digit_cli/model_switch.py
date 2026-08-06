@@ -360,11 +360,22 @@ _BUILTIN_DIRECT_ALIASES: dict[str, DirectAlias] = {
     "digit-gemma": DirectAlias(
         model="gemma3:4b", provider="custom", base_url="http://localhost:11434/v1"
     ),
+    # Модель, которую Digit ставит сам: `digit local start`. Порт 8127, а не
+    # 11434 — это llama-server из llama.cpp, а не Ollama: веса опубликованы как
+    # GGUF, и Ollama потребовала бы импорта через Modelfile. Alias только
+    # указывает, куда обращаться, и сам ничего не поднимает.
+    "digit-llamacpp": DirectAlias(
+        model="Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+        provider="custom",
+        base_url="http://127.0.0.1:8127/v1",
+    ),
     # Собственная модель Digitable: маршрутизатор, обученный на каталоге из 95
-    # утилит и корпусе курсов. Порт 8127, а не 11434 — это llama-server из
-    # llama.cpp, а не Ollama: веса опубликованы как GGUF, и Ollama потребовала бы
-    # импорта через Modelfile. Поднимается `scripts/local-router.sh`, который
-    # ничего не делает неявно: alias только указывает, куда обращаться.
+    # утилит и корпусе курсов. Основной моделью агента она быть не может —
+    # обучена на окне 40 960 токенов, а agent/agent_init.py требует не меньше
+    # MINIMUM_CONTEXT_LENGTH (64 000) и отвергает конфигурацию на старте.
+    # Обрезку окна по обучающему делает сам llama-server, и отключить её нечем,
+    # так что «попросить побольше» не помогает. Alias оставлен для
+    # вспомогательных ролей и для явного `digit local start --model router`.
     #
     # Модель выбирает инструмент и фрагмент корпуса. Содержание ответа приходит
     # из утилиты, дословной цитаты или сертификата FTS — сделать её источником

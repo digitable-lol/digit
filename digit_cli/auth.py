@@ -2078,10 +2078,16 @@ def resolve_provider(
     except ImportError:
         pass  # boto3 not installed — skip Bedrock auto-detection
 
+    # Местный путь стоит первым намеренно. Прежний текст предлагал только выбор
+    # провайдера и переменную с ключом, то есть отправлял заводить аккаунт даже
+    # того, кому облако не нужно вовсе — при том что Digit умеет поднять модель
+    # сам и никакого ключа для этого не требуется.
     raise AuthError(
-        "No inference provider configured. Run 'digit model' to choose a "
-        "provider and model, or set an API key (OPENROUTER_API_KEY, "
-        "OPENAI_API_KEY, etc.) in ~/.digit/.env.",
+        "No inference provider configured. Run 'digit setup' and pick the "
+        "simple local install (Digit downloads and runs the model itself, no "
+        "account or key needed), or 'digit model' to choose a cloud provider, "
+        "or set an API key (OPENROUTER_API_KEY, OPENAI_API_KEY, etc.) in "
+        "~/.digit/.env.",
         code="no_provider_configured",
     )
 

@@ -39,18 +39,21 @@ _SETUP_COPY = {
         "wizard_intro": "Let's get Digit ready. You can change every choice later.",
         "wizard_exit": "Press Ctrl+C at any time to exit without finishing.",
         "mode_question": "How would you like to set up Digit?",
-        "mode_local": "Simple local setup — Ollama on this computer, no account or API key (recommended)",
+        "mode_local": "Simple local setup — a model on this computer, no account or API key (recommended)",
         "mode_full": "Advanced setup — connect your own API or server and configure every option",
         "mode_blank": "Blank slate — only the minimum; enable capabilities later",
         "local_title": "Simple local setup",
         "local_saved": "Digit is configured for a local Qwen3.5 4B model through Ollama.",
         "local_private": "Requests stay on this computer; no cloud account is configured.",
         "local_next": "Two commands remain before the first chat:",
-        "local_install": "If Ollama is not installed, get it from https://ollama.com/download",
         "local_ready": "Ollama is installed.",
         "local_model_ready": "The local model is ready.",
         "local_downloading": "Downloading Qwen3.5 4B now. Digit will wait until it is ready…",
         "local_pull_failed": "The model download did not finish. Digit was not pointed at a missing model.",
+        "local_llamacpp_plan": "Digit will run the model itself: llama.cpp (~16 MiB) plus {model} ({size} GiB).",
+        "local_llamacpp_saved": "Digit is configured for {model} on a local llama.cpp server.",
+        "local_llamacpp_manage": "The server runs as a separate process: `digit local start` / `stop` / `status`.",
+        "local_llamacpp_failed": "The local model could not be started. Nothing was written to the config.",
         "local_finish": "Setup is complete. Run `digit`.",
         "defaults_title": "Applied beginner-friendly defaults:",
         "defaults_iterations": "  Up to 150 agent steps per request",
@@ -64,18 +67,21 @@ _SETUP_COPY = {
         "wizard_intro": "Подготовим Digit к работе. Любой выбор можно изменить позже.",
         "wizard_exit": "Ctrl+C — выйти, не завершая настройку.",
         "mode_question": "Как настроить Digit?",
-        "mode_local": "Простая локальная установка — Ollama на этом компьютере, без аккаунта и API-ключа (рекомендуется)",
+        "mode_local": "Простая локальная установка — модель на этом компьютере, без аккаунта и API-ключа (рекомендуется)",
         "mode_full": "Расширенная настройка — подключить свой API или сервер и выбрать все параметры",
         "mode_blank": "Минимальная установка — только необходимое, остальное включить позже",
         "local_title": "Простая локальная установка",
         "local_saved": "Digit настроен на локальную модель Qwen3.5 4B через Ollama.",
         "local_private": "Запросы остаются на этом компьютере; облачный аккаунт не подключён.",
         "local_next": "До первого диалога осталось выполнить две команды:",
-        "local_install": "Если Ollama ещё не установлен: https://ollama.com/download",
         "local_ready": "Ollama уже установлен.",
         "local_model_ready": "Локальная модель готова.",
         "local_downloading": "Загружаю Qwen3.5 4B. Digit дождётся полной готовности модели…",
         "local_pull_failed": "Модель не загрузилась. Digit не будет настроен на отсутствующую модель.",
+        "local_llamacpp_plan": "Digit поднимет модель сам: llama.cpp (~16 МиБ) и {model} ({size} ГиБ).",
+        "local_llamacpp_saved": "Digit настроен на {model} через локальный сервер llama.cpp.",
+        "local_llamacpp_manage": "Сервер живёт отдельным процессом: `digit local start` / `stop` / `status`.",
+        "local_llamacpp_failed": "Локальную модель поднять не удалось. В конфиг ничего не записано.",
         "local_finish": "Настройка завершена. Запустите `digit`.",
         "defaults_title": "Включены понятные настройки для начала:",
         "defaults_iterations": "  До 150 шагов агента на один запрос",
@@ -3333,30 +3339,15 @@ def _ensure_local_ollama_model(executable: str, model: str, language: str) -> bo
     return False
 
 
-def _run_first_time_local_setup(config: dict, digit_home, language: str) -> bool:
-    """Configure a private Ollama-backed Digit without accounts or API keys."""
-    print()
-    print_header(_setup_text(language, "local_title"))
+def _finish_local_setup(config: dict, language: str, model_settings: dict) -> None:
+    """Общий хвост локальной установки: записать модель и разумные умолчания.
 
-    ollama = shutil.which("ollama")
-    if not ollama:
-        print_info(_setup_text(language, "local_install"))
-        print_info("  ollama pull qwen3.5:4b")
-        return False
-
-    print_success(_setup_text(language, "local_ready"))
-    if not _ensure_local_ollama_model(ollama, "qwen3.5:4b", language):
-        return False
-
+    Вынесено из ollama-ветки, потому что вторая ветка (llama.cpp) делает ровно
+    то же самое и расходиться этим двум путям незачем: любая правка умолчаний,
+    сделанная в одном месте, обязана достаться обоим.
+    """
     model = _model_config_dict(config)
-    model.update(
-        {
-            "provider": "custom",
-            "default": "qwen3.5:4b",
-            "base_url": "http://localhost:11434/v1",
-            "api_mode": "chat_completions",
-        }
-    )
+    model.update(model_settings)
     model.pop("api_key", None)
     config["model"] = model
 
@@ -3371,6 +3362,90 @@ def _run_first_time_local_setup(config: dict, digit_home, language: str) -> bool
 
     _apply_default_agent_settings(config, language)
     save_config(config)
+
+
+def _run_first_time_llamacpp_setup(config: dict, language: str) -> bool:
+    """Поднять локальную модель силами самого Digit, без внешнего установщика.
+
+    Эта ветка появилась потому, что прежняя «простая локальная установка» была
+    простой только у того, у кого уже стоит Ollama. У всех остальных она
+    заканчивалась ссылкой на чужой сайт и предложением вернуться позже — то
+    есть ровно на том месте, ради которого мастер и запускали.
+
+    Digit здесь делает всё сам: качает llama-server из релиза llama.cpp (MIT,
+    ~16 МиБ), качает веса в GGUF и поднимает OpenAI-совместимый сервер на
+    127.0.0.1. Наружу не ходит ничего, кроме двух загрузок.
+    """
+    from digit_cli import local_model as lm
+
+    spec = lm.CHAT_WEIGHTS
+    print_info(
+        _setup_text(language, "local_llamacpp_plan").format(
+            model=Path(spec.filename).name,
+            size=round(spec.size_bytes / 2**30, 1),
+        )
+    )
+
+    try:
+        lm.start_server(spec, on_progress=lambda message: print_info(f"  {message}"))
+    except lm.LocalModelError as exc:
+        print_error(_setup_text(language, "local_llamacpp_failed"))
+        print_info(str(exc))
+        return False
+
+    _finish_local_setup(config, language, lm.local_model_config(spec))
+
+    print()
+    print_success(
+        _setup_text(language, "local_llamacpp_saved").format(model=Path(spec.filename).name)
+    )
+    print_info(_setup_text(language, "local_private"))
+    # Сервер живёт отдельным процессом и после перезагрузки не вернётся сам.
+    # Про команду говорим прямо, а не «оно как-нибудь заработает»: молчаливый
+    # отказ соединения на первом же запросе — худший способ это узнать.
+    print_info(_setup_text(language, "local_llamacpp_manage"))
+    print()
+    print(color("  digit", Colors.CYAN, Colors.BOLD))
+    print_info(_setup_text(language, "local_finish"))
+    return True
+
+
+def _run_first_time_local_setup(config: dict, digit_home, language: str) -> bool:
+    """Локальная установка без аккаунтов и ключей: Ollama, а если её нет — своя.
+
+    Ollama проверяется первой не из предпочтения, а из вежливости: если демон
+    уже установлен и в нём уже лежат веса, поднимать рядом второй сервер и
+    качать вторые веса — расточительство.
+    """
+    print()
+    print_header(_setup_text(language, "local_title"))
+
+    ollama = shutil.which("ollama")
+    if not ollama:
+        return _run_first_time_llamacpp_setup(config, language)
+
+    print_success(_setup_text(language, "local_ready"))
+    if not _ensure_local_ollama_model(ollama, "qwen3.5:4b", language):
+        # Раньше здесь мастер сдавался. Неудачная закачка у Ollama — не повод
+        # оставлять человека без модели: свой путь работает независимо от неё.
+        return _run_first_time_llamacpp_setup(config, language)
+
+    _finish_local_setup(
+        config,
+        language,
+        {
+            "provider": "custom",
+            "default": "qwen3.5:4b",
+            "base_url": "http://localhost:11434/v1",
+            "api_mode": "chat_completions",
+            # Ollama по умолчанию отдаёт окно в 4096 токенов, а Digit требует
+            # не меньше 64 000 и отказывается стартовать (agent/agent_init.py).
+            # Провайдер "custom" превращает этот ключ в options.num_ctx, то есть
+            # просит окно на каждом запросе — иначе локальная установка через
+            # Ollama падала бы сразу после мастера.
+            "ollama_num_ctx": 65536,
+        },
+    )
 
     print()
     print_success(_setup_text(language, "local_saved"))
