@@ -2276,6 +2276,19 @@ DEFAULT_CONFIG = {
         "data_dir": "",
     },
 
+    # `digit workbench` — the Digitable Workbench integration catalog (where a
+    # target's palette files go, how to connect them, and what caveat the
+    # target carries). The catalog is read from the courses checkout rather
+    # than vendored into Digit: a vendored copy would keep answering after the
+    # source moved on, and it would do it silently.
+    "workbench": {
+        # Path to workbench-integrations.toml, or to the courses checkout that
+        # holds it. Empty means "find it": the courses checkout `digit kb`
+        # already resolves, otherwise the first data/workbench-integrations.toml
+        # found walking up from the working directory.
+        "catalog": "",
+    },
+
     # execute_code settings — controls the tool used for programmatic tool calls.
     "code_execution": {
         # Execution mode:

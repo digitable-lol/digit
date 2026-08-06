@@ -10615,7 +10615,8 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "prompt-size",
         "send", "sessions", "setup",
         "skin", "skills", "slack", "status", "sync", "tasks", "tools", "uninstall", "update",
-        "version", "webhook", "whatsapp", "whatsapp-cloud", "chat", "secrets", "security",
+        "version", "webhook", "whatsapp", "whatsapp-cloud", "workbench", "chat", "secrets",
+        "security",
         # Help-ish invocations — plugin commands not being listed in
         # top-level --help is an acceptable trade-off for skipping an
         # expensive eager import of every bundled plugin module.
@@ -11520,6 +11521,12 @@ def main():
     # =========================================================================
     from digit_cli.tasks_cli import add_parser as _add_tasks_parser
     _add_tasks_parser(subparsers)
+
+    # =========================================================================
+    # workbench command — the Digitable Workbench integration catalog
+    # =========================================================================
+    from digit_cli.workbench_cli import add_parser as _add_workbench_parser
+    _add_workbench_parser(subparsers)
 
     # =========================================================================
     # kanban command — multi-profile collaboration board
