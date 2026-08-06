@@ -46,6 +46,42 @@ Wrap your elements array in the standard `.excalidraw` envelope and save with `w
 
 Save to any path, e.g. `~/diagrams/my_diagram.excalidraw`.
 
+### Revising a Diagram Someone Else Is Editing
+
+`write_file` is for a diagram you are creating. For one the owner has drawn in —
+the "owner sketches rough shapes, agent tidies them" loop — use
+`scripts/revise.py`, and do **not** rewrite the file wholesale.
+
+The reason is that most of what is in the file is not yours. Each element carries
+`seed`, `versionNonce`, `groupIds`, `boundElements`, `frameId`, `customData` and
+whatever the current app version added; arrows attach to shapes through
+`startBinding`/`endBinding`, text sits inside a shape via `containerId`; and
+Excalidraw reconciles edits using `version`/`versionNonce`/`updated`. Re-emitting
+"the same" element from the subset you understand drops the rest, breaks the
+arrows, and can lose to a stale copy in the owner's open tab. All three failures
+are silent.
+
+```bash
+# See what is there, without pulling the whole JSON into the conversation
+python skills/creative/excalidraw/scripts/revise.py inspect ~/diagrams/d.excalidraw
+
+# Change things by element id; everything else is left exactly as it was
+python skills/creative/excalidraw/scripts/revise.py apply ~/diagrams/d.excalidraw --edits - <<'EOF'
+[{"id": "box1", "set": {"backgroundColor": "#a5d8ff", "x": 140}},
+ {"id": "label1", "set": {"text": "Payment gateway"}},
+ {"add": {"type": "rectangle", "id": "box9", "x": 400, "y": 100,
+          "width": 180, "height": 80}}]
+EOF
+```
+
+`inspect` prints, per element, how many fields it does **not** interpret. Treat
+that count as the measure of what a from-scratch rewrite would throw away.
+
+Deleting an element that something else refers to is refused, because Excalidraw
+drops the orphaned arrow or label without reporting it. Either fix the referring
+elements first, or pass `--force` to delete and have the references cleaned.
+`--output` writes elsewhere and leaves the original alone.
+
 ### Uploading for a Shareable Link
 
 Run the upload script (located in this skill's `scripts/` directory) via terminal:

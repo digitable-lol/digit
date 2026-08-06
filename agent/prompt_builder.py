@@ -933,7 +933,13 @@ PLATFORM_HINTS = {
         "To display local or remote media/files inline, include "
         "MEDIA:/absolute/path/to/file or MEDIA:https://... in your response. "
         "Local file paths must be absolute. Images, audio (with playback speed "
-        "controls), video, PDFs, HTML, CSV, diffs/patches, and Excalidraw files "
+        # "and Excalidraw files" used to be in this list. No Excalidraw
+        # renderer exists anywhere in the project — not in web/, not in
+        # ui-tui/, not in apps/desktop/ — so the model was being told it could
+        # show the user a diagram that would never appear, and a diagram that
+        # silently fails to render is worse than a path the user can open.
+        # Re-add the words only together with a renderer.
+        "controls), video, PDFs, HTML, CSV, and diffs/patches "
         "render as rich previews. Do not use Markdown image syntax like "
         "![alt](/path) for local files; local paths are not served that way. "
         "Use MEDIA:/absolute/path instead."
