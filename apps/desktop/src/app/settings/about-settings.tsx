@@ -21,7 +21,11 @@ import {
 import { ListRow, SectionHeading, SettingsContent } from './primitives'
 import { UninstallSection } from './uninstall-section'
 
-const RELEASE_NOTES_URL = 'https://github.com/NousResearch/hermes-agent/releases'
+// Релизы Digit, а не апстрима: ссылка «что нового» открывается прямо из
+// «О программе» рядом с нашим номером версии, а у NousResearch/hermes-agent
+// нумерация своя — человек попадал в чужой список изменений. Тот же адрес,
+// что и _RELEASE_URL_BASE в digit_cli/banner.py.
+const RELEASE_NOTES_URL = 'https://github.com/digitable-lol/digit/releases'
 
 function relativeTime(ms: number | undefined, a: Translations['settings']['about']) {
   if (!ms) {

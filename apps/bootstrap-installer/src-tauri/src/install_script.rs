@@ -323,8 +323,11 @@ fn upgrade_cached_script(kind: ScriptKind, cached: &Path, emit_log: &impl Fn(&st
 /// packets) never errors — the whole bootstrap would hang here instead of
 /// falling back to the cached script.
 async fn download(kind: ScriptKind, commit_or_ref: &str, dest_path: &Path) -> Result<()> {
+    // Репозиторий Digit, а не апстрима: иначе установщик тянет install.sh
+    // вышестоящего проекта и ставит Hermes Agent. Пин `commit_or_ref` — это
+    // наш SHA, которого в апстриме нет, поэтому там ссылка ещё и 404-ила.
     let url = format!(
-        "https://raw.githubusercontent.com/NousResearch/hermes-agent/{}/scripts/{}",
+        "https://raw.githubusercontent.com/digitable-lol/digit/{}/scripts/{}",
         commit_or_ref,
         kind.filename()
     );
