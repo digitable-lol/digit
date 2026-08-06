@@ -43,13 +43,27 @@ def test_there_are_bundles_to_check():
     assert sorted(PLUGINS_DIR.glob("*/dashboard/dist/*.js")), "no plugin bundles found"
 
 
+#: Where the host actually puts a ``window.__X__`` there for a plugin to find.
+#: ``registry.ts`` assigns the SDK and registry objects at runtime;
+#: ``web_server.py`` injects the request-scoped ones into the served HTML
+#: (``<script>window.__DIGIT_SESSION_TOKEN__=…``) and ``vite.config.ts`` does
+#: the same for the dev server. Reading the *setters* is the point: a name only
+#: counts as part of the contract if some host code puts it on ``window``.
+_HOST_SOURCES = (
+    "web/src/plugins/registry.ts",
+    "web/vite.config.ts",
+    "digit_cli/web_server.py",
+)
+
+
 def test_bundles_only_read_globals_the_host_actually_exposes():
     """Every ``window.__X__`` a bundle reads must be one the host sets."""
-    host = _window_globals(
-        (REPO_ROOT / "web" / "src" / "plugins" / "registry.ts").read_text(encoding="utf-8")
-    ) | _window_globals(
-        (REPO_ROOT / "web" / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
-    )
+    host = set()
+    for rel in _HOST_SOURCES:
+        path = REPO_ROOT / rel
+        assert path.is_file(), f"host source moved: {rel}"
+        host |= _window_globals(path.read_text(encoding="utf-8"))
+
     assert "__DIGIT_PLUGIN_SDK__" in host, "host no longer exposes the plugin SDK"
     assert "__DIGIT_PLUGINS__" in host, "host no longer exposes the plugin registry"
 
