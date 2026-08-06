@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Холст Digit — Excalidraw</title>
+    <link rel="stylesheet" href="/canvas.css" />
+    <script>
+      // Без этой строки бандл ходит за шрифтами, локалями и своим вторым
+      // куском на unpkg.com — то есть холст молча перестаёт работать без
+      // сети. Всё, что он попросит, лежит в /vendor/excalidraw-assets/.
+      window.EXCALIDRAW_ASSET_PATH = "/vendor/";
+    </script>
+    <script src="/vendor/react.production.min.js"></script>
+    <script src="/vendor/react-dom.production.min.js"></script>
+    <script src="/vendor/excalidraw.production.min.js"></script>
+  </head>
+  <body>
+    <div id="banner" hidden></div>
+    <div id="status">загрузка…</div>
+    <div id="canvas"></div>
+    <script src="/canvas.js"></script>
+  </body>
+</html>
