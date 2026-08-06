@@ -182,21 +182,37 @@ class MissingCheckout(Exception):
         self.spec = spec
 
 
+def _readable(path: Path) -> bool:
+    """``path.exists()``, но «нельзя посмотреть» — это тоже «нет».
+
+    ``Path.exists()`` глотает только «нет такого файла»; на запрет доступа он
+    поднимает ``PermissionError``. А среди умолчательных мест поиска стоят
+    чужие чекауты (``/home/u/flang``), и заглянуть в них с нашего аккаунта
+    нельзя. Без этой обёртки ``digit kb index`` падал трассировкой на чужом
+    каталоге — то есть необязательный корпус, которого у нас всё равно нет,
+    ронял сборку индекса по обязательному.
+    """
+    try:
+        return path.exists()
+    except OSError:
+        return False
+
+
 def _resolve_root(spec: RepoSpec, explicit: Optional[str] = None) -> Path:
     """``explicit`` → ``$<env_var>`` → the conventional checkout paths."""
     if explicit:
         root = Path(explicit).expanduser()
-        if not root.exists():
+        if not _readable(root):
             raise store.KBError(f"corpus root does not exist: {root}")
         return root
     env = os.environ.get(spec.env_var, "").strip()
     if env:
         root = Path(env).expanduser()
-        if not root.exists():
+        if not _readable(root):
             raise store.KBError(f"{spec.env_var} points at a missing path: {root}")
         return root
     for candidate in spec.default_roots:
-        if (candidate / spec.marker).exists():
+        if _readable(candidate / spec.marker):
             return candidate
     looked = ", ".join(str(p) for p in spec.default_roots)
     raise MissingCheckout(

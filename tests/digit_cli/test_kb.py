@@ -779,6 +779,39 @@ def test_a_named_but_missing_checkout_is_a_hard_error(tmp_path, monkeypatch):
         indexer.resolve_corpus()
 
 
+def test_an_unreadable_optional_checkout_does_not_stop_the_index(
+    tmp_path, wide_corpus, monkeypatch
+):
+    """Чужой каталог среди мест поиска — это «не наш чекаут», а не отказ.
+
+    В умолчательных местах поиска flang стоит ``/home/u/flang``, то есть
+    чекаут другого пользователя. ``Path.exists()`` глотает только «нет такого
+    файла», а на запрет доступа поднимает ``PermissionError``, — и
+    ``digit kb index`` падал трассировкой прямо на нём. Ронять сборку индекса
+    по обязательному корпусу из-за необязательного, которого у нас всё равно
+    нет, — худший из возможных исходов.
+    """
+    import dataclasses
+
+    forbidden = tmp_path / "чужое"
+    (forbidden / "flang").mkdir(parents=True)
+    (forbidden / "flang" / "SPEC.md").write_text("# SPEC\n", encoding="utf-8")
+    forbidden.chmod(0o000)
+    try:
+        monkeypatch.setenv("DIGIT_KB_CORPUS", str(wide_corpus))
+        monkeypatch.delenv("DIGIT_KB_FLANG", raising=False)
+        flang = dataclasses.replace(indexer.FLANG_REPO, default_roots=(forbidden,))
+        monkeypatch.setattr(indexer, "FLANG_REPO", flang)
+        monkeypatch.setattr(indexer, "REPOS", (indexer.COURSES_REPO, flang))
+
+        resolved = indexer.resolve_corpus()
+
+        assert set(resolved.roots) == {"courses"}
+        assert len(resolved.missing) == 1 and "flang" in resolved.missing[0]
+    finally:
+        forbidden.chmod(0o700)
+
+
 def test_the_missing_courses_corpus_message_is_unchanged(monkeypatch):
     import dataclasses
 
