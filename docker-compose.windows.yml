@@ -9,9 +9,16 @@
 # Usage:
 #   docker compose -f docker-compose.windows.yml up -d
 #
+# Образ, как и в docker-compose.yml, собирается из этого репозитория
+# (`build: .`). Здесь оставалось `image: nousresearch/hermes-agent:latest` —
+# то есть на Windows compose тянул чужой образ вышестоящего проекта и
+# запускал Hermes Agent поверх ~/.digit, собранного Digit. Своего
+# опубликованного образа у форка нет: .github/workflows/docker.yml собирает
+# и пушит только при `github.repository == 'NousResearch/hermes-agent'`.
 services:
   gateway:
-    image: nousresearch/hermes-agent:latest
+    build: .
+    image: digit
     container_name: digit
     restart: unless-stopped
     volumes:
@@ -22,7 +29,7 @@ services:
     command: ["gateway", "run"]
 
   dashboard:
-    image: nousresearch/hermes-agent:latest
+    image: digit
     container_name: digit-dashboard
     restart: unless-stopped
     depends_on:

@@ -1697,10 +1697,10 @@ def _run_post_setup(post_setup_key: str):
                 "    Chromium is missing but you're running in Docker."
             )
             _print_info(
-                "    Pull the latest image to get the bundled Chromium:"
+                "    Rebuild the image from this repo to get the bundled Chromium:"
             )
             _print_info(
-                "      docker pull ghcr.io/nousresearch/hermes-agent:latest"
+                "      docker compose build && docker compose up -d --force-recreate"
             )
             return
 

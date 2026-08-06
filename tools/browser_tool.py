@@ -406,8 +406,8 @@ def _format_browser_timeout_error(
         if _running_in_docker():
             hints.append(
                 "The browser daemon may still be starting or Chromium may be "
-                "missing. Pull the latest image: "
-                "docker pull ghcr.io/nousresearch/hermes-agent:latest"
+                "missing. Rebuild the image from this repo: "
+                "docker compose build && docker compose up -d --force-recreate"
             )
         else:
             hints.append(
@@ -1140,8 +1140,8 @@ def _run_chrome_fallback_command(
         if _running_in_docker():
             hint = (
                 "Chrome fallback requires Chromium, but it is missing. "
-                "You're running in Docker — pull the latest image: "
-                "docker pull ghcr.io/nousresearch/hermes-agent:latest"
+                "You're running in Docker — rebuild the image from this repo: "
+                "docker compose build && docker compose up -d --force-recreate"
             )
         else:
             hint = (
@@ -2487,9 +2487,9 @@ def _run_browser_command(
     ):
         if _running_in_docker():
             hint = (
-                "Chromium browser is missing. You're running in Docker — pull "
-                "the latest image to get the bundled Chromium: "
-                "docker pull ghcr.io/nousresearch/hermes-agent:latest"
+                "Chromium browser is missing. You're running in Docker — rebuild "
+                "the image from this repo to get the bundled Chromium: "
+                "docker compose build && docker compose up -d --force-recreate"
             )
         else:
             hint = (
@@ -4982,10 +4982,10 @@ if __name__ == "__main__":
                 print(f"     Searched: {searched}")
                 if _running_in_docker():
                     print(
-                        "     Docker: pull the latest image — the current one "
+                        "     Docker: rebuild the image — the current one "
                         "predates the bundled Chromium install"
                     )
-                    print("       docker pull ghcr.io/nousresearch/hermes-agent:latest")
+                    print("       docker compose build && docker compose up -d --force-recreate")
                 else:
                     print("     Install it with:")
                     print("       npx agent-browser install --with-deps")

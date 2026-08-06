@@ -10,8 +10,13 @@ was actively misleading.
 These tests pin the new behaviour: when ``detect_install_method`` reports
 ``"docker"`` (stamped by ``docker/stage2-hook.sh``), both the apply path
 (``cmd_update``) and the check path (``_cmd_update_check``) print the
-``docker pull`` guidance from ``format_docker_update_message`` and exit
+rebuild guidance from ``format_docker_update_message`` and exit
 with status 1, without running ``git fetch`` / ``subprocess.run``.
+
+Сообщение раньше советовало ``docker pull nousresearch/hermes-agent:latest``.
+Это не остаток бренда, а рабочая инструкция заменить Digit на образ
+вышестоящего проекта поверх того же ``/opt/data``; своего образа Digit не
+публикует, и обновление у него — пересборка из репозитория.
 """
 
 from __future__ import annotations
@@ -42,7 +47,8 @@ def test_cmd_update_in_docker_prints_guidance_and_exits(
     # Spot-check the key guidance — exhaustive wording is locked in by the
     # config-module test below to keep these CLI tests resilient to copy edits.
     assert "doesn't apply inside the Docker container" in out
-    assert "docker pull nousresearch/hermes-agent:latest" in out
+    assert "docker compose build" in out
+    assert "docker pull nousresearch/hermes-agent" not in out
 
     # No git invocations — the early-return must beat every git command.
     git_calls = [c for c in mock_run.call_args_list if c.args and c.args[0] and "git" in str(c.args[0][0])]
@@ -74,15 +80,19 @@ def test_format_docker_update_message_contents():
     msg = format_docker_update_message()
 
     # Primary command — the entire reason this message exists.
-    assert "docker pull nousresearch/hermes-agent:latest" in msg
+    assert "docker compose build" in msg
 
-    # The four key concepts the message must cover:
-    assert "restart" in msg.lower(), "must explain that a restart is required"
+    # И, главное, чего в нём быть НЕ должно: ``docker pull`` образа
+    # вышестоящего проекта ставит Hermes Agent поверх DIGIT_HOME, который
+    # это же сообщение обещает сохранить.
+    assert "docker pull nousresearch/hermes-agent" not in msg
+
+    # The key concepts the message must cover:
+    assert "recreate" in msg.lower(), "must explain that the container is recreated"
     assert "--version" in msg, "must show how to verify the new version"
-    assert ":latest" in msg, "must mention tag pinning caveat"
     assert "DIGIT_HOME" in msg or "/opt/data" in msg, (
         "must address config persistence across upgrades"
     )
 
-    # Acknowledges that forks exist (build-your-own-image escape hatch).
-    assert "fork" in msg.lower() or "Dockerfile" in msg
+    # Points at the thing the image is actually built from.
+    assert "Dockerfile" in msg or "docker-compose" in msg

@@ -450,7 +450,7 @@ def detect_install_method(project_root: Optional[Path] = None) -> str:
     The supported installs self-identify via the code-scoped stamp:
       - the curl installer (scripts/install.sh, the README/website install
         command) git-clones the repo and stamps ``git`` next to the code;
-      - the published ``nousresearch/hermes-agent`` image bakes a ``docker``
+      - the image built from this repo's ``Dockerfile`` bakes a ``docker``
         stamp into ``/opt/digit`` at build time.
     An unsupported manual install dropped into a container (no stamp) falls
     through to the ``.git`` checks and behaves like any off-path install.
@@ -552,7 +552,14 @@ def recommended_update_command_for_method(method: str) -> str:
     if method in {"nix", "nixos"}:
         return _NIX_UPDATE_MSG
     if method == "docker":
-        return "docker pull nousresearch/hermes-agent:latest"
+        # Не ``docker pull``: своего опубликованного образа у Digit нет —
+        # .github/workflows/docker.yml собирает и пушит только при
+        # ``github.repository == 'NousResearch/hermes-agent'``. Здесь стоял
+        # ``docker pull nousresearch/hermes-agent:latest``, и это не «остаток
+        # бренда», а рабочая инструкция заменить Digit на Hermes Agent поверх
+        # того же DIGIT_HOME. Образ Digit собирается из этого репозитория
+        # (docker-compose*.yml: ``build: .`` + ``image: digit``).
+        return "docker compose build && docker compose up -d --force-recreate"
     return "digit update"
 
 
@@ -577,34 +584,44 @@ def recommended_update_command() -> str:
 #     reinstall: curl ... install.sh") is actively misleading inside Docker
 #     — that script installs a *new* host-side Digit, it doesn't update
 #     the running container.
-#   - The right action is ``docker pull`` + restart the container; this
-#     helper spells that out, with notes on tag pinning and config
-#     persistence so users don't get blindsided.
+#   - The right action is a rebuild + restart of the container; this
+#     helper spells that out, with notes on where state lives so users
+#     don't get blindsided.
+#
+# Почему не ``docker pull``: текст до правки предлагал забрать
+# ``nousresearch/hermes-agent:latest``. Для Digit это не остаток бренда, а
+# инструкция, которая работает и делает не то: тянет образ вышестоящего
+# проекта и запускает Hermes Agent поверх ``/opt/data`` — того самого
+# DIGIT_HOME, который абзацем ниже обещано сохранить. Своего образа Digit не
+# публикует: .github/workflows/docker.yml собирает и пушит только при
+# ``github.repository == 'NousResearch/hermes-agent'``, а Dockerfile собирает
+# всё с нуля из debian, а не поверх апстримового образа.
 _DOCKER_UPDATE_MESSAGE = """\
 ✗ ``digit update`` doesn't apply inside the Docker container.
 
-Hermes Agent runs as a published image (nousresearch/hermes-agent), not a
-git checkout — the container has no working tree to pull into.  Update by
-pulling a fresh image and restarting your container instead:
+Digit runs from an image built out of its own repository, not from a git
+checkout — the container has no working tree to pull into.  Update by
+rebuilding the image on the host and recreating the container:
 
-  docker pull nousresearch/hermes-agent:latest
-  # then restart whatever started the container, e.g.:
-  docker compose up -d --force-recreate digit
-  # or, for ad-hoc runs, exit the current container and `docker run` again
+  git -C /path/to/your/digit/checkout pull
+  docker compose build
+  docker compose up -d --force-recreate
+  # or, without compose: docker build -t digit /path/to/checkout
+  #                      then stop the old container and `docker run` again
 
 Verify the new version after restart:
-  docker run --rm nousresearch/hermes-agent:latest --version
+  docker run --rm digit --version
 
 Notes:
-  • If you pinned a specific tag (e.g. ``:v0.14.0``) the ``:latest`` tag
-    won't move your container — pull the newer tag you actually want, or
-    switch to ``:latest`` / ``:main`` for rolling updates.  See available
-    tags at https://hub.docker.com/r/nousresearch/hermes-agent/tags
+  • There is no image to ``docker pull``: Digit publishes none, and the
+    upstream ``nousresearch/hermes-agent`` image is a *different agent* —
+    pulling it replaces Digit over the same data directory.
   • Your config and session history live under ``$DIGIT_HOME`` (``/opt/data``
     in the container, typically bind-mounted from the host) and persist
-    across image upgrades — re-pulling doesn't lose any state.
-  • Running a fork?  Build your own image with this repo's ``Dockerfile``
-    and replace the ``docker pull`` step with your build/push pipeline."""
+    across image rebuilds — rebuilding doesn't lose any state.
+  • ``docker-compose.yml`` and ``docker-compose.windows.yml`` already carry
+    ``build: .`` + ``image: digit``, so for a compose-managed install the two
+    commands above are the whole procedure."""
 
 
 def format_docker_update_message() -> str:
