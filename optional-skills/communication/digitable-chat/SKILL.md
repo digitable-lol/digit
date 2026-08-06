@@ -1,18 +1,28 @@
 ---
 name: digitable-chat
-description: >
-  Open an ephemeral peer-to-peer chat room on Digitable Chat
-  (https://chat.digitable.life) to talk with a human, hand off a session to a
-  colleague, or share a link that needs no account. Rooms are serverless: peers
-  connect directly over WebRTC and nothing is stored after the last participant
-  leaves. Use when the user asks to "start a chat", "send someone a room link",
-  "talk to a person about this", or needs an out-of-band channel for a secret
-  that must not land in the transcript.
+description: "Use to open an ephemeral P2P chat room link for a human."
+version: 1.0.1
+author: Digit
+license: MIT
 platforms: [linux, macos, windows]
-version: 1.0.0
+metadata:
+  digit:
+    tags: [chat, webrtc, ephemeral, p2p, handoff, escalation, digitable]
+    category: communication
+    related_skills: [digitable-portal]
 ---
 
 # Digitable Chat
+
+## When to Use
+
+- The user asks to "start a chat" or "send someone a room link"
+- A session has to be handed to a person, or to a colleague
+- A secret needs an out-of-band channel that does not land in the transcript
+- Someone needs to join a conversation without an account
+
+Rooms are serverless: peers connect directly over WebRTC and nothing is stored
+once the last participant leaves.
 
 Digitable Chat is a serverless, decentralized, ephemeral chat. There is no
 account, no inbox, and no message history: peers find each other through a
