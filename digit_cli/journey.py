@@ -233,6 +233,80 @@ def _clamp(v: float, lo: float, hi: float) -> float:
     return lo if v < lo else hi if v > hi else v
 
 
+# ── sectors ─────────────────────────────────────────────────────────────────
+
+
+def _cmd_sectors(args: argparse.Namespace) -> int:
+    """``digit journey sectors`` — the same graph read by area, not by date.
+
+    The timeline is chronology, which scatters one subject across every date
+    row; this is the view that answers "what do I know about, and what holds
+    each area together?".
+    """
+    from rich.console import Console
+    from rich.text import Text
+
+    from agent import learning_graph_render as render
+
+    payload = _build_payload()
+
+    if getattr(args, "json", False):
+        import json
+
+        Console(no_color=bool(getattr(args, "no_color", False))).print_json(
+            json.dumps(
+                {
+                    "sectors": payload.get("sectors", []),
+                    "groups": render.sector_groups(payload, per_sector=int(getattr(args, "limit", 6) or 6)),
+                    "stats": payload.get("stats", {}),
+                }
+            )
+        )
+        return 0
+
+    color = not bool(getattr(args, "no_color", False))
+    cols, _rows = _term_size(getattr(args, "width", None), None)
+    console = _console(color=color, width=cols, force=bool(getattr(args, "force_color", False)))
+
+    if not payload.get("nodes"):
+        console.print(
+            "[grey62]Nothing to map yet — memories and learned skills show up here "
+            "as soon as there are any.[/grey62]"
+        )
+        return 0
+
+    only = (getattr(args, "sector", None) or "").strip().casefold()
+    view = payload
+    if only:
+        # Фильтр по сектору режет ТОЛЬКО отрисовку, но не пересчитывает граф:
+        # степень узла и сводка внизу должны остаться настоящими, а не «сколько
+        # связей осталось внутри выбранного сектора» — иначе фильтр молча врёт
+        # о связности всей сети.
+        view = dict(payload)
+        view["sectors"] = [s for s in payload.get("sectors", []) if str(s.get("sector", "")).casefold() == only]
+        view["nodes"] = [n for n in payload.get("nodes", []) if str(n.get("sector", "")).casefold() == only]
+        if not view["nodes"]:
+            console.print(f"[grey62]No sector named {only!r}. Run `digit journey sectors` for the list.[/grey62]")
+            return 1
+
+    inner = max(24, cols - 2)
+    frame = render.render_sectors(view, cols=inner, per_sector=int(getattr(args, "limit", 6) or 6))
+
+    title = Text()
+    title.append("✦ Sectors ", style=f"bold {_TITLE_COLOR}" if color else None)
+    title.append("· knowledge by area, with links in both directions", style="grey62" if color else None)
+    console.print(title)
+    console.print("")
+    for grow in frame["grid"]:
+        line = _row_to_text(grow, color)
+        line.pad_left(2)
+        console.print(line)
+    console.print("")
+    for text_line in render.build_sector_summary(payload):
+        console.print(Text("  " + text_line, style="grey62" if color else None))
+    return 0
+
+
 # ── list / delete / edit ─────────────────────────────────────────────────────
 
 
@@ -344,6 +418,25 @@ def register_cli(parent: argparse.ArgumentParser) -> None:
     p_edit = sub.add_parser("edit", help="Edit a learned skill or memory by node id in $EDITOR.")
     p_edit.add_argument("node", help="Node id (skill name or memory:<source>:<index>; see `journey list`).")
     p_edit.set_defaults(func=_cmd_edit)
+
+    p_sect = sub.add_parser(
+        "sectors",
+        help="Group the graph by sector (area of knowledge) instead of by date.",
+        description=(
+            "The knowledge graph read by area. Sectors come from a note's "
+            "first #tag; an untagged note inherits the sector of the notes it "
+            "is [[linked]] to, and anything neither tagged nor linked is "
+            "listed as `unsorted`. Each row shows outgoing (→) and incoming "
+            "(←) links, so a hub and an orphan are told apart at a glance."
+        ),
+    )
+    p_sect.add_argument("sector", nargs="?", default=None, help="Show only this sector.")
+    p_sect.add_argument("--limit", type=int, default=6, help="Notes listed per sector (default 6).")
+    p_sect.add_argument("--width", type=int, default=None, help="Override render width in columns.")
+    p_sect.add_argument("--no-color", action="store_true", help="Disable color output.")
+    p_sect.add_argument("--force-color", action="store_true", help=argparse.SUPPRESS)
+    p_sect.add_argument("--json", action="store_true", help="Print the sector breakdown as JSON.")
+    p_sect.set_defaults(func=_cmd_sectors)
 
 
 def cmd_journey(args: argparse.Namespace) -> int:

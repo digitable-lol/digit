@@ -77,7 +77,7 @@ digit [global-options] <command> [subcommand/options]
 | `digit skills` | Browse, install, publish, audit, and configure skills. |
 | `digit bundles` | Group several skills under a single `/<name>` slash command. See [Skill Bundles](../user-guide/features/skills.md#skill-bundles). |
 | `digit curator` | Background skill maintenance — status, run, pause, pin. See [Curator](../user-guide/features/curator.md). |
-| `digit journey` (aliases `learning`, `memory-graph`) | Timeline of learned skills + memories over time. |
+| `digit journey` (aliases `learning`, `memory-graph`) | Timeline of learned skills + memories over time. `digit journey sectors` shows the same graph grouped by area of knowledge instead of by date. |
 | `digit memory` | Configure external memory provider. Plugin-specific subcommands (e.g. `digit honcho`) register automatically when their provider is active. |
 | `digit acp` | Run Digit as an ACP server for editor integration. |
 | `digit mcp` | Manage MCP server configurations and run Digit as an MCP server. |

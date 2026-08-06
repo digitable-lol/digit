@@ -224,6 +224,56 @@ Beyond viewing, the journey is also where you **prune and correct** what Digit h
 
 The same `list` / `delete <id>` / `edit <id>` subcommands work from the in-chat `/journey` command on the CLI, and the desktop panel offers edit/delete on nodes directly.
 
+### Sectors — the graph by area (`digit journey sectors`)
+
+The timeline answers *when* something was learned. Chronology scatters one
+subject across every date row, so it cannot answer *what areas do I know about,
+and what holds each one together?* — `digit journey sectors` (also
+`digit memory-graph sectors`) is that second axis over the same graph.
+
+Structure comes from what you already write inside a memory entry:
+
+- `[[Note title]]` links one entry to another. The link is matched against the
+  entry's first line, ignoring a leading `#`, case and extra spaces.
+- `#tag` files the entry into a sector. The first tag wins. `# Heading` is
+  markdown, not a tag, and `#26045` is an issue number, not a tag.
+- An entry with **no** tag inherits the sector of the entries it is linked to —
+  linking a note into a cluster is itself the act of filing it.
+- Anything neither tagged nor linked is listed under `unsorted`, honestly.
+
+Each row shows outgoing (`→`) and incoming (`←`) links, so a hub and an orphan
+are told apart at a glance. **Incoming links are the point**: an entry never
+declares who points at it, and without backlinks a link can only be followed in
+the direction it was typed. A link to an entry that does not exist yet is
+flagged with `⚑` rather than dropped — in a note network that is a normal state
+and usually the next thing worth writing.
+
+```console
+$ digit journey sectors
+✦ Sectors · knowledge by area, with links in both directions
+
+  retrieval   4 ████████████████████  ◆4  ⇄5
+    ◆ Vector search                      →2 ←2
+    ◆ Hybrid search                      →1 ←2
+    ◆ Embeddings                         →1 ←1
+    ◆ RAG plans                          →1 ←0  ⚑1
+  infra       2 ██████████            ◆2  ⇄1
+    ◆ Fail2ban on our hosts              →1 ←0
+    ◆ SSH config                         →0 ←1
+
+  2 sectors · 6 memories · 6 note↔note links · 0 note↔skill links
+  6/8 notes are linked to another note (75%)
+  ⚑ 1 links point at notes that don't exist yet
+```
+
+Flags: a bare sector name narrows the view to one area (link counts stay
+whole-graph, so the filter never overstates how isolated an area is),
+`--limit` sets how many entries are listed per sector, `--json` emits the
+breakdown for scripts, plus the usual `--width` / `--no-color`.
+
+Learned skills appear in the same sectors as your notes, filed by their
+`category` frontmatter, so one view covers both halves of what Digit knows.
+
 ## Configuration
 
 ```yaml

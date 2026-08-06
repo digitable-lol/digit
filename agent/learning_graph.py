@@ -195,7 +195,13 @@ def _memory_cards() -> list[dict[str, Any]]:
 
     ``MEMORY.md`` / ``USER.md`` are prose split on bare ``§`` separators; each
     chunk becomes one card. Every chunk is surfaced — the graph shows everything.
+
+    Each card also carries the structure written *inside* its own prose:
+    ``[[wikilinks]]`` and ``#tags``. Parsing them here, off the full chunk, is
+    what later lets the graph link note to note instead of guessing at overlap.
     """
+    from agent.memory_links import extract_links, extract_tags, normalize_key
+
     base = get_digit_home() / "memories"
     cards: list[dict[str, Any]] = []
     for fname, source in (("MEMORY.md", "memory"), ("USER.md", "profile")):
@@ -214,14 +220,24 @@ def _memory_cards() -> list[dict[str, Any]]:
                     "source": source,
                     "timestamp": file_ts + chunk_idx if file_ts is not None else None,
                     "title": (first[:80] + "…") if len(first) > 80 else first,
+                    # Ключ считается по НЕобрезанному заголовку: ``title`` режется
+                    # на 80 символах, и разрешение ссылок по нему промахивалось бы
+                    # ровно на длинных заголовках.
+                    "key": normalize_key(first),
                     "body": chunk[:1200],
+                    "links": extract_links(chunk),
+                    "tags": extract_tags(chunk),
                 }
             )
     return cards
 
 
 def _tokenize(text: str) -> set[str]:
-    return {t for t in re.split(r"[^a-z0-9]+", text.lower()) if len(t) >= 3}
+    # ``[^a-z0-9]+`` считал разделителем всё, кроме латиницы, поэтому у заметки
+    # на русском множество токенов выходило пустым и лексическая связь
+    # память↔навык не возникала никогда. ``\W`` в Python 3 знает про Unicode,
+    # так что буква остаётся буквой независимо от алфавита.
+    return {t for t in re.split(r"[\W_]+", text.lower()) if len(t) >= 3}
 
 
 def _memory_skill_edges(memory_cards: list[dict[str, Any]], skills: list[SkillNode]) -> list[tuple[str, str]]:
@@ -259,6 +275,8 @@ def build_learning_graph() -> dict[str, Any]:
       (agent-created or used),
     - memory chunks as first-class graph nodes connected to those learned skills.
     """
+    from agent.memory_links import annotate
+
     all_skills = build_skill_nodes(_skill_roots())
     learned_skills = {
         name: node
@@ -269,7 +287,17 @@ def build_learning_graph() -> dict[str, Any]:
     memory_cards = _memory_cards()
     memory_edges = _memory_skill_edges(memory_cards, list(learned_skills.values()))
 
-    edges = skill_edges + memory_edges
+    # Связи заметка↔заметка: то, ради чего вообще пишут ``[[ссылку]]``. Без них
+    # граф памяти был мешком точек, соединённых только со стороны навыков.
+    linkage = annotate(memory_cards)
+    mem_id = [f"memory:{c['source']}:{i}" for i, c in enumerate(memory_cards)]
+    link_edges = [(mem_id[a], mem_id[b]) for a, b in linkage["edges"]]
+
+    edges = (
+        [(a, b, "related") for a, b in skill_edges]
+        + [(a, b, "lexical") for a, b in memory_edges]
+        + [(a, b, "link") for a, b in link_edges]
+    )
     clusters: dict[str, int] = {}
     for node in learned_skills.values():
         clusters[node.category] = clusters.get(node.category, 0) + 1
@@ -283,6 +311,9 @@ def build_learning_graph() -> dict[str, Any]:
             "kind": "skill",
             "timestamp": n.timestamp,
             "category": n.category,
+            # Сектор навыка — его же категория: у навыков область знания
+            # объявлена во фронтматтере, выдумывать вторую не из чего.
+            "sector": n.category,
             "useCount": n.use_count,
             "state": n.state,
             "createdBy": n.created_by,
@@ -293,12 +324,20 @@ def build_learning_graph() -> dict[str, Any]:
     for i, card in enumerate(memory_cards):
         graph_nodes.append(
             {
-                "id": f"memory:{card['source']}:{i}",
+                "id": mem_id[i],
                 "label": card["title"],
                 "kind": "memory",
                 "memorySource": card["source"],
                 "timestamp": card.get("timestamp"),
+                # ``category`` у заметок остаётся "memory": по нему легенда
+                # категорий отличает навыки от памяти. Область знания живёт
+                # рядом, в ``sector``, и ничего существующего не ломает.
                 "category": "memory",
+                "sector": linkage["sectors"][i],
+                "tags": list(card.get("tags") or []),
+                "links": [mem_id[j] for j in linkage["links"].get(i, [])],
+                "backlinks": [mem_id[j] for j in linkage["backlinks"].get(i, [])],
+                "unresolvedLinks": list(linkage["unresolved"].get(i, [])),
                 "useCount": 0,
                 "state": "active",
                 "createdBy": "memory",
@@ -306,18 +345,33 @@ def build_learning_graph() -> dict[str, Any]:
             }
         )
 
+    sectors: dict[str, int] = {}
+    for node in graph_nodes:
+        key = str(node.get("sector") or "unsorted")
+        sectors[key] = sectors.get(key, 0) + 1
+
+    linked_memory = {a for a, _ in linkage["edges"]} | {b for _, b in linkage["edges"]}
+
     return {
         "nodes": graph_nodes,
-        "edges": [{"source": a, "target": b} for a, b in edges],
+        "edges": [{"source": a, "target": b, "kind": k} for a, b, k in edges],
         "clusters": [
             {"category": c, "count": n}
             for c, n in sorted(clusters.items(), key=lambda kv: -kv[1])
+        ],
+        "sectors": [
+            {"sector": s, "count": n}
+            for s, n in sorted(sectors.items(), key=lambda kv: (-kv[1], kv[0]))
         ],
         "memory": memory_cards,
         "stats": {
             **density_stats(learned_skills, skill_edges),
             "memory_nodes": len(memory_cards),
             "memory_skill_edges": len(memory_edges),
+            "memory_link_edges": len(link_edges),
+            "linked_memory_nodes": len(linked_memory),
+            "unresolved_links": sum(len(v) for v in linkage["unresolved"].values()),
+            "sectors": len(sectors),
             "learned_skills": len(learned_skills),
         },
     }

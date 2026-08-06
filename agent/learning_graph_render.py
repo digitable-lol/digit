@@ -608,6 +608,166 @@ def build_summary(payload: dict[str, Any]) -> list[str]:
     return lines
 
 
+# ── Sector view ────────────────────────────────────────────────────────────
+#
+# The timeline answers "when did this arrive?". It cannot answer "what areas do
+# I know about, and what holds them together?" — chronology scatters one subject
+# across every date row. The sector view is the other axis of the same payload:
+# nodes grouped by area, each showing how many links leave it and how many
+# arrive, so a well-connected note and an orphan are told apart at a glance.
+
+SECTOR_BAR = "█"
+ORPHAN_GLYPH = "·"
+
+
+def sector_color_map(payload: dict[str, Any]) -> dict[str, str]:
+    """Deterministic hue per sector, spaced by the golden angle."""
+    sectors = [str(s.get("sector")) for s in payload.get("sectors", []) or [] if s.get("sector")]
+    return {s: rgb_to_hex(_hsl_to_rgb((i * 137.508) % 360, 0.55, 0.62)) for i, s in enumerate(sectors)}
+
+
+def _degrees(payload: dict[str, Any]) -> dict[str, tuple[int, int]]:
+    """``node id → (outgoing, incoming)`` over the whole edge list.
+
+    Memory nodes carry their own resolved ``links``/``backlinks``; skills only
+    have ``related_skills``, which is declared undirected and gets emitted as a
+    sorted pair. Counting both ends of every edge therefore reports a skill's
+    degree twice-over-nothing — so skill rows show the total, memory rows the
+    real direction. Deriving both from the edge list keeps the two consistent.
+    """
+    deg: dict[str, list[int]] = {}
+    for edge in payload.get("edges", []) or []:
+        src, dst = str(edge.get("source")), str(edge.get("target"))
+        deg.setdefault(src, [0, 0])[0] += 1
+        deg.setdefault(dst, [0, 0])[1] += 1
+    return {k: (v[0], v[1]) for k, v in deg.items()}
+
+
+def sector_groups(payload: dict[str, Any], *, per_sector: int = 6) -> list[dict[str, Any]]:
+    """Nodes bucketed by sector, largest sector first.
+
+    Within a sector the best-connected notes come first: in a linked corpus the
+    hubs are the entry points, and listing by recency would bury them.
+    """
+    deg = _degrees(payload)
+    buckets: dict[str, list[dict[str, Any]]] = {}
+    for node in payload.get("nodes", []) or []:
+        buckets.setdefault(str(node.get("sector") or "unsorted"), []).append(node)
+
+    order = [str(s.get("sector")) for s in payload.get("sectors", []) or [] if s.get("sector") in buckets]
+    for name in sorted(buckets):
+        if name not in order:
+            order.append(name)
+
+    groups: list[dict[str, Any]] = []
+    for name in order:
+        members = buckets.get(name) or []
+        ranked = sorted(
+            members,
+            key=lambda n: (-(sum(deg.get(str(n.get("id")), (0, 0)))), str(n.get("label") or "")),
+        )
+        groups.append(
+            {
+                "sector": name,
+                "count": len(members),
+                "skills": sum(1 for n in members if n.get("kind") != "memory"),
+                "memories": sum(1 for n in members if n.get("kind") == "memory"),
+                "links": sum(deg.get(str(n.get("id")), (0, 0))[0] for n in members),
+                "orphans": sum(1 for n in members if not sum(deg.get(str(n.get("id")), (0, 0)))),
+                "nodes": [
+                    {
+                        "id": str(n.get("id")),
+                        "label": _node_label(n),
+                        "kind": n.get("kind"),
+                        "out": deg.get(str(n.get("id")), (0, 0))[0],
+                        "in": deg.get(str(n.get("id")), (0, 0))[1],
+                        "dangling": len(n.get("unresolvedLinks") or []),
+                    }
+                    for n in ranked[:per_sector]
+                ],
+                "hidden": max(0, len(members) - per_sector),
+            }
+        )
+    return groups
+
+
+def render_sectors(payload: dict[str, Any], *, cols: int = 80, per_sector: int = 6) -> dict[str, Any]:
+    """Render the knowledge graph grouped by sector as style runs."""
+    cols = max(44, cols)
+    groups = sector_groups(payload, per_sector=per_sector)
+    if not groups:
+        return {"grid": [[["nothing filed yet — tag a note with #topic or link it with [[title]]", STYLE_DIM, 0.7]]], "groups": []}
+
+    cmap = sector_color_map(payload)
+    name_w = min(20, max(len(g["sector"]) for g in groups))
+    biggest = max(g["count"] for g in groups) or 1
+    bar_w = max(8, min(28, cols - name_w - 30))
+
+    grid: Grid = []
+    for group in groups:
+        hue = cmap.get(group["sector"])
+        bar_len = max(1, round(group["count"] / biggest * bar_w))
+        name = group["sector"]
+        row: Row = [
+            [f"{(name[: name_w - 1] + '…' if len(name) > name_w else name):<{name_w}} ", STYLE_LABEL, 0.95, hue],
+            [f"{group['count']:>3} ", STYLE_LABEL, 0.8],
+            [SECTOR_BAR * bar_len, STYLE_SKILL, 0.9, hue],
+            [" " * (bar_w - bar_len + 2), STYLE_BG, 1.0],
+        ]
+        if group["skills"]:
+            row.append([f"{SKILL_GLYPH}{group['skills']} ", STYLE_SKILL, 0.85])
+        if group["memories"]:
+            row.append([f"{MEMORY_GLYPH}{group['memories']} ", STYLE_MEMORY, 0.85])
+        row.append([f" ⇄{group['links']}", STYLE_DIM, 0.7])
+        if group["orphans"]:
+            row.append([f" {ORPHAN_GLYPH}{group['orphans']} unlinked", STYLE_DIM, 0.55])
+        grid.append(_merge_runs(row))
+
+        for node in group["nodes"]:
+            glyph = MEMORY_GLYPH if node["kind"] == "memory" else SKILL_GLYPH
+            style = STYLE_MEMORY if node["kind"] == "memory" else STYLE_SKILL
+            label = node["label"]
+            label_w = max(12, cols - name_w - 24)
+            shown = label[: label_w - 1] + "…" if len(label) > label_w else label
+            sub: Row = [
+                ["  ", STYLE_BG, 1.0],
+                [f"{glyph} ", style, 0.8],
+                [f"{shown:<{label_w}} ", style, 0.85],
+            ]
+            if node["kind"] == "memory":
+                sub.append([f"→{node['out']} ", STYLE_DIM, 0.7 if node["out"] else 0.4])
+                sub.append([f"←{node['in']}", STYLE_DIM, 0.7 if node["in"] else 0.4])
+            else:
+                sub.append([f"⇄{node['out'] + node['in']}", STYLE_DIM, 0.7])
+            if node["dangling"]:
+                # Ссылка в несуществующую заметку — не ошибка, а подсказка, что
+                # писать дальше; молча её проглотить значит потерять эту подсказку.
+                sub.append([f"  ⚑{node['dangling']}", STYLE_LABEL, 0.6])
+            grid.append(_merge_runs(sub))
+
+        if group["hidden"]:
+            grid.append([["  ", STYLE_BG, 1.0], [f"… +{group['hidden']} more", STYLE_DIM, 0.5]])
+
+    return {"grid": grid, "groups": groups}
+
+
+def build_sector_summary(payload: dict[str, Any]) -> list[str]:
+    """One-glance health of the note network under the sector view."""
+    stats = payload.get("stats", {}) or {}
+    mem = int(stats.get("memory_nodes", 0) or 0)
+    linked = int(stats.get("linked_memory_nodes", 0) or 0)
+    lines = [
+        f"{len(payload.get('sectors', []) or [])} sectors · {mem} memories · "
+        f"{stats.get('memory_link_edges', 0)} note↔note links · "
+        f"{stats.get('memory_skill_edges', 0)} note↔skill links"
+    ]
+    if mem:
+        lines.append(f"{linked}/{mem} notes are linked to another note ({round(100 * linked / mem)}%)")
+    if stats.get("unresolved_links"):
+        lines.append(f"⚑ {stats['unresolved_links']} links point at notes that don't exist yet")
+    return lines
+
+
 def _merge_runs(cells: Iterable[Run]) -> Row:
     out: Row = []
     for run in cells:
