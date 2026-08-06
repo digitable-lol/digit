@@ -116,7 +116,11 @@ const WAKE_RUNNERS: Record<WakeSub, (ctx: SlashRunCtx) => void> = {
 
 export const wakeCommands: SlashCommand[] = [
   {
-    help: "toggle the 'Hey Hermes' wake word listener [on|off|status]",
+    // Без зашитой фразы: она берётся из wake_word.phrase и на движке sherpa
+    // пользователь задаёт её сам. Живую фразу печатают statusLine/runOn
+    // («wake: listening for “…”»), поэтому в списке команд по `/` её дублировать
+    // нечем — а «Hey Hermes» там ещё и врало бы после смены фразы.
+    help: 'toggle the hands-free wake word listener [on|off|status]',
     name: 'wake',
     usage: '/wake [on|off|status]',
     run: (arg, ctx) => {

@@ -231,7 +231,11 @@ COMMAND_REGISTRY: list[CommandDef] = [
                subcommands=INDICATOR_STYLES),
     CommandDef("voice", "Toggle voice mode", "Configuration",
                args_hint="[on|off|tts|status]", subcommands=("on", "off", "tts", "status")),
-    CommandDef("wake", "Toggle the 'Hey Hermes' wake word listener", "Configuration",
+    # Фраза не зашита в описание: её берут из wake_word.phrase, а на движке
+    # sherpa пользователь задаёт её сам. Актуальную фразу печатает
+    # `/wake status`, а этот список открывается по `/` у всех — «Hey Hermes»
+    # читалось здесь как недочищенный бренд и врало бы после смены фразы.
+    CommandDef("wake", "Toggle the hands-free wake word listener", "Configuration",
                cli_only=True, args_hint="[on|off|status]",
                subcommands=("on", "off", "status")),
     CommandDef("busy", "Control what Enter does while Digit is working", "Configuration",
