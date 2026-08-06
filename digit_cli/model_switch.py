@@ -360,6 +360,25 @@ _BUILTIN_DIRECT_ALIASES: dict[str, DirectAlias] = {
     "digit-gemma": DirectAlias(
         model="gemma3:4b", provider="custom", base_url="http://localhost:11434/v1"
     ),
+    # Собственная модель Digitable: маршрутизатор, обученный на каталоге из 95
+    # утилит и корпусе курсов. Порт 8127, а не 11434 — это llama-server из
+    # llama.cpp, а не Ollama: веса опубликованы как GGUF, и Ollama потребовала бы
+    # импорта через Modelfile. Поднимается `scripts/local-router.sh`, который
+    # ничего не делает неявно: alias только указывает, куда обращаться.
+    #
+    # Модель выбирает инструмент и фрагмент корпуса. Содержание ответа приходит
+    # из утилиты, дословной цитаты или сертификата FTS — сделать её источником
+    # фактов значит потерять ровно то, ради чего она обучалась.
+    "digit-router": DirectAlias(
+        model="router-0.6b-v3-Q5_K_M.gguf",
+        provider="custom",
+        base_url="http://127.0.0.1:8127/v1",
+    ),
+    "digit-router-plus": DirectAlias(
+        model="router-1.7b-v3-Q5_K_M.gguf",
+        provider="custom",
+        base_url="http://127.0.0.1:8127/v1",
+    ),
 }
 
 # Merged dict (builtins + user config); populated by _load_direct_aliases()
