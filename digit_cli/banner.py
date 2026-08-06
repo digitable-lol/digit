@@ -134,8 +134,16 @@ _UPDATE_CHECK_CACHE_SECONDS = 6 * 3600
 # (e.g. nix-built digit — no local git history to count against).
 UPDATE_AVAILABLE_NO_COUNT = -1
 
-_UPSTREAM_REPO_URL = "https://github.com/NousResearch/hermes-agent.git"
-_OFFICIAL_REPO_CANONICAL = "github.com/nousresearch/hermes-agent"
+# Репозиторий, с которым сверяется «доступно обновление» в баннере. Должен
+# совпадать с тем, откуда обновление реально приезжает:
+# digit_cli/update_cmd.py::OFFICIAL_REPO_URL, scripts/install.sh::REPO_URL_*
+# и _RELEASE_URL_BASE ниже — все указывают на digitable-lol/digit. Здесь
+# оставалось NousResearch/hermes-agent, и это давало не косметику, а ложную
+# подсказку: на установке без локального git (_check_via_rev) наш HEAD
+# сравнивался с main чужого проекта, никогда не совпадал, и баннер вечно
+# писал «доступно обновление», хотя `digit update` тянет из digitable-lol.
+_UPSTREAM_REPO_URL = "https://github.com/digitable-lol/digit.git"
+_OFFICIAL_REPO_CANONICAL = "github.com/digitable-lol/digit"
 
 
 def _canonical_github_remote(url: str | None) -> str:
