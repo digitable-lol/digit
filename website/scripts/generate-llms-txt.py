@@ -209,13 +209,17 @@ def emit_llms_index() -> str:
         "OpenAI-compatible endpoint."
     )
     lines.append("")
+    # ``NousResearch/digit`` — это след сплошного переименования: адрес
+    # ``NousResearch/hermes-agent`` превратился в репозиторий, которого не
+    # существует, и llms.txt раздавал клиентам команду установки с 404.
+    # Адрес должен совпадать с README.md и scripts/install.sh.
     lines.append(
-        "Install: `curl -fsSL https://raw.githubusercontent.com/NousResearch/"
+        "Install: `curl -fsSL https://raw.githubusercontent.com/digitable-lol/"
         "digit/main/scripts/install.sh | bash`  "
         "(Linux, macOS, WSL2, Termux)"
     )
     lines.append("")
-    lines.append("Repo: https://github.com/NousResearch/hermes-agent")
+    lines.append("Repo: https://github.com/digitable-lol/digit")
     lines.append("")
 
     for section, items in SECTIONS:

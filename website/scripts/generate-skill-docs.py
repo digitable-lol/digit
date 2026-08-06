@@ -232,7 +232,11 @@ def rewrite_relative_links(body: str, meta: dict[str, Any]) -> str:
     pointing to the file in the repo.
     """
     source_dir = "skills" if meta["source_kind"] == "bundled" else "optional-skills"
-    base = f"https://github.com/NousResearch/hermes-agent/blob/main/{source_dir}/{meta['rel_path']}"
+    # Репозиторий Digit: файлы, на которые ссылается SKILL.md, лежат здесь,
+    # в skills/ и optional-skills/ этого дерева. С адресом апстрима каждая
+    # такая ссылка в документации вела на чужой репозиторий — в лучшем
+    # случае на другой файл, обычно на 404.
+    base = f"https://github.com/digitable-lol/digit/blob/main/{source_dir}/{meta['rel_path']}"
 
     def sub_link(m: re.Match) -> str:
         text = m.group(1)
