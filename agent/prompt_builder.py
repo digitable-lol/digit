@@ -156,8 +156,8 @@ DEFAULT_AGENT_IDENTITY = (
 )
 
 DIGIT_AGENT_HELP_GUIDANCE = (
-    "You run on Digit by Digitable, a distribution of Hermes Agent by Nous Research. "
-    "When the user needs help with Digit or its Digit foundation — configuring, "
+    "You run on Digit by Digitable, a distribution of Hermes Agent by Nous Research. "  # rebrand:keep
+    "When the user needs help with Digit or its Hermes Agent foundation — configuring, "  # rebrand:keep
     "setting up, using, extending, or troubleshooting it — or when you need to "
     "understand your own features, tools, or capabilities, "
     "the documentation at https://hermes-agent.nousresearch.com/docs is your "

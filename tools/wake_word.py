@@ -77,7 +77,7 @@ _DEFAULTS: Dict[str, Any] = {
     "surface": "auto",
     "input_device": None,
     "provider": "openwakeword",
-    "phrase": "hey hermes",
+    "phrase": "hey hermes",  # rebrand:keep — pinned to the trained model, see below
     "sensitivity": 0.6,
     "confirmation_frames": _DEFAULT_CONFIRMATION_FRAMES,
     "start_new_session": True,
@@ -85,8 +85,18 @@ _DEFAULTS: Dict[str, Any] = {
 
 # Bundled "hey hermes" model (tools/wakewords/) — the default, so the wake word
 # works out of the box. Config names in _ALIASES resolve to it, not a built-in.
-_BUNDLED_MODEL_NAME = "hey_hermes"
-_BUNDLED_MODEL_ALIASES = frozenset({"", "hey_hermes", "hey hermes", "hermes"})
+#
+# rebrand:keep — the wake phrase deliberately survived the Digit rebrand,
+# because it is not a name we are free to choose. It is the label of a trained
+# openWakeWord artifact (tools/wakewords/hey_hermes.onnx/.tflite), and what the
+# detector fires on is baked into those weights. Renaming the string would make
+# the UI advertise a phrase the default detector does not recognise; under the
+# "sherpa" provider, where the phrase IS the recognised text, it would instead
+# change what users must say without shipping a model that matches. Saying
+# "hey digit" requires *training* a hey_digit model — tracked separately, not a
+# rebranding edit. Until that model exists, this string stays.
+_BUNDLED_MODEL_NAME = "hey_hermes"  # rebrand:keep — filename of the trained model
+_BUNDLED_MODEL_ALIASES = frozenset({"", "hey_hermes", "hey hermes", "hermes"})  # rebrand:keep
 
 
 def _bundled_wakeword_path(framework: str = "onnx") -> str:

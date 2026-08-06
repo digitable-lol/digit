@@ -9,7 +9,11 @@ required to say "hey hermes".
 - **Provenance:** trained with the openWakeWord training pipeline (synthetic
   TTS-generated speech), which produces both the `.onnx` and `.tflite` artifacts.
   Redistribution is permitted under the openWakeWord license.
-- **Label:** the model registers as `hey_hermes` (matches the filename).
+- **Label:** the model registers as `hey_hermes` (matches the filename). The
+  name survived the Digit rebrand deliberately (`rebrand:keep`): the phrase is
+  baked into the trained weights, so renaming the config string on its own
+  would advertise a phrase the detector never fires on. "Hey Digit" needs a
+  *retrained* model, not a rename — see README.md, "Происхождение".
 - **Runtime:** openWakeWord's shared feature-extraction models (melspectrogram +
   embedding) are NOT bundled here — they are fetched once on first use by
   `tools/wake_word.py` via `openwakeword.utils.download_models()`.

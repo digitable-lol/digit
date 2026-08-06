@@ -2360,7 +2360,11 @@ def get_pr_number(subject: str) -> str | None:
     return None
 
 
-def generate_changelog(commits, tag_name, semver, repo_url="https://github.com/NousResearch/hermes-agent",
+# The only caller does not pass ``repo_url``, so this default *is* the link
+# target of every generated release note. It has to be Digit's own repository:
+# with upstream's URL the PR, commit and compare links pointed at
+# NousResearch/hermes-agent, where our SHAs do not exist.  rebrand:keep
+def generate_changelog(commits, tag_name, semver, repo_url="https://github.com/digitable-lol/digit",
                        prev_tag=None, first_release=False):
     """Generate markdown changelog from categorized commits."""
     lines = []

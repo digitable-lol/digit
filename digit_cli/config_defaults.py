@@ -1539,12 +1539,17 @@ DEFAULT_CONFIG = {
     # "Hey Hermes" hands-free wake word. Always-on, on-device hotword
     # detection that starts a fresh voice session — the "Hey Siri" pattern.
     # Off by default; toggle with /wake or `wake_word.enabled: true`.
+    #
+    # rebrand:keep — the phrase stayed "hey hermes" through the Digit rebrand
+    # on purpose: it names a trained openWakeWord artifact shipped in
+    # tools/wakewords/, so the string cannot be renamed without retraining the
+    # model. See tools/wake_word.py for the full reasoning.
     "wake_word": {
         "enabled": False,
         "surface": "auto",            # eligible surface: "auto" (first claimant) | "cli" | "tui" | "gui"
         "input_device": None,          # PortAudio input device index/name; null uses the process default
         "provider": "openwakeword",   # "openwakeword" (free, local) | "sherpa" (free, ANY phrase, no training) | "porcupine" (premium; needs PORCUPINE_ACCESS_KEY)
-        "phrase": "hey hermes",       # for "sherpa" this IS the detected phrase (any text works); for other engines it's a cosmetic label — detection is keyed by the model/keyword below
+        "phrase": "hey hermes",       # rebrand:keep (trained model, see above) — for "sherpa" this IS the detected phrase (any text works); for other engines it's a cosmetic label — detection is keyed by the model/keyword below
         "sensitivity": 0.6,           # 0.0-1.0 detection threshold, consistent across engines (higher = stricter, fewer false triggers)
         "confirmation_frames": 3,     # openWakeWord only: consecutive over-threshold frames required to fire (higher = fewer false triggers on ambient speech, slightly more latency; 1 = old single-frame behavior)
         "start_new_session": True,    # start a fresh session on wake vs. continue the current one
@@ -1554,7 +1559,7 @@ DEFAULT_CONFIG = {
             # built-in openWakeWord name ("hey_jarvis", "alexa", "hey_mycroft",
             # ...) OR a path to a custom .onnx/.tflite model for another phrase.
             # See the wake-word docs for the custom-model training guide.
-            "model": "hey_hermes",
+            "model": "hey_hermes",  # rebrand:keep — filename of the bundled trained model
             # "" (auto — tflite on macOS ARM64, onnx elsewhere) | "onnx" | "tflite".
             # openWakeWord's onnx backend scores near-zero on macOS ARM64
             # (dscripka/openWakeWord#336), so auto avoids a listener that arms

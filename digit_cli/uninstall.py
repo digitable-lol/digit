@@ -945,10 +945,13 @@ def _perform_uninstall(
         print(f"  {digit_home}/")
         print()
         print("To reinstall later with your existing settings:")
+        # Must name *Digit's* installer, not upstream's: the pre-rebrand URL
+        # here reinstalled Hermes Agent over the ~/.digit this very branch just
+        # preserved. Keep in sync with the commands in README.md.
         if _is_windows():
-            print(color("  iex (irm https://hermes-agent.nousresearch.com/install.ps1)", Colors.DIM))
+            print(color("  iex (irm https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.ps1)", Colors.DIM))
         else:
-            print(color("  curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash", Colors.DIM))
+            print(color("  curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash", Colors.DIM))
         print()
 
     if _is_windows():
