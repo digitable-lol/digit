@@ -1019,6 +1019,15 @@ _CATEGORY_MERGE: Dict[str, str] = {
     # `telemetry.shared_metrics.enabled` is the only schema-surfaced telemetry
     # field — fold it into security alongside the other privacy-posture toggles.
     "telemetry": "security",
+    # `tasks.data_dir` is the only field under tasks: a path to the shared
+    # Taskwarrior tracker. Same orphan-category problem as the entries above,
+    # and it has been failing `test_no_single_field_categories` since the
+    # section was added.
+    "tasks": "general",
+    # `workbench.catalog` is the only field under workbench: a path to the
+    # integration catalog in the courses checkout. One field is not a tab, so
+    # fold it into general rather than spawn an orphan category.
+    "workbench": "general",
 }
 
 # Display order for tabs — unlisted categories sort alphabetically after these.
