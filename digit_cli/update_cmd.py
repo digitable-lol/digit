@@ -2457,7 +2457,13 @@ def _ensure_acp_launcher() -> None:
     """
     if _m().sys.platform == "win32":
         return
-    for bin_dir in (Path.home() / ".local" / "bin", Path("/usr/local/bin")):
+    import digit_compat
+
+    # Same directory list the legacy-launcher cleanup uses. Keeping one list
+    # matters here specifically: if these two disagreed, cleanup could remove
+    # `hermes-acp` from a directory where this function never wrote the
+    # `digit-acp` that replaces it.
+    for bin_dir in digit_compat.launcher_dirs():
         digit_cmd = bin_dir / "digit"
         acp_cmd = bin_dir / "digit-acp"
         try:
@@ -2481,6 +2487,58 @@ def _ensure_acp_launcher() -> None:
         except OSError:
             continue
         print(f"  ✓ Installed digit-acp launcher → {acp_cmd}")
+
+
+def _clear_legacy_launchers() -> "list[Path]":
+    """Remove pre-rebrand ``hermes*`` launchers left on PATH by an old install.
+
+    Why this belongs on the update path rather than in the release notes: for
+    two of the three names a stale launcher fails loudly ("command not found")
+    and the user fixes it. ``hermes-acp`` does not. An ACP host — Zed, Buzz,
+    JetBrains — resolves the agent by command name, so a leftover ``hermes-acp``
+    *succeeds* and runs pre-rebrand code against a post-rebrand data directory.
+    That is a silent version skew inside the user's editor, and the only remedy
+    shipped so far was a paragraph in BREAKING.md §2 that the affected user has
+    no particular reason to read.
+
+    Removal is limited to launchers whose contents identify them as ours (see
+    :func:`digit_compat.is_our_legacy_launcher`). Anything else at those paths
+    is reported with the command to remove it by hand — deleting an unrelated
+    program because its name matched would be a worse outcome than the skew.
+
+    Returns the paths removed. No-op on Windows, where ``install.ps1`` puts the
+    venv's ``Scripts`` directory on PATH instead of writing launchers.
+    Idempotent.
+    """
+    if _m().sys.platform == "win32":
+        return []
+
+    import digit_compat
+
+    removed: "list[Path]" = []
+    left: "list[Path]" = []
+    for path in digit_compat.legacy_launcher_paths():
+        if not digit_compat.is_our_legacy_launcher(path):
+            left.append(path)
+            continue
+        try:
+            path.unlink()
+        except OSError:
+            left.append(path)
+            continue
+        removed.append(path)
+
+    for path in removed:
+        replacement = digit_compat.LEGACY_COMMANDS.get(path.name, "digit")
+        print(f"  ✓ Removed stale {path.name} launcher → {path} "
+              f"(use `{replacement}` instead)")
+    if left:
+        names = " ".join(str(p) for p in left)
+        print(f"  ! Left in place, not recognisably ours: {names}")
+        print(f"    A stale hermes-acp shadows digit-acp for ACP hosts. "
+              f"Remove by hand if it is yours: rm -f {names}")
+    return removed
+
 
 _PRE_UPDATE_SNAPSHOT_KEEP = 1
 
@@ -4635,6 +4693,14 @@ def _cmd_update_impl(args, gateway_mode: bool):
             _ensure_acp_launcher()
         except Exception as e:
             logger.debug("digit-acp launcher self-heal failed: %s", e)
+
+        # Clear pre-rebrand hermes* launchers. Ordered after the digit-acp
+        # self-heal on purpose: digit-acp must exist before hermes-acp is
+        # taken away, or an ACP host loses the agent between the two steps.
+        try:
+            _clear_legacy_launchers()
+        except Exception as e:
+            logger.debug("legacy launcher cleanup failed: %s", e)
 
         # Refresh the cua-driver binary used by the Computer Use toolset.
         # The upstream installer is gated on supported platforms and on the

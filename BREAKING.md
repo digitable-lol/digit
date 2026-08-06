@@ -95,11 +95,25 @@ exception.
 
 If a stale `hermes-acp` launcher is still on `PATH` from a previous install,
 the spawn *succeeds* and runs pre-rebrand code against a post-rebrand data
-directory. Remove the old launchers before or during the upgrade:
+directory.
+
+**`digit update` now clears these for you.** It removes `hermes`,
+`hermes-agent` and `hermes-acp` from `~/.local/bin` and `/usr/local/bin` when
+their contents identify them as ours — after installing `digit-acp`, so an ACP
+host never has a window with neither name present. A launcher at one of those
+paths that is *not* recognisably ours is left alone and reported, because
+deleting an unrelated program that happens to share the name would be worse
+than the skew.
+
+If you would rather not run the updater, the manual equivalent is:
 
 ```bash
 rm -f "$(dirname "$(command -v digit)")"/hermes "$(dirname "$(command -v digit)")"/hermes-agent "$(dirname "$(command -v digit)")"/hermes-acp
 ```
+
+`scripts/install.sh` does **not** do this: installing over an early install
+writes the three new launchers and leaves the three old ones in place. Cleanup
+lives on the update path only.
 
 ---
 

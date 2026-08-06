@@ -97,29 +97,72 @@ def remove_path_from_shell_configs():
 
 
 def remove_wrapper_script():
-    """Remove the digit wrapper script if it exists."""
+    """Remove our launcher scripts, current and pre-rebrand, if they exist.
+
+    The name list is derived rather than written out, because writing it out is
+    how it broke: the blanket Hermes→Digit rename (264cd2dda) rewrote a literal
+    list of ``[hermes, hermes-acp, hermes-agent]`` into
+    ``[digit, digit-acp, digit]`` — ``hermes-agent`` became a second ``digit``
+    instead of ``digit-agent``. The effect was that uninstall left
+    ``digit-agent`` behind, and never touched the legacy ``hermes*`` launchers
+    at all. Deriving the names from ``digit_compat`` keeps one list.
+    """
+    import digit_compat
+
     wrapper_paths = [
-        Path.home() / ".local" / "bin" / "digit",
-        Path.home() / ".local" / "bin" / "digit-acp",
-        Path.home() / ".local" / "bin" / "digit",
-        Path("/usr/local/bin/digit"),
-        Path("/usr/local/bin/digit-acp"),
-        Path("/usr/local/bin/digit"),
+        directory / name
+        for directory in digit_compat.launcher_dirs()
+        for name in (*digit_compat.CURRENT_COMMANDS, *digit_compat.LEGACY_COMMANDS)
     ]
-    
+
     removed = []
     for wrapper in wrapper_paths:
-        if wrapper.exists():
-            try:
-                # Check if it's our wrapper (contains digit_cli reference)
-                content = wrapper.read_text(encoding="utf-8")
-                if 'digit_cli' in content or 'digit' in content:
-                    wrapper.unlink()
-                    removed.append(wrapper)
-            except Exception as e:
-                log_warn(f"Could not remove {wrapper}: {e}")
-    
+        # is_symlink() as well, so a launcher dangling into an already-deleted
+        # install directory is still cleared.
+        if not (wrapper.is_file() or wrapper.is_symlink()):
+            continue
+        try:
+            # Only remove what is recognisably ours. A bare name match would
+            # let uninstall delete an unrelated program that happens to share
+            # the name.
+            if wrapper.is_symlink() or _is_our_wrapper(wrapper):
+                wrapper.unlink()
+                removed.append(wrapper)
+        except Exception as e:
+            log_warn(f"Could not remove {wrapper}: {e}")
+
     return removed
+
+
+#: Strings that appear in a launcher we wrote. Taken from what
+#: ``scripts/install.sh`` actually emits — which is a bash shim that execs the
+#: install's venv interpreter against a checked-in entrypoint, and contains no
+#: ``digit_cli`` at all — plus the module names a pip/pipx console script uses.
+#: Guessing at this signature instead of reading a generated launcher is how the
+#: first version of this check silently stopped removing real launchers.
+_WRAPPER_MARKERS = (
+    "digit_cli",         # pip/pipx console script
+    "digit_bootstrap",   # ditto
+    "run_agent.py",      # digit-agent shim
+    "/digit/venv/",      # install.sh shim, user layout
+    "/digit/.venv/",     # editable checkout
+    "/.digit/",          # anything under DIGIT_HOME
+    "lib/digit",         # root FHS layout
+    "exec digit",        # thin delegating shim
+)
+
+
+def _is_our_wrapper(wrapper: Path) -> bool:
+    """Whether a launcher's contents identify it as Digit's (or Hermes')."""
+    import digit_compat
+
+    try:
+        content = wrapper.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    if any(marker in content for marker in _WRAPPER_MARKERS):
+        return True
+    return digit_compat.is_our_legacy_launcher(wrapper)
 
 
 def _node_symlink_candidate_dirs() -> "list[Path]":

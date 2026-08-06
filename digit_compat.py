@@ -22,6 +22,17 @@ Three separate contracts are bridged here:
 3. **Skill metadata key.** ``metadata.hermes`` in SKILL.md frontmatter became
    ``metadata.digit``. :func:`read_skill_metadata_block` reads the new key and
    falls back to the old one so third-party skills keep loading.
+
+4. **Launcher names left on PATH.** ``hermes``, ``hermes-agent`` and
+   ``hermes-acp`` are gone from ``pyproject.toml``, but removing a console
+   script from the project does not remove a launcher an *earlier installer*
+   already wrote into ``~/.local/bin`` or ``/usr/local/bin``. Most of those
+   just fail with "command not found"; ``hermes-acp`` does not — the spawn
+   succeeds and runs pre-rebrand code against a post-rebrand data directory
+   (BREAKING.md, "The exception worth knowing about").
+   :func:`legacy_launcher_paths` and :func:`is_our_legacy_launcher` are the
+   shared vocabulary for finding and identifying them, so ``digit update`` and
+   ``digit uninstall`` cannot drift apart on which names count.
 """
 
 from __future__ import annotations
@@ -142,6 +153,90 @@ def legacy_home_notice(current_home: Path) -> Optional[str]:
         f"To keep using the old location instead, export DIGIT_HOME={legacy}\n"
         f"Run `digit doctor` after either choice to verify."
     )
+
+
+# ---------------------------------------------------------------------------
+# Launcher names left behind on PATH
+# ---------------------------------------------------------------------------
+
+#: Console-script names an installer wrote before the rebrand, paired with the
+#: name that replaced each one. Keep in step with the table in BREAKING.md §2.
+LEGACY_COMMANDS: Dict[str, str] = {
+    "hermes": "digit",
+    "hermes-agent": "digit-agent",
+    "hermes-acp": "digit-acp",
+}
+
+#: Current console-script names, from ``[project.scripts]``. Used by uninstall.
+CURRENT_COMMANDS = ("digit", "digit-agent", "digit-acp")
+
+#: Where our installers place launchers on POSIX. ``scripts/install.sh``
+#: resolves to the first for user installs and the second for root ones.
+LAUNCHER_DIRS = ("~/.local/bin", "/usr/local/bin")
+
+
+def launcher_dirs() -> list:
+    """Absolute launcher directories for this machine.
+
+    The user directory is derived from :meth:`Path.home`, not
+    ``os.path.expanduser``, so that it follows the same override the rest of the
+    codebase and its tests already use.
+    """
+    resolved = []
+    for entry in LAUNCHER_DIRS:
+        if entry.startswith("~"):
+            resolved.append(Path.home() / entry.lstrip("~/"))
+        else:
+            resolved.append(Path(entry))
+    return resolved
+
+
+def legacy_launcher_paths() -> list:
+    """Existing pre-rebrand launchers, in the directories our installers use.
+
+    Includes broken symlinks (``is_symlink`` as well as ``is_file``): a dangling
+    ``hermes-acp`` pointing into a removed install is still a name that
+    shadows nothing useful and still worth clearing.
+    """
+    found = []
+    for directory in launcher_dirs():
+        for name in LEGACY_COMMANDS:
+            path = directory / name
+            try:
+                if path.is_file() or path.is_symlink():
+                    found.append(path)
+            except OSError:
+                continue
+    return found
+
+
+#: Strings that only a pre-rebrand Digit/Hermes launcher would contain: the old
+#: package module, the old data directory, or the old console-script names.
+_OURS_MARKERS = ("hermes_cli", "hermes_bootstrap", "hermes_constants",
+                 ".hermes", "hermes-agent", "hermes-acp", "hermes_agent")
+
+
+def is_our_legacy_launcher(path: Path) -> bool:
+    """Whether ``path`` looks like a launcher *we* wrote before the rebrand.
+
+    Deliberately a content check rather than "it is in our directory with our
+    name". ``~/.local/bin/hermes`` could belong to something else entirely, and
+    an updater that deletes an unrelated program because the name matched is a
+    worse failure than leaving a stale launcher in place. When the check cannot
+    be made — unreadable, or a symlink we cannot resolve — the answer is False,
+    and the caller is expected to report rather than remove.
+    """
+    try:
+        if path.is_symlink():
+            target = os.fspath(os.readlink(path))
+            if any(marker in target for marker in _OURS_MARKERS):
+                return True
+        if not path.is_file():
+            return False
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return any(marker in content for marker in _OURS_MARKERS)
 
 
 # ---------------------------------------------------------------------------

@@ -199,16 +199,28 @@ def test_venv_install_writes_executable_digit_agent_launcher(tmp_path):
 
 
 def test_digit_agent_launcher_cleanup_on_uninstall(tmp_path):
-    """uninstall.remove_wrapper_script() must remove digit alongside
-    digit and digit-acp."""
+    """remove_wrapper_script() must remove digit-agent, not only digit.
+
+    The name in this test's title was the point of it, and for a while the test
+    did not check it: the blanket Hermes→Digit rename rewrote
+    ``[hermes, hermes-acp, hermes-agent]`` in ``remove_wrapper_script`` into
+    ``[digit, digit-acp, digit]``, so ``digit-agent`` was never removed — and
+    this test only ever created ``digit``, so it stayed green.
+    """
     from digit_cli.uninstall import remove_wrapper_script
 
-    # Simulate a digit wrapper in the user-local location
-    local_shim = tmp_path / ".local" / "bin" / "digit"
-    local_shim.parent.mkdir(parents=True)
-    local_shim.write_text("#!/usr/bin/env bash\nexec digit\n", encoding="utf-8")
+    bin_dir = tmp_path / ".local" / "bin"
+    bin_dir.mkdir(parents=True)
+    shims = {}
+    for name in ("digit", "digit-agent", "digit-acp"):
+        shim = bin_dir / name
+        shim.write_text(f"#!/usr/bin/env bash\nexec digit  # {name}\n",
+                        encoding="utf-8")
+        shims[name] = shim
 
     with patch.object(Path, "home", return_value=tmp_path):
         removed = remove_wrapper_script()
 
-    assert local_shim in removed, "local digit wrapper must be removed"
+    for name, shim in shims.items():
+        assert shim in removed, f"local {name} wrapper must be removed"
+        assert not shim.exists()
