@@ -22,7 +22,8 @@ the live session's provider/model, otherwise the configured ``task`` (default
 """
 
 import logging
-from typing import Any, Callable, Dict, Optional, Tuple
+import re
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from agent.auxiliary_client import call_llm, extract_content_or_reasoning
 
@@ -55,6 +56,117 @@ _COMMIT_INSTRUCTIONS = (
     "- Return ONLY the commit message text — no quotes, no markdown fences, no "
     "preamble."
 )
+
+
+#: The types the instructions above allow. One list, so the prompt and the
+#: check cannot drift into disagreeing about what is legal.
+COMMIT_TYPES = frozenset(
+    {"feat", "fix", "refactor", "perf", "docs", "test", "build", "chore",
+     "style", "ci"}
+)
+
+COMMIT_SUBJECT_LIMIT = 72
+
+#: ``type(scope)!: summary`` — scope and the breaking-change bang are optional.
+_COMMIT_SUBJECT_RE = re.compile(
+    r"\A(?P<type>[a-z]+)(?:\((?P<scope>[^()]+)\))?(?P<bang>!)?:(?P<gap> *)"
+    r"(?P<summary>.+)\Z"
+)
+
+
+def validate_commit_message(text: str) -> List[str]:
+    """Return the ways ``text`` breaks the Conventional Commits contract.
+
+    Deterministic and offline: same input, same verdict, no model involved. The
+    prompt has always *stated* these rules; nothing checked them, so a caller
+    could not tell a conforming message from a plausible-looking one.
+
+    An empty list means conforming. The strings are meant to be shown, so each
+    names the offending part rather than a rule number.
+    """
+    lines = (text or "").replace("\r\n", "\n").split("\n")
+    subject = lines[0].strip() if lines else ""
+    problems: List[str] = []
+
+    if not subject:
+        return ["the message is empty"]
+
+    match = _COMMIT_SUBJECT_RE.match(subject)
+    if match is None:
+        problems.append(f"subject is not 'type(scope): summary': {subject!r}")
+    else:
+        kind = match.group("type")
+        if kind not in COMMIT_TYPES:
+            problems.append(
+                f"'{kind}' is not one of the allowed types "
+                f"({', '.join(sorted(COMMIT_TYPES))})"
+            )
+        if match.group("gap") != " ":
+            problems.append("subject needs exactly one space after the colon")
+        summary = match.group("summary")
+        if summary.endswith("."):
+            problems.append("subject ends with a period")
+
+    if len(subject) > COMMIT_SUBJECT_LIMIT:
+        problems.append(
+            f"subject is {len(subject)} characters, over the "
+            f"{COMMIT_SUBJECT_LIMIT}-character limit"
+        )
+
+    if len(lines) > 1 and lines[1].strip():
+        problems.append("body must be separated from the subject by a blank line")
+
+    return problems
+
+
+#: Prefixes a model sometimes emits despite being told not to.
+_COMMIT_PREAMBLE_RE = re.compile(
+    r"\A(?:commit\s+message|subject|message)\s*:\s*", re.IGNORECASE
+)
+
+
+def normalize_commit_message(text: str) -> str:
+    """Repair the violations that can be fixed without guessing at intent.
+
+    Deliberately narrow. Dropping a trailing period, a wrapping quote or a
+    "Commit message:" preamble cannot change what the message says. Rewording an
+    over-long subject or inventing a missing type could, so those are left for
+    :func:`validate_commit_message` to report rather than silently "fixed" here.
+    """
+    cleaned = _strip_code_fence((text or "").strip())
+    lines = cleaned.replace("\r\n", "\n").split("\n")
+    subject = lines[0].strip()
+
+    # Peel wrappers until stable: a model can produce both at once
+    # ('"Commit message: fix: a thing"'), and stripping in a single fixed order
+    # leaves whichever one was on the inside.
+    for _ in range(4):
+        peeled = _COMMIT_PREAMBLE_RE.sub("", subject).strip()
+        # A quote wrapping the whole subject, not an apostrophe or inner quote.
+        for quote in ('"', "'", "`"):
+            if (len(peeled) >= 2 and peeled.startswith(quote)
+                    and peeled.endswith(quote)):
+                peeled = peeled[1:-1].strip()
+                break
+        if peeled == subject:
+            break
+        subject = peeled
+
+    match = _COMMIT_SUBJECT_RE.match(subject)
+    if match is not None:
+        head = match.group("type")
+        if match.group("scope"):
+            head += f"({match.group('scope')})"
+        if match.group("bang"):
+            head += "!"
+        subject = f"{head}: {match.group('summary').strip().rstrip('.')}"
+
+    body = lines[1:]
+    while body and not body[0].strip():
+        body.pop(0)
+    if body:
+        return "\n".join([subject, "", *body]).rstrip()
+    return subject
 
 
 def _commit_message_template(variables: Dict[str, Any]) -> Tuple[str, str]:
@@ -144,8 +256,21 @@ def run_oneshot(
         main_runtime=main_runtime,
     )
 
-    text = (extract_content_or_reasoning(response) or "").strip()
-    return _strip_code_fence(text)
+    text = _strip_code_fence((extract_content_or_reasoning(response) or "").strip())
+
+    # Deterministic post-processing per template. The commit-message prompt
+    # states its format rules, and nothing used to enforce them: a stray
+    # trailing period or a "Commit message:" preamble reached the user's ship
+    # bar as-is. Repairs are the ones that cannot change meaning; anything else
+    # is only reported.
+    if template == "commit_message" and text:
+        text = normalize_commit_message(text)
+        problems = validate_commit_message(text)
+        if problems:
+            logger.info(
+                "one-shot commit message does not conform: %s", "; ".join(problems)
+            )
+    return text
 
 
 def _strip_code_fence(text: str) -> str:
