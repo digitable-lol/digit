@@ -259,6 +259,12 @@ def make_real_subprocess_env(cwd: str, include_stderr: bool = False) -> MagicMoc
             command,
             shell=True,
             text=True,
+            # Как в бою: рабочее окружение декодирует вывод с
+            # ``errors="replace"``. Со ``strict`` (по умолчанию) двойник
+            # падает там, где настоящее окружение отдаёт U+FFFD, — то есть
+            # ровно на том случае, ради которого и написана проверка на
+            # бинарность.
+            errors="replace",
             capture_output=True,
             input=kwargs.get("stdin_data"),
         )
@@ -673,3 +679,50 @@ class TestReadNonUtf8IsBinary:
         ops = ShellFileOperations(make_real_subprocess_env(str(tmp_path)))
         # Proper UTF-8 (including non-ASCII) must still read as text.
         assert ops._is_likely_binary("notes.txt", "café résumé\nsecond\n") is False
+
+
+class TestCyrillicTextIsNotBinary:
+    """Кириллический текст длиннее килобайта обязан читаться.
+
+    Регрессия, найденная на корпусе курсов: образец для определения
+    «бинарности» берётся как ``head -c 1000``, то есть срез по БАЙТАМ. Символ
+    кириллицы занимает два байта, поэтому срез почти всегда попадает в его
+    середину, остаток последовательности декодируется в U+FFFD — и проверка
+    выше объявляла файл бинарным. Признак порчи изготавливал сам замер.
+
+    Масштаб: в ``courses/content/post`` из 1176 материалов длиннее килобайта
+    таких было 473, то есть 40% корпуса не читались ``read_file`` вовсе.
+    """
+
+    def test_a_sample_cut_mid_character_is_not_evidence_of_binary(self, tmp_path):
+        ops = ShellFileOperations(make_real_subprocess_env(str(tmp_path)))
+        # Ровно то, что приходит от `head -c 1000`, разрезавшего «а» пополам.
+        cut = "а" * 499 + "�"
+        assert ops._is_likely_binary("статья.md", cut, sample_is_cut=True) is False
+
+    def test_the_same_sample_is_still_binary_when_the_file_ended_there(self, tmp_path):
+        """Если образец кончился вместе с файлом, резать было нечего — значит,
+        U+FFFD пришёл из содержимого, и файл действительно нечитаем."""
+        ops = ShellFileOperations(make_real_subprocess_env(str(tmp_path)))
+        cut = "а" * 499 + "�"
+        assert ops._is_likely_binary("статья.md", cut, sample_is_cut=False) is True
+
+    def test_broken_bytes_before_the_tail_are_still_caught(self, tmp_path):
+        """Послабление касается только хвоста: оборванная последовательность
+        даёт не больше трёх символов и только в самом конце образца."""
+        ops = ShellFileOperations(make_real_subprocess_env(str(tmp_path)))
+        lossy = "текст � дальше " + "а" * 400
+        assert ops._is_likely_binary("заметки.txt", lossy, sample_is_cut=True) is True
+
+    def test_a_real_cyrillic_file_reads_end_to_end(self, tmp_path):
+        """Сквозная проверка: файл на диске, а не подготовленный образец."""
+        ops = ShellFileOperations(make_real_subprocess_env(str(tmp_path)))
+        article = tmp_path / "статья.md"
+        # Лишний байт в начале сдвигает границу так, что срез в 1000 байт
+        # приходится на середину символа — тот самый случай.
+        article.write_bytes(b"x" + ("а" * 600).encode("utf-8") + "\nхвост\n".encode())
+
+        result = ops.read_file(str(article))
+
+        assert result.is_binary is False, result.error
+        assert "хвост" in result.content

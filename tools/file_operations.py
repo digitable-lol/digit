@@ -872,11 +872,16 @@ class ShellFileOperations(FileOperations):
             self._command_cache[cmd] = result.stdout.strip() == 'yes'
         return self._command_cache[cmd]
     
-    def _is_likely_binary(self, path: str, content_sample: str = None) -> bool:
+    def _is_likely_binary(
+        self, path: str, content_sample: str = None, sample_is_cut: bool = False
+    ) -> bool:
         """
         Check if a file is likely binary.
-        
+
         Uses extension check (fast) + content analysis (fallback).
+
+        ``sample_is_cut`` — образец обрезан по числу байт, а не кончился
+        вместе с файлом; тогда его хвосту верить нельзя (см. ниже).
         """
         ext = os.path.splitext(path)[1].lower()
         if ext in BINARY_EXTENSIONS:
@@ -893,7 +898,22 @@ class ShellFileOperations(FileOperations):
             # sample carries the replacement char as binary (read-only) so the
             # agent can't corrupt it. Legitimate UTF-8 text effectively never
             # contains U+FFFD.
-            if "\ufffd" in content_sample[:1000]:
+            suspect = content_sample[:1000]
+            if sample_is_cut:
+                # Образец берётся как `head -c 1000`, то есть срез по БАЙТАМ.
+                # На тексте, где символ занимает больше одного байта, срез
+                # почти всегда попадает в середину последовательности, и её
+                # остаток превращается в U+FFFD — то есть признак «файл
+                # испорчен» изготавливает сам замер. Оборванная
+                # последовательность даёт не больше трёх таких символов и
+                # только в самом конце, поэтому хвост из проверки исключается.
+                #
+                # Цена ошибки не теоретическая: в корпусе курсов
+                # (courses/content/post) 473 материала из 1176, что длиннее
+                # килобайта, объявлялись бинарными и не читались вовсе — 40%,
+                # и всё лишь потому, что написаны кириллицей.
+                suspect = suspect[:-3]
+            if "\ufffd" in suspect:
                 return True
             non_printable = sum(1 for c in content_sample[:1000]
                                if ord(c) < 32 and c not in '\n\r\t')
@@ -1169,7 +1189,7 @@ class ShellFileOperations(FileOperations):
         sample_result = self._exec(sample_cmd)
         sample_output = _strip_terminal_fence_leaks(sample_result.stdout)
         
-        if self._is_likely_binary(path, sample_output):
+        if self._is_likely_binary(path, sample_output, sample_is_cut=file_size > 1000):
             return ReadResult(
                 is_binary=True,
                 file_size=file_size,
@@ -1285,7 +1305,7 @@ class ShellFileOperations(FileOperations):
             return ReadResult(is_image=True, is_binary=True, file_size=file_size)
         sample_result = self._exec(f"head -c 1000 {self._escape_shell_arg(path)} 2>/dev/null")
         sample_output = _strip_terminal_fence_leaks(sample_result.stdout)
-        if self._is_likely_binary(path, sample_output):
+        if self._is_likely_binary(path, sample_output, sample_is_cut=file_size > 1000):
             return ReadResult(
                 is_binary=True, file_size=file_size,
                 error="Binary file — cannot display as text."
