@@ -27,12 +27,19 @@ _REAL_IS_ENABLED = rule_cascade.is_enabled
 
 
 class FakeAgent:
-    """Ровно те поля агента, которых касается каскад, и ни одного больше."""
+    """Ровно те поля агента, которых касается каскад, и ни одного больше.
 
-    def __init__(self, tools=("tools_execute",)):
+    `provider` объявлен локальным намеренно: с версии, где каскад включается
+    сам только позади локальной модели, это поле решает, сработает он вообще
+    или нет. Двойник без провайдера проверял бы выключённый каскад.
+    """
+
+    def __init__(self, tools=("tools_execute",), provider="llamacpp", base_url=""):
         self.valid_tool_names = set(tools)
         self.session_id = "s-1"
         self.persisted = []
+        self.provider = provider
+        self.base_url = base_url
 
     def _persist_session(self, messages, history):
         self.persisted.append(list(messages))
@@ -41,7 +48,7 @@ class FakeAgent:
 @pytest.fixture(autouse=True)
 def _cascade_on(monkeypatch):
     monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
-    monkeypatch.setattr(rule_cascade, "is_enabled", lambda: True)
+    monkeypatch.setattr(rule_cascade, "is_enabled", lambda agent=None: True)
 
 
 def _route_to(tool_id, args):
@@ -139,7 +146,7 @@ def test_a_crashing_parser_cedes_instead_of_erroring_the_turn(monkeypatch):
 
 
 def test_disabled_cascade_never_looks_at_the_query(monkeypatch):
-    monkeypatch.setattr(rule_cascade, "is_enabled", lambda: False)
+    monkeypatch.setattr(rule_cascade, "is_enabled", lambda agent=None: False)
     seen = []
     monkeypatch.setattr("digit_cli.ruleparse.route",
                         lambda q: seen.append(q) or RuleDecision(routed=False))
@@ -259,3 +266,65 @@ def test_an_ordinary_turn_is_not_labelled_as_a_rule_answer():
     collector.begin()
     collector.record_provenance(None)
     assert "answered by" not in collector.render(3.0)
+
+
+# --------------------------------------------------------------------------
+# Умолчание: каскад включается сам только позади локальной модели.
+#
+# Это не предпочтение, а следствие замера. Каскад не заменяет ошибки второй
+# ступени, а складывается с ними: 8 промахов правил плюс 13 промахов модели
+# дали ровно 21 у связки. Позади слабой локальной модели правила выигрывают,
+# позади сильного шлюза — портят главную метрику (ложные ответы 0,2 % → 4,0 %).
+# Поэтому «не знаю, кто вторая ступень» обязано читаться как «не включать».
+
+
+def test_cascade_stays_off_behind_a_remote_gateway(monkeypatch):
+    monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
+    monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
+    agent = FakeAgent(provider="openrouter", base_url="https://openrouter.ai/api/v1")
+    assert _REAL_IS_ENABLED(agent) is False
+
+
+def test_cascade_turns_itself_on_for_a_local_provider(monkeypatch):
+    monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
+    monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
+    for provider in ("custom", "llamacpp", "ollama", "vllm", "lmstudio"):
+        assert _REAL_IS_ENABLED(FakeAgent(provider=provider)) is True, provider
+
+
+def test_a_local_address_counts_even_when_the_provider_is_unnamed(monkeypatch):
+    monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
+    monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
+    agent = FakeAgent(provider="", base_url="http://127.0.0.1:8127/v1")
+    assert _REAL_IS_ENABLED(agent) is True
+
+
+def test_a_hostname_that_merely_contains_localhost_is_not_local(monkeypatch):
+    """`https://localhost.attacker.example` содержит «localhost» и локальным не является.
+
+    Проверяется хост, а не подстрока: иначе чужой домен с таким именем включил
+    бы каскад позади сильной модели — ровно там, где он вредит.
+    """
+    monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
+    monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
+    agent = FakeAgent(provider="", base_url="https://localhost.attacker.example/v1")
+    assert _REAL_IS_ENABLED(agent) is False
+
+
+def test_an_explicit_setting_beats_the_default_in_both_directions(monkeypatch):
+    monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
+    remote = FakeAgent(provider="openrouter")
+    local = FakeAgent(provider="llamacpp")
+
+    monkeypatch.setenv("DIGIT_RULE_CASCADE", "1")
+    assert _REAL_IS_ENABLED(remote) is True, "явное включение не сработало позади шлюза"
+
+    monkeypatch.setenv("DIGIT_RULE_CASCADE", "off")
+    assert _REAL_IS_ENABLED(local) is False, "явное выключение не сработало на локальной модели"
+
+
+def test_an_unknown_second_stage_reads_as_not_local(monkeypatch):
+    monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
+    monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
+    assert _REAL_IS_ENABLED(None) is False
+    assert _REAL_IS_ENABLED(FakeAgent(provider="", base_url="")) is False

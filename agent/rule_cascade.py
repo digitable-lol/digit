@@ -159,14 +159,28 @@ PUBLIC_TO_CORE: Dict[str, Optional[str]] = {
 }
 
 
-def is_enabled() -> bool:
-    """Включён ли каскад. По умолчанию — да.
+def is_enabled(agent=None) -> bool:
+    """Включён ли каскад. По умолчанию — только на локальной модели.
 
-    Умолчание «да» держится не на вере, а на том, что каскад физически не
-    может ответить наугад: он отвечает, только когда все обязательные
-    аргументы найдены в запросе дословно И исполнитель принял их по своей
-    схеме. Выключатель нужен для отладки и для сравнения «с каскадом /
-    без каскада» на одной и той же сессии.
+    Умолчание выведено из замера, а не из веры в правила. Каскад не заменяет
+    ошибки второй ступени, а СКЛАДЫВАЕТСЯ с ними: на red-team 8 промахов
+    правил плюс 13 промахов модели дали ровно 21 у связки. Отсюда две разные
+    картины, и обе измерены на 400 задачах:
+
+      позади слабой локальной модели   выигрыш: правила точнее её самой
+                                       (инструмент 96 % против 87 %,
+                                       аргументы 100 % против 93 %)
+      позади сильного шлюза            ПРОИГРЫШ: ложные ответы 0,2 % → 4,0 %,
+                                       потому что там, где правила ошиблись
+                                       уверенно, сильную модель уже не спросят
+
+    Главная метрика системы — доля ложных ответов, и ухудшать её ради
+    скорости нельзя. Поэтому каскад включается там, где он действительно
+    умнее второй ступени: на локальном провайдере, где ответ и так стоит
+    секунду, а модель мельче.
+
+    Явная настройка (переменная окружения или конфиг) сильнее умолчания в
+    обе стороны: и включает позади шлюза, и выключает на локальной модели.
     """
     raw = os.environ.get("DIGIT_RULE_CASCADE")
     if raw is not None:
@@ -179,7 +193,44 @@ def is_enabled() -> bool:
             return bool(section["enabled"])
     except Exception:
         pass
-    return True
+    return _second_stage_is_local(agent)
+
+
+# Провайдеры, за которыми стоит локальный процесс, а не чужой сервис. Список
+# закрытый и совпадает с алиасами, которые digit_cli/model_switch.py ведёт на
+# профиль `custom`: llama.cpp, vLLM, локальная Ollama и LM Studio.
+_LOCAL_PROVIDERS = frozenset({"custom", "llamacpp", "llama.cpp", "ollama", "vllm", "lmstudio"})
+
+# Адреса, по которым отвечает свой же компьютер. Проверяется хост, а не
+# подстрока: `base_url` вида `https://localhost.attacker.example` содержит
+# «localhost», но локальным не является.
+_LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
+
+
+def _second_stage_is_local(agent) -> bool:
+    """Стоит ли за второй ступенью локальная модель.
+
+    Неизвестность трактуется как «не локальная»: включить каскад там, где он
+    вредит, дороже, чем не включить там, где он помог бы. Первое портит
+    главную метрику молча, второе видно как медленный ответ.
+    """
+    if agent is None:
+        return False
+
+    provider = (getattr(agent, "provider", None) or "").strip().lower()
+    if provider and provider in _LOCAL_PROVIDERS:
+        return True
+
+    base_url = (getattr(agent, "base_url", None) or "").strip()
+    if not base_url:
+        return False
+    try:
+        from urllib.parse import urlparse
+
+        host = (urlparse(base_url).hostname or "").lower()
+    except Exception:
+        return False
+    return host in _LOCAL_HOSTS
 
 
 def _executor_available(agent) -> bool:
@@ -235,7 +286,7 @@ def try_turn(
     который отказал пользователю вместо модели; любая поломка обязана
     выглядеть как обычный ход.
     """
-    if not is_enabled() or not isinstance(user_text, str):
+    if not is_enabled(agent) or not isinstance(user_text, str):
         return None
     started = time.perf_counter()
     try:
