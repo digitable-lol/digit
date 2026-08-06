@@ -448,3 +448,30 @@ def test_render_list_says_how_to_close_a_task():
 
 def test_render_list_handles_an_empty_result():
     assert "no matching tasks" in render_list([])
+
+
+def test_bare_invocation_lists_instead_of_crashing(tracker: Tracker, capsys):
+    """``digit tasks`` без подкоманды обязан показать список.
+
+    Подкоманда необязательна, и обработчик по умолчанию — ``list``, но при
+    разборе без подпарсера флаги, объявленные только у ``list``
+    (``--project``, ``--status``, ``--json``), в пространстве имён
+    отсутствовали, и обработчик падал на первом же обращении к ним. Ломался при
+    этом самый естественный для человека вызов — тот, которым он открывает
+    список.
+
+    Парсер здесь настоящий: самодельный namespace несёт как раз те атрибуты,
+    отсутствие которых и было ошибкой, поэтому подделка ничего бы не поймала.
+    """
+    import argparse
+
+    from digit_cli.tasks_cli import add_parser
+
+    tracker.add("задача, которую видно в списке", project="DIGIT")
+
+    root = argparse.ArgumentParser()
+    add_parser(root.add_subparsers(dest="command"))
+    args = root.parse_args(["tasks", "--data-dir", str(tracker.data_dir)])
+
+    assert args.func(args) == 0
+    assert "задача, которую видно в списке" in capsys.readouterr().out

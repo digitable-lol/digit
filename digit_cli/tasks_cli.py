@@ -627,5 +627,14 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
     p_done.add_argument("--note", nargs="+", default=None,
                         help="annotation recorded before closing")
 
-    parser.set_defaults(func=tasks_command)
+    # Голое ``digit tasks`` разбирается БЕЗ подпарсера: подкоманда
+    # необязательна, и обработчик по умолчанию — ``list``. Но флаги, объявленные
+    # только у ``list``, в пространстве имён при этом отсутствуют, и первый же
+    # ``args.project`` в обработчике падал трассировкой — на самом естественном
+    # для человека вызове, том, которым он открывает список. Значения ниже
+    # совпадают с умолчаниями подпарсера ``list``, поэтому явный
+    # ``digit tasks list`` ведёт себя ровно так же.
+    parser.set_defaults(
+        func=tasks_command, project=None, status="pending", json=False,
+    )
     return parser
