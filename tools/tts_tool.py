@@ -1417,6 +1417,44 @@ def _repair_ogg_container(file_str: str) -> str:
 # ===========================================================================
 # Provider: Edge TTS (free)
 # ===========================================================================
+
+#: Голос, которым Edge читает кириллицу, когда в настройках стоит английский.
+#: Пара к :data:`DEFAULT_EDGE_VOICE`; менять их надо вместе.
+DEFAULT_EDGE_VOICE_CYRILLIC = "ru-RU-SvetlanaNeural"
+
+
+def _looks_cyrillic(text: str) -> bool:
+    """Кириллицы среди букв больше, чем всего остального."""
+    cyrillic = sum(1 for ch in text if "\u0400" <= ch <= "\u04ff")
+    letters = sum(1 for ch in text if ch.isalpha())
+    return letters > 0 and cyrillic * 2 > letters
+
+
+def _edge_voice_for_text(text: str, configured_voice: Optional[str] = None) -> str:
+    """Выбрать голос Edge под язык текста.
+
+    ПОЧЕМУ ЭТО НЕ КОСМЕТИКА. Голос по умолчанию — ``en-US-AriaNeural``, и на
+    русском тексте он отдаёт не плохое произношение, а НИЧЕГО: служба
+    закрывает поток, ``edge-tts`` поднимает ``NoAudioReceived``, на диске
+    остаётся файл в 0 байт. Проверено запуском: тот же текст голосом
+    ``ru-RU-SvetlanaNeural`` даёт 16.8 КБ звука. То есть «Digit не умеет
+    говорить по-русски» было не про качество, а про полное молчание.
+
+    Голос, названный в настройках, не трогаем: пользователь мог выбрать его
+    осознанно, и подменять его — значит не выполнять просьбу. Исключение одно
+    — само умолчание: загрузчик настроек подставляет ``DEFAULT_EDGE_VOICE`` в
+    ``edge.voice`` всем, кто ничего не выбирал, поэтому отличить «выбрал
+    Арию» от «не выбирал ничего» по конфигу нельзя. Считаем такое значение
+    невыбранным. Терять тут нечего: именно эта пара — Ария плюс кириллица —
+    и даёт ноль байт.
+    """
+    if configured_voice and configured_voice != DEFAULT_EDGE_VOICE:
+        return configured_voice
+    if _looks_cyrillic(text):
+        return DEFAULT_EDGE_VOICE_CYRILLIC
+    return DEFAULT_EDGE_VOICE
+
+
 async def _generate_edge_tts(text: str, output_path: str, tts_config: Dict[str, Any]) -> str:
     """
     Generate audio using Edge TTS.
@@ -1431,7 +1469,8 @@ async def _generate_edge_tts(text: str, output_path: str, tts_config: Dict[str, 
     """
     _edge_tts = _import_edge_tts()
     edge_config = tts_config.get("edge") or {}
-    voice = edge_config.get("voice", DEFAULT_EDGE_VOICE)
+    configured_voice = edge_config.get("voice")
+    voice = _edge_voice_for_text(text, configured_voice)
     speed = float(edge_config.get("speed", tts_config.get("speed", 1.0)))
 
     kwargs = {"voice": voice}
