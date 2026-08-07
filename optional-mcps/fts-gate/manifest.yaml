@@ -46,7 +46,7 @@ tools:
     - fts_morphisms_list
 
 post_install: |
-  fts-gate is licensed Apache-2.0 while Digit is MIT. It runs as a separate
+  fts-gate is licensed BSD-2-Clause while Digit is MIT. It runs as a separate
   process over stdio — no linking, no combined work — so the licences do not
   interact. See docs/digitable/mcp-servers.md.
 

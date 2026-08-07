@@ -5,7 +5,7 @@ Digit ships two first-party MCP servers in the approved catalog
 
 | Entry | Binary | Tools | Licence |
 |---|---|---|---|
-| `fts-gate` | `node <install>/dist/src/mcp.js` | `fts_gate_check`, `fts_morphisms_list` | Apache-2.0 |
+| `fts-gate` | `node <install>/dist/src/mcp.js` | `fts_gate_check`, `fts_morphisms_list` | BSD-2-Clause |
 | `digit-tools` | `<install>/dist/digit-tools-mcp` (self-contained) | `tools_categories`, `tools_list`, `tools_execute` | GPL-3.0 |
 
 Install them the same way as any other catalog entry:
@@ -45,7 +45,7 @@ one developer's machine layout.
 **Installing or using either server does not change Digit's licence, and does
 not impose GPL obligations on Digit.**
 
-Digit is MIT. `fts-gate` is Apache-2.0. `digit-tools` is GPL-3.0, inherited
+Digit is MIT. `fts-gate` is BSD-2-Clause. `digit-tools` is GPL-3.0, inherited
 from [it-tools](https://github.com/CorentinTh/it-tools), which it is a headless
 port of.
 
@@ -78,7 +78,7 @@ The obligations attach to the `digit-tools` binary itself, not to Digit:
 - **If you only run it locally**, having installed it yourself, there is no
   distribution and therefore no obligation beyond keeping the notice.
 
-`fts-gate` under Apache-2.0 is permissive and compatible in all of these cases;
+`fts-gate` under BSD-2-Clause is permissive and compatible in all of these cases;
 it requires attribution and a NOTICE if one is provided.
 
 The one arrangement to avoid is **statically linking or importing tools-core
