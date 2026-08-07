@@ -10642,7 +10642,7 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "dump", "egress", "fallback", "gateway", "hooks", "import", "import-agent", "insights",
         "gui", "desktop", "kanban", "kb", "login", "logout", "logs", "lsp", "mcp", "memory", "migrate", "moa",
         "journey", "memory-graph", "learning",
-        "model", "monitoring", "pairing", "pets", "plugins", "portal", "profile",
+        "model", "monitoring", "pairing", "pets", "plugins", "portal", "portrait", "profile",
         "project", "proxy",
         "prompt-size",
         "rule-check",
@@ -11806,6 +11806,28 @@ def main():
         _register_journey_cli(journey_parser)
     except Exception as _exc:
         logging.getLogger(__name__).debug("journey CLI wiring failed: %s", _exc)
+
+    # =========================================================================
+    # portrait command — цифровой портрет владельца, три слоя раздельно
+    # =========================================================================
+    portrait_parser = subparsers.add_parser(
+        "portrait",
+        help="Цифровой портрет владельца: стиль, прежние решения, догадка",
+        description=(
+            "Портрет накапливается по ходу разговора и нарочно не уезжает в "
+            "системный промпт — поэтому смотреть его нужно отдельной "
+            "командой. Показывает три РАЗДЕЛЬНЫХ слоя: измеренный стиль речи "
+            "(с числом наблюдений за каждой цифрой), журнал прежних решений "
+            "(дословно, со ссылкой на сессию и время) и — только владельцу и "
+            "только по запросу — догадку о том, что он ответил бы."
+        ),
+    )
+    try:
+        from digit_cli.portrait import register_cli as _register_portrait_cli
+
+        _register_portrait_cli(portrait_parser)
+    except Exception as _exc:
+        logging.getLogger(__name__).debug("portrait CLI wiring failed: %s", _exc)
 
     # =========================================================================
     # memory command  (parser built in digit_cli/subcommands/memory.py)

@@ -1695,6 +1695,28 @@ def init_agent(
                 _ra().logger.warning("Built-in memory recall provider init failed: %s", _bre)
                 agent._memory_manager = None
 
+        # Цифровой портрет владельца. Наполняется по ходу разговора, без
+        # отдельной команды «запомни» — через тот же sync_turn, которым
+        # пользуются провайдеры памяти. В промпт ничего не отдаёт (prefetch
+        # пуст), поэтому цена регистрации — один файловый писатель на ход.
+        #
+        # Под skip_memory не регистрируем по той же причине, что и остальное:
+        # фоновый форк говорит не голосом владельца, и мерить по нему его
+        # стиль значит записать в портрет речь гарнитуры.
+        _portrait_cfg = (_agent_cfg or {}).get("portrait") or {}
+        if _portrait_cfg.get("enabled"):
+            try:
+                from agent.memory_manager import MemoryManager as _MemoryManager
+                from agent.portrait.observer import PortraitObserver as _Portrait
+
+                if agent._memory_manager is None:
+                    agent._memory_manager = _MemoryManager()
+                agent._memory_manager.add_provider(_Portrait(
+                    source=str(_portrait_cfg.get("source") or (platform or "cli")),
+                ))
+            except Exception as _pe:
+                _ra().logger.warning("Portrait observer init failed: %s", _pe)
+
         try:
             _mem_provider_name = mem_config.get("provider", "") if mem_config else ""
 

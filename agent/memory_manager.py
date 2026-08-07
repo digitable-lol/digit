@@ -361,11 +361,24 @@ def build_memory_context_block(raw_context: str) -> str:
     )
 
 
-class MemoryManager:
-    """Orchestrates the built-in provider plus at most one external provider.
+#: Providers that are Digit's own, run entirely on the local disk, and
+#: contribute **no** system-prompt block. The "only one at a time" rule and
+#: the ``has_external_providers`` prompt-retention gate are both about
+#: third-party backends that talk to a network and rewrite the prompt — a
+#: local observer that costs a file write must not disqualify the KV-cache
+#: fast path, and must not consume the single external slot either.
+#:
+#: ``builtin``  — retrieval over the user's own MEMORY.md / USER.md.
+#: ``portrait`` — the owner's digital portrait (agent.portrait).
+LOCAL_PROVIDERS = frozenset({"builtin", "portrait"})
 
-    The builtin provider is always first. Only one non-builtin (external)
-    provider is allowed.  Failures in one provider never block the other.
+
+class MemoryManager:
+    """Orchestrates local providers plus at most one external provider.
+
+    Local providers (see :data:`LOCAL_PROVIDERS`) come first. Only one
+    non-local (external) provider is allowed.  Failures in one provider
+    never block the other.
     """
 
     def __init__(self, *, external_prefetch_timeout: Optional[float] = None) -> None:
@@ -404,11 +417,11 @@ class MemoryManager:
     def add_provider(self, provider: MemoryProvider) -> None:
         """Register a memory provider.
 
-        Built-in provider (name ``"builtin"``) is always accepted.
-        Only **one** external (non-builtin) provider is allowed — a second
+        Providers from :data:`LOCAL_PROVIDERS` are always accepted.
+        Only **one** external (non-local) provider is allowed — a second
         attempt is rejected with a warning.
         """
-        is_builtin = provider.name == "builtin"
+        is_builtin = provider.name in LOCAL_PROVIDERS
 
         if not is_builtin:
             if self._has_external:
@@ -476,12 +489,13 @@ class MemoryManager:
 
     @property
     def has_external_providers(self) -> bool:
-        """Whether any registered provider is external (not the built-in one).
+        """Whether any registered provider is external (not a local one).
 
         Callers use this to decide whether the *system prompt* can be affected
-        by a provider. The built-in provider only injects per-turn recall into
-        the user message and contributes no prompt block, so a manager holding
-        only it must not disqualify prompt-retention fast paths — doing so
+        by a provider. Local providers (:data:`LOCAL_PROVIDERS`) contribute no
+        prompt block — ``builtin`` only injects per-turn recall into the user
+        message, ``portrait`` injects nothing at all — so a manager holding
+        only those must not disqualify prompt-retention fast paths: doing so
         would silently drop the KV-cache prefix for every user whose memory
         switched to retrieval.
         """

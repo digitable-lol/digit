@@ -1641,6 +1641,22 @@ DEFAULT_CONFIG = {
         "provider": "",
     },
 
+    # Цифровой портрет владельца — три РАЗДЕЛЬНЫХ слоя: измеренный стиль речи,
+    # журнал прежних решений с дословными цитатами и ссылками, и догадка «что
+    # бы он ответил» (не хранится нигде и наружу не уходит никогда).
+    # Лежит в $DIGIT_HOME/portrait/, в системный промпт не попадает, во внешние
+    # провайдеры памяти не передаётся.
+    #
+    # Выключено по умолчанию сознательно: профиль речи — самые чувствительные
+    # данные в системе, и он не должен начать собираться оттого, что человек
+    # обновил пакет. Включение — `digit portrait on`.
+    "portrait": {
+        "enabled": False,
+        # Метка источника в записях решений: по ней видно, из какого канала
+        # пришло наблюдение (cli, gateway, ingest:<файл>).
+        "source": "cli",
+    },
+
     # Subagent delegation — override the provider:model used by delegate_task
     # so child agents can run on a different (cheaper/faster) provider and model.
     # Uses the same runtime provider resolution as CLI/gateway startup, so all
