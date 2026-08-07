@@ -1650,11 +1650,12 @@ def init_agent(
             agent._user_profile_enabled = mem_config.get("user_profile_enabled", False)
             agent._memory_nudge_interval = int(mem_config.get("nudge_interval", 10))
             if agent._memory_enabled or agent._user_profile_enabled:
-                from tools.memory_tool import MemoryStore
-                agent._memory_store = MemoryStore(
-                    memory_char_limit=mem_config.get("memory_char_limit", 2200),
-                    user_char_limit=mem_config.get("user_char_limit", 1375),
-                )
+                # Лимиты и включение поиска по заметкам разбирает один
+                # build_memory_store — тот же, которым пользуется
+                # load_on_disk_store(). Иначе согласованная запись
+                # применялась бы под другим потолком, чем проверялась.
+                from tools.memory_tool import build_memory_store
+                agent._memory_store = build_memory_store(mem_config)
                 agent._memory_store.load_from_disk()
         except Exception:
             pass  # Memory is optional -- don't break agent init
@@ -1664,18 +1665,52 @@ def init_agent(
     # Memory provider plugin (external — one at a time, alongside built-in)
     # Reads memory.provider from config to select which plugin to activate.
     agent._memory_manager = None
+
+    _builtin_recall_registered = False
     if not skip_memory:
+        # Встроенная память как провайдер. Механизм подкладывания контекста в
+        # ход уже существовал — им пользуются внешние провайдеры; не хватало
+        # пути для СВОЕГО хранилища.
+        #
+        # Под skip_memory не регистрируем сознательно, тем же правилом, что и
+        # внешние: форк фонового ревью работает по промпту гарнитуры, и
+        # подкладывать ему заметки пользователя — менять то, что он
+        # анализирует. Читать память он всё равно может — дайджест в промпте
+        # и memory(action="search") никуда не делись.
+        if agent._memory_store is not None and getattr(agent._memory_store, "recall", None):
+            try:
+                from agent.memory_manager import MemoryManager as _MemoryManager
+                from agent.memory_recall import BuiltinRecallProvider as _BuiltinRecall
+
+                _recall_cfg = (mem_config or {}).get("recall") or {}
+                agent._memory_manager = _MemoryManager()
+                agent._memory_manager.add_provider(_BuiltinRecall(
+                    agent._memory_store,
+                    top_k=int(_recall_cfg.get("top_k", 6)),
+                    max_chars=int(_recall_cfg.get("max_chars", 2000)),
+                    hops=int(_recall_cfg.get("hops", 1)),
+                ))
+                _builtin_recall_registered = True
+            except Exception as _bre:
+                _ra().logger.warning("Built-in memory recall provider init failed: %s", _bre)
+                agent._memory_manager = None
+
         try:
             _mem_provider_name = mem_config.get("provider", "") if mem_config else ""
 
             if _mem_provider_name and _mem_provider_name.strip():
                 from agent.memory_manager import MemoryManager as _MemoryManager
                 from plugins.memory import load_memory_provider as _load_mem
-                agent._memory_manager = _MemoryManager()
+                # Менеджер мог уже быть создан под встроенный провайдер: тогда
+                # внешний добавляется рядом, а не вместо (ограничение «один
+                # внешний за раз» его не касается — он builtin).
+                if agent._memory_manager is None:
+                    agent._memory_manager = _MemoryManager()
                 _mp = _load_mem(_mem_provider_name)
-                if _mp and _mp.is_available():
+                _external_ok = bool(_mp and _mp.is_available())
+                if _external_ok:
                     agent._memory_manager.add_provider(_mp)
-                if agent._memory_manager.providers:
+                if _external_ok:
                     _init_kwargs = {
                         "session_id": agent.session_id,
                         "platform": platform or "cli",
@@ -1724,10 +1759,15 @@ def init_agent(
                     _ra().logger.info("Memory provider '%s' activated", _mem_provider_name)
                 else:
                     _ra().logger.debug("Memory provider '%s' not found or not available", _mem_provider_name)
-                    agent._memory_manager = None
+                    # Обнуляем менеджер, только если он существует РАДИ этого
+                    # внешнего провайдера. Со встроенным внутри обнуление
+                    # выключило бы поиск по заметкам из-за чужой поломки.
+                    if not _builtin_recall_registered:
+                        agent._memory_manager = None
         except Exception as _mpe:
             _ra().logger.warning("Memory provider plugin init failed: %s", _mpe)
-            agent._memory_manager = None
+            if not _builtin_recall_registered:
+                agent._memory_manager = None
 
     from agent.memory_manager import inject_memory_provider_tools as _inject_memory_provider_tools
     _inject_memory_provider_tools(agent)

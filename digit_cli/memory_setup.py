@@ -475,6 +475,51 @@ def _write_env_vars(env_path: Path, env_writes: dict) -> None:
 # Status
 # ---------------------------------------------------------------------------
 
+def _recall_status_lines(mem_config: dict) -> list:
+    """Строки о поиске по заметкам для ``digit memory status``.
+
+    Отвечает на единственный вопрос, который здесь у человека возникает:
+    «мои заметки сейчас в промпте целиком или ищутся?». Без него состояние
+    памяти читается только по косвенным признакам.
+    """
+    recall_cfg = mem_config.get("recall") or {}
+    if not isinstance(recall_cfg, dict) or not recall_cfg.get("enabled", True):
+        return ["    Note search:        off (whole store goes into the prompt)"]
+
+    try:
+        from tools.memory_tool import build_memory_store
+
+        store = build_memory_store(mem_config)
+        store.load_from_disk()
+        stats = store.recall.stats()
+    except Exception as e:
+        return [f"    Note search:        unavailable ({e})"]
+
+    lines = [
+        f"    Note search:        on — {stats['total']} notes "
+        f"({stats['memory']} in MEMORY.md, {stats['user']} in USER.md), "
+        f"{stats['links']} links"
+    ]
+    retrieved = store.recall_targets()
+    for target, fname in (("memory", "MEMORY.md"), ("user", "USER.md")):
+        used = store._char_count(target)
+        if target in retrieved:
+            lines.append(
+                f"      {fname:<10} {used:,}/{store._char_limit(target):,} chars — "
+                f"retrieved per turn (prompt carries a digest)"
+            )
+        else:
+            lines.append(
+                f"      {fname:<10} {used:,}/{store._inline_budget(target):,} chars — "
+                f"in the prompt verbatim (fits the inline budget)"
+            )
+    sectors = stats.get("sectors") or []
+    if sectors:
+        shown = ", ".join(f"{name} ({n})" for name, n in sectors[:8])
+        lines.append(f"      sectors:   {shown}")
+    return lines
+
+
 def cmd_status(args) -> None:
     """Show current memory provider config."""
     from digit_cli.config import load_config
@@ -501,6 +546,8 @@ def cmd_status(args) -> None:
     print(f"    Memory injection:   {mem_mark}")
     print(f"    User profile:       {user_mark}")
     print(f"    Memory tool:        {tool_mark}")
+    for line in _recall_status_lines(mem_config):
+        print(line)
     print(f"  Provider:  {provider_name or '(none — built-in only)'}")
 
     providers = _get_available_providers()

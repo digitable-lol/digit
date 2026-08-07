@@ -12,22 +12,78 @@ Digit has bounded, curated memory that persists across sessions. This lets it re
 
 Two files make up the agent's memory:
 
-| File | Purpose | Char Limit |
-|------|---------|------------|
-| **MEMORY.md** | Agent's personal notes — environment facts, conventions, things learned | 2,200 chars (~800 tokens) |
-| **USER.md** | User profile — your preferences, communication style, expectations | 1,375 chars (~500 tokens) |
+| File | Purpose | Storage limit | Sent verbatim while under |
+|------|---------|---------------|---------------------------|
+| **MEMORY.md** | Agent's personal notes — environment facts, conventions, things learned | 120,000 chars | 2,200 chars (~800 tokens) |
+| **USER.md** | User profile — your preferences, communication style, expectations | 24,000 chars | 1,375 chars (~500 tokens) |
 
-Both are stored in `~/.digit/memories/` and are injected into the system prompt as a frozen snapshot at session start. The agent manages its own memory via the `memory` tool — it can add, replace, or remove entries.
+Both are stored in `~/.digit/memories/` and are injected into the system prompt as a frozen snapshot at session start. The agent manages its own memory via the `memory` tool — it can add, replace, remove, or search entries.
 
 :::info
-Character limits keep memory focused. Memory does **not** auto-compact: when a
-write would exceed the limit, the `memory` tool returns an error instead of
-silently dropping entries. The agent then makes room itself — consolidating or
-removing entries in the same turn before retrying (see [What Happens When Memory
-is Full](#what-happens-when-memory-is-full)). Note that `replace` is also bound
-by the limit: swapping an entry for a longer one can still overflow, so the new
+**Two different numbers, and the difference is the point.** The old
+2,200 / 1,375 ceiling was never a property of the file — it was the price of
+prompt space, because both files were sent in full on *every single request*.
+Above that size the store stops travelling in the prompt: the prompt carries a
+short digest (how many notes, which sectors, which entries are pinned) and only
+the notes relevant to your message are attached to that turn. See
+[Note search](#note-search).
+
+Memory still does **not** auto-compact: when a write would exceed the *storage*
+limit, the `memory` tool returns an error instead of silently dropping entries.
+The agent then makes room itself — consolidating or removing entries in the same
+turn before retrying (see [What Happens When Memory is
+Full](#what-happens-when-memory-is-full)). Note that `replace` is also bound by
+the limit: swapping an entry for a longer one can still overflow, so the new
 content must be shortened (or another entry removed) to fit.
 :::
+
+## Note search
+
+While a store fits its verbatim budget nothing has changed: every entry is in
+the system prompt, exactly as before. Small memories therefore behave the way
+they always did — retrieval can miss, reading cannot, and there is no reason to
+retrieve what already fits.
+
+Once a store outgrows that budget, three things happen:
+
+1. **The prompt carries a digest, not the notes.** Note counts, the sector
+   breakdown, and any entry tagged `#pinned` — a few hundred characters instead
+   of the whole store.
+2. **Relevant notes are attached per turn.** Your message is matched against the
+   notes and the best few are appended to it inside a `<memory-context>` block.
+   Notes linked from a match with `[[wikilinks]]` come along too, in both
+   directions — a link is the author saying "read these together".
+3. **The agent can search on demand** with `memory(action="search", query="…")`
+   when the automatic selection missed something.
+
+Matching is **lexical**: SQLite FTS5 with BM25 ranking over a light Russian and
+English stemmer, so "порт" finds "портами" and "proxies" finds "proxy". No
+embedding model is involved and nothing leaves the machine — memory is consulted
+on every turn and has to work with the network down. The honest cost of that
+choice: synonyms are not understood, so "car" will not find a note that only
+says "automobile". That is what the explicit `search` action is for.
+
+The index lives in `~/.digit/memories/recall.db` and is **derived** — rebuilt
+from the two Markdown files whenever their contents change. Deleting it is safe;
+it comes back on the next load. The files remain the only source of truth.
+
+Entries blocked by the [security scanner](#security-scanning) are blocked here
+too: search returns the same `[BLOCKED: …]` placeholder the system prompt shows,
+so a poisoned entry cannot reach the model through retrieval either.
+
+```yaml
+memory:
+  recall:
+    enabled: true            # false = old behaviour, whole store in the prompt
+    memory_char_limit: 120000
+    user_char_limit: 24000
+    top_k: 6                 # notes attached per turn
+    max_chars: 2000          # cap on the attached block
+    hops: 1                  # steps followed along [[wikilinks]]
+```
+
+`digit memory status` shows how many notes you have and whether each store is
+sitting in the prompt or being searched.
 
 ## How Memory Appears in the System Prompt
 
@@ -49,6 +105,22 @@ The format includes:
 - Usage percentage and character counts so the agent knows capacity
 - Individual entries separated by `§` (section sign) delimiters
 - Entries can be multiline
+
+Once the store outgrows its verbatim budget the same block carries a digest
+instead of the entries, and the entries themselves arrive per turn (see
+[Note search](#note-search)):
+
+```
+══════════════════════════════════════════════
+MEMORY (your personal notes) [4% — 5,327/120,000 chars]
+══════════════════════════════════════════════
+137 notes in MEMORY.md, 42 links between them.
+Sectors: инфра (31), разработка (28), процесс (22), …
+
+Full note text is NOT in the prompt — the relevant ones are attached to the
+user's message inside <memory-context>. If what you need isn't there, search:
+memory(action="search", query="…").
+```
 
 **Frozen snapshot pattern:** The system prompt injection is captured once at session start and never changes mid-session. This is intentional — it preserves the LLM's prefix cache for performance. When the agent adds/removes memory entries during a session, the changes are persisted to disk immediately but won't appear in the system prompt until the next session starts. Tool responses always show the live state.
 
@@ -120,12 +192,13 @@ The agent saves automatically — you don't need to ask. It saves when it learns
 
 ## Capacity Management
 
-Memory has strict character limits to keep system prompts bounded:
+Memory has character limits, but they no longer bound the system prompt — that
+is [note search](#note-search)'s job now:
 
-| Store | Limit | Typical entries |
-|-------|-------|----------------|
-| memory | 2,200 chars | 8-15 entries |
-| user | 1,375 chars | 5-10 entries |
+| Store | Storage limit | Typical entries | Sent verbatim while under |
+|-------|---------------|-----------------|---------------------------|
+| memory | 120,000 chars | ~1,200 entries | 2,200 chars (~20 entries) |
+| user | 24,000 chars | ~240 entries | 1,375 chars (~13 entries) |
 
 ### What Happens When Memory is Full
 
@@ -281,9 +354,15 @@ Learned skills appear in the same sectors as your notes, filed by their
 memory:
   memory_enabled: true
   user_profile_enabled: true
+  # How much of each store is sent in the system prompt VERBATIM. Above this,
+  # the prompt gets a digest and notes are retrieved per turn instead.
   memory_char_limit: 2200   # ~800 tokens
   user_char_limit: 1375     # ~500 tokens
   write_approval: false     # false = write freely (default) | true = require approval
+  recall:                   # see "Note search" above
+    enabled: true
+    memory_char_limit: 120000   # storage ceiling once retrieval is on
+    user_char_limit: 24000
 ```
 
 ## Controlling memory writes (`write_approval`)

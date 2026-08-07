@@ -165,7 +165,9 @@ TIPS = [
     # --- Memory ---
     "Memory is a frozen snapshot — changes appear in the system prompt only at next session start.",
     "Memory entries are automatically scanned for prompt injection and exfiltration patterns.",
-    "The agent has two memory stores: personal notes (~2200 chars) and user profile (~1375 chars).",
+    "The agent has two memory stores: personal notes (MEMORY.md) and user profile (USER.md).",
+    "Memory outgrows the prompt: past ~2200 chars, only the notes matching your message are attached.",
+    "`digit memory status` shows how many notes you have and whether they sit in the prompt or get searched.",
     "Corrections you give the agent (\"no, do it this way\") are often auto-saved to memory.",
 
     # --- Skills ---

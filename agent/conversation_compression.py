@@ -170,6 +170,25 @@ def _builtin_memory_prompt_snapshot(agent: Any) -> Optional[Tuple[str, str]]:
     return memory, user
 
 
+def _external_memory_provider_active(agent: Any) -> bool:
+    """Есть ли провайдер памяти, способный поменять СИСТЕМНЫЙ промпт.
+
+    Раньше здесь стояло «менеджер памяти вообще существует» — этого хватало,
+    пока менеджер заводился исключительно ради внешнего провайдера. С
+    DGT-DIGIT-09 в нём живёт ещё и встроенный (``builtin``): он не даёт
+    системного блока и не участвует в ``on_pre_compress``, а только
+    подкладывает найденные заметки в сообщение пользователя. Считать его
+    поводом пересобрать промпт значило бы терять префикс KV-кэша при каждом
+    сжатии у всех, у кого память переехала на поиск.
+    """
+    manager = getattr(agent, "_memory_manager", None)
+    if manager is None:
+        return False
+    # Незнакомый менеджер (мок в тесте, чужая реализация) считается внешним:
+    # безопасный ответ здесь — «пересобрать промпт», а не «оставить старый».
+    return bool(getattr(manager, "has_external_providers", True))
+
+
 def _cached_prompt_reflects_builtin_memory(agent: Any, cached_prompt: str) -> bool:
     """Whether the cached system prompt already embeds current built-in memory.
 
@@ -2031,7 +2050,7 @@ def compress_context(
         # block during on_pre_compress(), so they retain the rebuild path.
         if (
             cached_system_prompt is not None
-            and getattr(agent, "_memory_manager", None) is None
+            and not _external_memory_provider_active(agent)
             and _cached_prompt_reflects_builtin_memory(agent, cached_system_prompt)
         ):
             new_system_prompt = cached_system_prompt

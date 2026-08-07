@@ -66,6 +66,13 @@ MEMORY_BLOCK_HEADERS = {
 
 ENTRY_DELIMITER = "\n§\n"
 
+# Исторические потолки. Это не свойство хранилища — это цена места в системном
+# промпте, куда оба файла уезжали целиком на каждом запросе. Когда включён
+# поиск по заметкам (memory.recall), они остаются потолком ИНЛАЙНОВОГО рендера,
+# а хранилище растёт до memory.recall.*_char_limit.
+DEFAULT_MEMORY_CHAR_LIMIT = 2200   # ~800 tokens at 2.75 chars/token
+DEFAULT_USER_CHAR_LIMIT = 1375     # ~500 tokens at 2.75 chars/token
+
 
 # ---------------------------------------------------------------------------
 # Memory content scanning — lightweight check for injection/exfiltration
@@ -162,16 +169,74 @@ class MemoryStore:
     # turn to budget exhaustion and suppress the user's reply (issue #42405).
     _MAX_CONSOLIDATION_FAILURES_PER_TURN = 3
 
-    def __init__(self, memory_char_limit: int = 2200, user_char_limit: int = 1375):
+    def __init__(
+        self,
+        memory_char_limit: int = DEFAULT_MEMORY_CHAR_LIMIT,
+        user_char_limit: int = DEFAULT_USER_CHAR_LIMIT,
+        *,
+        recall: Any = None,
+        inline_budgets: Optional[Dict[str, int]] = None,
+    ):
         self.memory_entries: List[str] = []
         self.user_entries: List[str] = []
         self.memory_char_limit = memory_char_limit
         self.user_char_limit = user_char_limit
+        # Индекс поиска по заметкам (agent.memory_recall.RecallIndex) или None.
+        # Пока None — стор ведёт себя ровно как до DGT-DIGIT-09: всё содержимое
+        # едет в системный промпт, и потолок хранилища равен месту в промпте.
+        self.recall = recall
+        # Сколько символов каждого стора ещё имеет смысл везти в промпт
+        # ЦЕЛИКОМ. Пока заметок мало, поиск не нужен: он может промахнуться, а
+        # прямое чтение — нет. Дайджест включается только там, где инлайн уже
+        # не помещался бы и раньше.
+        self._inline_budgets: Dict[str, int] = dict(inline_budgets or {})
         # Frozen snapshot for system prompt -- set once at load_from_disk()
         self._system_prompt_snapshot: Dict[str, str] = {"memory": "", "user": ""}
         # Per-turn counter of failed at-capacity consolidation attempts; reset
         # at each turn boundary by reset_consolidation_failures() (#42405).
         self._consolidation_failures = 0
+
+    def _inline_budget(self, target: str) -> int:
+        """Потолок инлайнового рендера. По умолчанию — весь лимит стора."""
+        return int(self._inline_budgets.get(target, self._char_limit(target)))
+
+    def recall_targets(self) -> List[str]:
+        """Сторы, которые сейчас отдаются поиском, а не текстом в промпте.
+
+        Нужно провайдеру: подкладывать в ход заметку, которая и так лежит в
+        системном промпте целиком, — значит платить за неё дважды и сбивать
+        модель повтором.
+        """
+        if self.recall is None:
+            return []
+        out = []
+        for target in ("memory", "user"):
+            if self._char_count(target) > self._inline_budget(target):
+                out.append(target)
+        return out
+
+    def sync_recall(self) -> None:
+        """Подтянуть индекс под текущее состояние записей.
+
+        Вызывается и при загрузке, и после каждой записи: заметка, сохранённая
+        на этом ходу, должна находиться на следующем, иначе «я записал» — ложь.
+        Сама сверка стоит микросекунды, когда ничего не изменилось.
+        """
+        if self.recall is None:
+            return
+        try:
+            # Тот же сканер угроз, что и на пути в системный промпт: подборка
+            # поиска уезжает к модели ровно так же, как инлайн, и запись,
+            # заблокированная сканером, не должна возвращаться через поиск.
+            # Сканер вызывается внутри sync() и только при реальной пересборке.
+            self.recall.sync(
+                self.memory_entries,
+                self.user_entries,
+                sanitize=self._sanitize_entries_for_snapshot,
+            )
+        except Exception as e:
+            # Индекс производный: сломался — память всё ещё читается из файлов.
+            logger.warning("Memory recall index sync failed: %s", e)
 
     def reset_consolidation_failures(self) -> None:
         """Reset the per-turn consolidation-failure counter (call at turn start)."""
@@ -232,6 +297,11 @@ class MemoryStore:
         # can see + remove poisoned entries via the memory tool.
         sanitized_memory = self._sanitize_entries_for_snapshot(self.memory_entries, "MEMORY.md")
         sanitized_user = self._sanitize_entries_for_snapshot(self.user_entries, "USER.md")
+
+        # Индекс синхронизируется ДО рендера снимка: дайджест в промпте
+        # (сколько заметок, какие секторы, что закреплено) читается из индекса,
+        # и рендер по устаревшему индексу соврал бы о содержимом памяти.
+        self.sync_recall()
 
         # Capture frozen snapshot for system prompt injection
         self._system_prompt_snapshot = {
@@ -364,6 +434,7 @@ class MemoryStore:
         """Persist entries to the appropriate file. Called after every mutation."""
         get_memory_dir().mkdir(parents=True, exist_ok=True)
         self._write_file(self._path_for(target), self._entries_for(target))
+        self.sync_recall()
 
     def _entries_for(self, target: str) -> List[str]:
         if target == "user":
@@ -679,6 +750,58 @@ class MemoryStore:
             "usage": f"{current:,}/{limit:,}",
         })
 
+    def search(self, query: str, *, target: Optional[str] = None,
+               top_k: int = 8) -> Dict[str, Any]:
+        """Поиск по заметкам как действие инструмента.
+
+        Существует потому, что автоподбор перед ходом — лексический и может
+        промахнуться (синонимы он не знает). Без ручного поиска промах
+        означал бы «этого в памяти нет», что неправда; с ним агент может
+        переформулировать и проверить сам.
+        """
+        if self.recall is None:
+            return {
+                "success": False,
+                "error": (
+                    "Search is unavailable: the whole memory is already in the "
+                    "system prompt (memory.recall is off or the store is small). "
+                    "Everything you have is above — nothing is hidden."
+                ),
+            }
+        query = (query or "").strip()
+        if not query:
+            return {"success": False, "error": "query is required for 'search'."}
+        sources = [target] if target in ("memory", "user") else None
+        try:
+            hits = self.recall.search(query, top_k=top_k, sources=sources)
+        except Exception as e:
+            return {"success": False, "error": f"Memory search failed: {e}"}
+        return {
+            "success": True,
+            "done": True,
+            "query": query,
+            "count": len(hits),
+            "results": [
+                {
+                    "target": h.get("source"),
+                    "content": h.get("body"),
+                    "sector": h.get("sector"),
+                    # Пустой ``via`` — заметку привёл сам запрос; непустой —
+                    # её привела [[ссылка]] из другой заметки. Разница важна:
+                    # во втором случае терминов запроса в ней может не быть.
+                    "linked_from": h.get("via") or None,
+                }
+                for h in hits
+            ],
+            "note": (
+                "Nothing found does NOT mean nothing is stored — this is a "
+                "lexical search, so try the words the note itself would use."
+                if not hits else
+                "Verbatim entries. Edit them with replace/remove using a short "
+                "unique substring."
+            ),
+        }
+
     def format_for_system_prompt(self, target: str) -> Optional[str]:
         """
         Return the frozen snapshot for system prompt injection.
@@ -738,6 +861,15 @@ class MemoryStore:
         current = len(content)
         pct = min(100, int((current / limit) * 100)) if limit > 0 else 0
 
+        # Переросло место в промпте — вместо текста едет дайджест, а сами
+        # заметки приходят поиском на конкретный запрос. Заголовок блока
+        # остаётся прежним намеренно: на него завязана проверка удержания
+        # промпта при сжатии контекста (MEMORY_BLOCK_HEADERS).
+        if self.recall is not None and current > self._inline_budget(target):
+            digest = self._render_digest(target)
+            if digest:
+                content = digest
+
         if target == "user":
             header = f"{MEMORY_BLOCK_HEADERS['user']} [{pct}% — {current:,}/{limit:,} chars]"
         else:
@@ -745,6 +877,30 @@ class MemoryStore:
 
         separator = "═" * 46
         return f"{separator}\n{header}\n{separator}\n{content}"
+
+    def _render_digest(self, target: str) -> str:
+        """Что в сторе есть — вместо того, что в нём написано.
+
+        Дайджест детерминирован по содержимому файлов (счётчики, секторы,
+        закреплённые записи), поэтому снимок системного промпта остаётся
+        стабильным на всю сессию — тот же инвариант префикс-кэша, что и у
+        инлайнового рендера.
+        """
+        if self.recall is None:
+            return ""
+        try:
+            from agent.memory_recall import format_digest
+
+            return format_digest(
+                self.recall.stats(source=target),
+                self.recall.pinned(source=target),
+                target=target,
+            )
+        except Exception as e:
+            # Не смогли построить дайджест — вернём "", и вызывающий отрендерит
+            # заметки инлайном. Промпт распухнет, но память не пропадёт.
+            logger.warning("Memory recall digest failed for %s: %s", target, e)
+            return ""
 
     @staticmethod
     def _read_raw_checked(path: Path) -> Tuple[str, bool]:
@@ -876,6 +1032,54 @@ class MemoryStore:
             raise RuntimeError(f"Failed to write memory file {path}: {e}")
 
 
+def build_memory_store(mem_cfg: Optional[Dict[str, Any]] = None) -> "MemoryStore":
+    """Собрать :class:`MemoryStore` из блока ``memory.*`` конфига.
+
+    Единственное место, где решается «какие тут лимиты и включён ли поиск».
+    Раньше эта логика была продублирована в ``agent/agent_init.py`` и в
+    ``load_on_disk_store``; с появлением поиска дублей стало бы три, и
+    разъехавшийся лимит означал бы, что согласованная запись применяется под
+    другим потолком, чем была проверена.
+
+    Никогда не бросает: память опциональна, а её конфиг — тем более.
+    """
+    mem_cfg = dict(mem_cfg or {})
+    memory_char_limit = int(mem_cfg.get("memory_char_limit", DEFAULT_MEMORY_CHAR_LIMIT))
+    user_char_limit = int(mem_cfg.get("user_char_limit", DEFAULT_USER_CHAR_LIMIT))
+
+    recall_cfg = mem_cfg.get("recall") or {}
+    if not isinstance(recall_cfg, dict):
+        recall_cfg = {}
+    recall = None
+    inline_budgets: Dict[str, int] = {}
+    if recall_cfg.get("enabled", True):
+        try:
+            from agent.memory_recall import RecallIndex
+
+            recall = RecallIndex(get_memory_dir() / "recall.db")
+            # Прежние лимиты становятся потолком ИНЛАЙНА: ровно столько
+            # заметок по-прежнему едет в промпт дословно. Хранилище растёт
+            # отдельно — вот ради чего вся задача.
+            inline_budgets = {"memory": memory_char_limit, "user": user_char_limit}
+            memory_char_limit = int(
+                recall_cfg.get("memory_char_limit", 120000)
+            )
+            user_char_limit = int(recall_cfg.get("user_char_limit", 24000))
+        except Exception as e:
+            # Нет FTS5, нет прав на каталог, битый индекс — память обязана
+            # продолжать работать по-старому, а не исчезнуть.
+            logger.warning("Memory recall disabled (%s); falling back to inline memory", e)
+            recall = None
+            inline_budgets = {}
+
+    return MemoryStore(
+        memory_char_limit=memory_char_limit,
+        user_char_limit=user_char_limit,
+        recall=recall,
+        inline_budgets=inline_budgets,
+    )
+
+
 def load_on_disk_store() -> "MemoryStore":
     """Build a fresh on-disk :class:`MemoryStore`, honoring configured char limits.
 
@@ -889,21 +1093,15 @@ def load_on_disk_store() -> "MemoryStore":
     Falls back to the built-in defaults if config can't be loaded, so this can
     never raise on a missing/unreadable config.
     """
-    memory_char_limit = 2200
-    user_char_limit = 1375
+    mem_cfg: Dict[str, Any] = {}
     try:
         from digit_cli.config import load_config
 
         mem_cfg = (load_config() or {}).get("memory", {}) or {}
-        memory_char_limit = int(mem_cfg.get("memory_char_limit", memory_char_limit))
-        user_char_limit = int(mem_cfg.get("user_char_limit", user_char_limit))
     except Exception:
         pass  # config optional — fall back to defaults rather than break /memory
 
-    store = MemoryStore(
-        memory_char_limit=memory_char_limit,
-        user_char_limit=user_char_limit,
-    )
+    store = build_memory_store(mem_cfg)
     store.load_from_disk()
     return store
 
@@ -1050,6 +1248,7 @@ def memory_tool(
     content: str = None,
     old_text: str = None,
     operations: Optional[List[Dict[str, Any]]] = None,
+    query: str = None,
     store: Optional[MemoryStore] = None,
 ) -> str:
     """
@@ -1073,6 +1272,19 @@ def memory_tool(
 
     if target not in {"memory", "user"}:
         return tool_error(f"Invalid target '{target}'. Use 'memory' or 'user'.", success=False)
+
+    # --- Read path --------------------------------------------------------
+    # Поиск идёт ДО batch/валидации записи: он ничего не меняет, значит не
+    # должен проходить ни через гейт согласования, ни через проверки
+    # обязательных для записи полей.
+    if action == "search":
+        # Ищем по ОБОИМ сторам, игнорируя ``target``: у него значение по
+        # умолчанию "memory", и отличить «попросили только память» от «не
+        # указали» на этом уровне нельзя. Молча сузить поиск до одного файла
+        # значило бы отвечать «не найдено» о заметке, которая есть.
+        return json.dumps(
+            store.search(query or content or ""), ensure_ascii=False
+        )
 
     # --- Batch path -------------------------------------------------------
     if operations:
@@ -1117,7 +1329,10 @@ def memory_tool(
         result = store.remove(target, old_text)
 
     else:
-        return tool_error(f"Unknown action '{action}'. Use: add, replace, remove", success=False)
+        return tool_error(
+            f"Unknown action '{action}'. Use: add, replace, remove, search",
+            success=False,
+        )
 
     return json.dumps(result, ensure_ascii=False)
 
@@ -1172,7 +1387,15 @@ MEMORY_SCHEMA = {
         "STRUCTURE: start an entry with a short '# Title' line, tag it with one '#topic', and "
         "point at a related entry by its title with '[[Other title]]'. Titles, tags and links "
         "are what `digit journey sectors` turns into a browsable graph — links are followed in "
-        "BOTH directions, so linking once also makes the target findable from here.\n\n"
+        "BOTH directions, so linking once also makes the target findable from here. They also "
+        "drive retrieval: a linked entry is pulled in alongside a matched one. Tag an entry "
+        "'#pinned' only when it must apply to EVERY turn regardless of topic — pinned entries "
+        "stay in the system prompt permanently and cost tokens on every request.\n\n"
+        "SEARCH: once a store outgrows the prompt, its entries are no longer all visible — the "
+        "relevant ones are attached per turn under <memory-context> and the prompt shows only a "
+        "digest. Use action='search' with 'query' to look for anything else; it is a LEXICAL "
+        "search, so query with the words the entry itself would use, and 'not found' never "
+        "means 'not stored'.\n\n"
         "SKIP: trivial/obvious info, easily re-discovered facts, raw data dumps, task progress, "
         "completed-work logs, temporary TODO state (use session_search for those). Reusable "
         "procedures belong in a skill, not memory."
@@ -1182,8 +1405,11 @@ MEMORY_SCHEMA = {
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["add", "replace", "remove"],
-                "description": "The action to perform (single-op shape). Omit when using 'operations'."
+                "enum": ["add", "replace", "remove", "search"],
+                "description": (
+                    "The action to perform (single-op shape). Omit when using 'operations'. "
+                    "'search' is read-only and takes 'query'."
+                ),
             },
             "target": {
                 "type": "string",
@@ -1197,6 +1423,13 @@ MEMORY_SCHEMA = {
             "old_text": {
                 "type": "string",
                 "description": "REQUIRED for 'replace' and 'remove' (single-op shape): a short unique substring identifying the existing entry to modify. Omit only for 'add'."
+            },
+            "query": {
+                "type": "string",
+                "description": (
+                    "REQUIRED for 'search': words to look for across BOTH stores. Lexical "
+                    "(stemmed word match), not semantic — use the words the entry would use."
+                ),
             },
             "operations": {
                 "type": "array",
@@ -1234,6 +1467,7 @@ registry.register(
         content=args.get("content"),
         old_text=args.get("old_text"),
         operations=args.get("operations"),
+        query=args.get("query"),
         store=kw.get("store")),
     check_fn=check_memory_requirements,
     emoji="🧠",

@@ -474,6 +474,19 @@ class MemoryManager:
         """All registered providers in order."""
         return list(self._providers)
 
+    @property
+    def has_external_providers(self) -> bool:
+        """Whether any registered provider is external (not the built-in one).
+
+        Callers use this to decide whether the *system prompt* can be affected
+        by a provider. The built-in provider only injects per-turn recall into
+        the user message and contributes no prompt block, so a manager holding
+        only it must not disqualify prompt-retention fast paths — doing so
+        would silently drop the KV-cache prefix for every user whose memory
+        switched to retrieval.
+        """
+        return self._has_external
+
     def get_provider(self, name: str) -> Optional[MemoryProvider]:
         """Get a provider by name, or None if not registered."""
         for p in self._providers:
@@ -501,6 +514,22 @@ class MemoryManager:
                     provider.name, e,
                 )
         return "\n\n".join(blocks)
+
+    @staticmethod
+    def _implements(provider: MemoryProvider, method: str) -> bool:
+        """Whether *provider* actually overrides an optional hook.
+
+        The base class ships no-op defaults for ``sync_turn`` and
+        ``queue_prefetch``, so a context-only provider (the built-in recall
+        one, for instance) inherits them. Dispatching those no-ops through the
+        background worker still costs a lazily-created thread pool plus a
+        queued task on every single turn — a whole thread per agent to call a
+        function whose body is ``pass``. Checking first keeps the common
+        built-in-only path threadless, exactly as it was before the built-in
+        provider existed.
+        """
+        base = getattr(MemoryProvider, method, None)
+        return getattr(type(provider), method, None) is not base
 
     # -- Prefetch / recall ---------------------------------------------------
 
@@ -601,7 +630,7 @@ class MemoryManager:
         wedged provider can never block the caller. See ``sync_all`` for
         the full rationale (agent stuck "running" minutes after a turn).
         """
-        providers = list(self._providers)
+        providers = [p for p in self._providers if self._implements(p, "queue_prefetch")]
         if not providers:
             return
 
@@ -660,7 +689,7 @@ class MemoryManager:
         before turn N+1; provider implementations don't need their own
         ordering guarantees.
         """
-        providers = list(self._providers)
+        providers = [p for p in self._providers if self._implements(p, "sync_turn")]
         if not providers:
             return
 

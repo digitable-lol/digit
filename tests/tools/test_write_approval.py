@@ -117,13 +117,38 @@ def test_load_on_disk_store_honors_configured_char_limits(digit_home, monkeypatc
     from tools.memory_tool import load_on_disk_store
 
     # Config override path: helper picks up the configured limits.
+    # ``recall.enabled: False`` — при выключенном поиске содержимое по-прежнему
+    # уезжает в промпт целиком, поэтому memory_char_limit остаётся тем, чем и
+    # был: потолком хранилища.
     monkeypatch.setattr(
         "digit_cli.config.load_config",
-        lambda: {"memory": {"memory_char_limit": 999, "user_char_limit": 444}},
+        lambda: {"memory": {
+            "memory_char_limit": 999, "user_char_limit": 444,
+            "recall": {"enabled": False},
+        }},
     )
     store = load_on_disk_store()
     assert store.memory_char_limit == 999
     assert store.user_char_limit == 444
+    assert store.recall is None
+
+    # С включённым поиском тот же ключ становится потолком ИНЛАЙНА: столько
+    # заметок едет в промпт дословно, а хранилище растёт до recall.*_char_limit.
+    # В этом и состоит DGT-DIGIT-09 — 2200 символов были ценой места в промпте,
+    # а не свойством хранилища.
+    monkeypatch.setattr(
+        "digit_cli.config.load_config",
+        lambda: {"memory": {
+            "memory_char_limit": 999, "user_char_limit": 444,
+            "recall": {"enabled": True, "memory_char_limit": 50_000,
+                       "user_char_limit": 5_000},
+        }},
+    )
+    recalled = load_on_disk_store()
+    assert recalled.memory_char_limit == 50_000
+    assert recalled.user_char_limit == 5_000
+    assert recalled._inline_budget("memory") == 999
+    assert recalled._inline_budget("user") == 444
 
     # Failure path: config raises → defaults, never blows up.
     def _boom():
@@ -131,8 +156,10 @@ def test_load_on_disk_store_honors_configured_char_limits(digit_home, monkeypatc
 
     monkeypatch.setattr("digit_cli.config.load_config", _boom)
     fallback = load_on_disk_store()
-    assert fallback.memory_char_limit == 2200
-    assert fallback.user_char_limit == 1375
+    # Конфиг не прочитался — берутся встроенные умолчания, те же, что в
+    # config_defaults.py: поиск включён, в промпт инлайном 2200/1375.
+    assert fallback._inline_budget("memory") == 2200
+    assert fallback._inline_budget("user") == 1375
 
 
 # ---------------------------------------------------------------------------
