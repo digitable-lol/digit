@@ -17,8 +17,12 @@ permissions:
 
 jobs:
   build-index:
-    # Only run on the upstream repository, not on forks
-    if: github.repository == 'NousResearch/hermes-agent'
+    # Каталог навыков нужен нашему собственному сайту: deploy-site.yml
+    # переиспользует артефакт этой задачи, иначе каждый деплой заново обходит
+    # все источники. Проверка была прибита к апстриму — переводим на наш
+    # репозиторий, но не снимаем: обход жжёт квоту GitHub API, форкам форка он
+    # не нужен.
+    if: github.repository == 'digitable-lol/digit'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: trusted-automation

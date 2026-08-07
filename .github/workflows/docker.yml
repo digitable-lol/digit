@@ -31,7 +31,11 @@ jobs:
   # so it must remain secret-free. Publishing happens in the separate,
   # protected publish job after these tests pass.
   build:
-    if: github.repository == 'NousResearch/hermes-agent'
+    # Сборка и тесты образа секретов не требуют, но проверка была прибита к
+    # апстриму — в форке образ не собирался и не проверялся ни разу, хотя
+    # Dockerfile и tests/docker/ здесь свои. Переводим проверку на наш
+    # репозиторий: форкам форка эта матрица на 45 минут не нужна.
+    if: github.repository == 'digitable-lol/digit'
     strategy:
       fail-fast: false
       matrix:
@@ -135,6 +139,15 @@ jobs:
   # matrix passes. This job is the sole Docker Hub credential boundary.
   # ---------------------------------------------------------------------------
   publish:
+    # Проверка намеренно остаётся апстримовой, в отличие от `build` выше.
+    # Задача пушит в Docker Hub под именем ${IMAGE_NAME} = nousresearch/
+    # hermes-agent по секретам DOCKERHUB_*, которых у форка нет и быть не
+    # должно: это чужое пространство имён. Своего опубликованного образа Digit
+    # не имеет — на этот же гейт ссылаются digit_cli/config.py и
+    # docker-compose*.yml, объясняя, почему вместо `docker pull` там
+    # `docker compose build`. Менять на свой реестр — отдельное решение
+    # владельца (GHCR обошёлся бы без секретов), а не побочный эффект правки
+    # гейтов.
     if: github.repository == 'NousResearch/hermes-agent' && (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'release')
     needs: [build]
     environment: container-publish
@@ -215,6 +228,8 @@ jobs:
   # On releases: tags :<release_tag_name>.
   # ---------------------------------------------------------------------------
   merge:
+    # Собирает манифест уже опубликованных дайджестов — включать без `publish`
+    # бессмысленно, поэтому гейт тот же и по той же причине (см. выше).
     if: github.repository == 'NousResearch/hermes-agent' && (github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'release')
     runs-on: ubuntu-latest
     needs: [publish]

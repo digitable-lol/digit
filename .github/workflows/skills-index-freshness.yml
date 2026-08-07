@@ -1,7 +1,7 @@
 name: Skills Index Freshness Check
 
 # Belt-and-suspenders for the twice-daily build_skills_index pipeline.
-# If the live /docs/api/skills-index.json ever goes more than 26 hours
+# If the live /api/skills-index.json ever goes more than 26 hours
 # stale OR the file disappears entirely OR a major source has collapsed,
 # this workflow opens a GitHub issue so we hear about it before users do.
 #
@@ -18,7 +18,10 @@ permissions:
 
 jobs:
   check-freshness:
-    if: github.repository == 'NousResearch/hermes-agent'
+    # Сторож следит за нашим сайтом и заводит issue в нашем трекере, поэтому
+    # проверка репозитория переезжает вместе с ним. В форке форка он открывал
+    # бы issue про чужой сайт.
+    if: github.repository == 'digitable-lol/digit'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: trusted-automation
@@ -27,7 +30,9 @@ jobs:
         id: probe
         run: |
           set -e
-          URL="https://hermes-agent.nousresearch.com/docs/api/skills-index.json"
+          # Свой сайт, а не апстримовый: сторож должен ловить наш протухший
+          # индекс, а не чужой (у апстрима свой такой же сторож).
+          URL="https://docs.digitable.life/api/skills-index.json"
           echo "Probing $URL"
           # -L follows redirects; -f fails on HTTP errors; -s suppresses progress
           if ! curl -fsSL --retry 3 --retry-delay 10 -o /tmp/skills-index.json "$URL"; then
@@ -139,7 +144,7 @@ jobs:
           **Status:** \`$STATUS\`
           **Detail:** $DETAIL
 
-          The Skills Hub at /docs/skills depends on \`/docs/api/skills-index.json\`.
+          The Skills Hub at /skills depends on \`/api/skills-index.json\`.
           The unified index is rebuilt by \`.github/workflows/skills-index.yml\` (cron 6/18 UTC)
           and \`.github/workflows/deploy-site.yml\` (on every push affecting website/skills).
           If this issue keeps reopening, check the latest runs:
