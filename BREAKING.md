@@ -197,6 +197,28 @@ removed one minor release from now, so skill authors should move the key.
 
 ---
 
+## 6. `memory.memory_char_limit` means something else once recall is on
+
+Not part of the rebrand — a later change, recorded here because this is the file
+people read before upgrading.
+
+Memory used to live entirely inside the system prompt, so one number bounded two
+different things at once: how much you could remember, and how much every single
+request had to carry. Recall (`fb4b45a0d`) splits them. `memory_char_limit` now
+caps only the **inline** part; the store itself grows to
+`recall.memory_char_limit`.
+
+Whoever set this value to keep the prompt small gets exactly that, unchanged.
+Whoever set it to keep the *store* small gets a larger store than they asked
+for. Both readings were reasonable while the two numbers were one, which is why
+this is written down rather than left to be noticed.
+
+Below the inline threshold nothing changes at all: every note still goes into
+the prompt verbatim. That is deliberate — search can miss, direct reading
+cannot, so the switch happens by fact rather than by flag.
+
+---
+
 ## Rolling back
 
 See `docs/digitable/rebrand-rollback.md`. Read it before reverting anything —
