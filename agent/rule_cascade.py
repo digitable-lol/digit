@@ -30,10 +30,44 @@
 Почему исполнение отдано tools-core, а не сделано здесь
 ------------------------------------------------------
 `tools_execute` валидирует аргументы по схеме самой утилиты и на незнакомое
-имя возвращает `invalid_args`, а не догадку. Это единственная причина, по
-которой мост имён можно поставлять неполным: неизвестное имя аргумента
-превращается в уступку модели, а не в неверный ответ. Граница, которую
-сторожат 3,8 % ложных ответов, при этом не двигается.
+имя возвращает `invalid_args`, а не догадку. Это вторая сеть под мостом имён
+(agent/tool_arg_bridge.py): даже если бы мост ошибся именем, ответом стала бы
+уступка модели, а не неверный ответ. Первая сеть — сам мост: он пропускает
+только те аргументы, чей слот доказан исполнением, и молчит про остальные.
+
+Что мост изменил, в цифрах
+--------------------------
+На 100 задачах маршрутизации измерительного набора каскад доходил до ответа
+23 раза; после моста — 87. Остальные 13: 4 не разобрали правила, 1 без
+исполняемого аналога, 7 мост отказался переводить (измерение отвергло —
+см. tool_arg_bridge), 1 отверг сам исполнитель (в запросе имя файла
+«pyproject.toml» вместо его содержимого). Замер повторяется скриптом
+scripts/measure_tool_arg_bridge.py настоящим бинарём.
+
+Цена измерена там же, где и польза, — на всех 400 задачах, каскадом С
+ИСПОЛНЕНИЕМ, до моста и после. И она РАЗНАЯ у двух ног, ровно как у самого
+каскада (см. `is_enabled`):
+
+  позади локальной модели   ложные ответы 10,0 % -> 9,2 %, утечки режима
+                            2 -> 0, выбор инструмента 86 % -> 94 %. Мост
+                            выигрывает: правила отвечают там, где мелкая
+                            модель отвечала неверно.
+  позади сильного шлюза     ложные ответы 1,5 % -> 3,5 %. Мост ПРОИГРЫВАЕТ.
+
+Проигрыш адресный и к именам аргументов отношения не имеет: из 400 задач
+испортились 8, и ни одной из них нет среди 100 задач маршрутизации. Это
+4 многошаговых и 4 red-team запроса, где слой правил берёт операнд из САМОЙ
+ИНСТРУКЦИИ («посчитай хеш строки» без строки -> `с этим хэшем`; «в треке
+«Базы данных» назван порог» -> `Базы данных`). Раньше такие вызовы гасило
+случайное несовпадение имён; теперь видно, что гасило их не устройство, а
+удача. Дефект живёт в извлечении аргументов (digit_cli/ruleparse/slots.py,
+запасной `main_literal`), и чинить его подгонкой моста было бы лечением
+термометра. Порогом уверенности он тоже не отсекается: у испорченных восьми
+score 14,9…62,8 при медиане 33,7 на маршрутизации — распределения совпадают.
+
+Поэтому мост не получил своего выключателя: он живёт под выключателем
+каскада, который уже стоит там, где выигрыш измерен, и снят там, где измерен
+проигрыш.
 """
 
 from __future__ import annotations
@@ -44,119 +78,23 @@ import os
 import time
 from typing import Any, Dict, Optional
 
+from agent.tool_arg_bridge import translate
+
 logger = logging.getLogger(__name__)
 
 #: Имя инструмента Digit, через который исполняются утилиты каталога.
 #: Приходит от первопартийного MCP-сервера digit-tools (optional-mcps/).
 EXECUTOR_TOOL = "tools_execute"
 
-# Мост пространств имён: публичный slug каталога it-tools -> исполняемый
-# идентификатор tools-core. Данные, не логика; выведены сопоставлением двух
-# каталогов (86 публичных утилит против 94 исполняемых). None означает, что
-# исполняемого аналога нет вовсе — такие маршруты каскад не берёт.
-#
-# ПОЧЕМУ мост только по идентификаторам, без переименования аргументов.
-# Имена аргументов у двух каталогов расходятся: у 52 из 76 инструментов, где
-# аналог существует, обязательные аргументы tools-core названы иначе
-# (`clearText` против `text`, `hashFunction` против `algorithm`). Таблица
-# переименований — это утверждение о том, в какой слот утилиты попадает
-# значение, и в этом репозитории его никто не измерял. Ошибка в таком
-# утверждении даёт не отказ, а неверный ответ с видом проверенного — ровно то,
-# что запрещено. Поэтому аргументы уходят как есть: совпало имя — исполнилось,
-# не совпало — tools-core вернул invalid_args и каскад уступил модели.
-#
-# Измеренная цена этого решения: на 100 задачах маршрутизации измерительного
-# набора исполняется 23, остальные 72 уступают модели через invalid_args
-# (4 не разобрали правила, 1 без исполняемого аналога). Мост аргументов —
-# следующий шаг, и он обязан приехать со своим измерением.
-PUBLIC_TO_CORE: Dict[str, Optional[str]] = {
-    'ascii-text-drawer': 'ascii_art_generate',
-    'base-converter': 'integer_base_convert',
-    'base64-file-converter': 'base64_encode',
-    'base64-string-converter': 'base64_encode',
-    'basic-auth-generator': 'basic_auth_header',
-    'bcrypt': 'bcrypt_hash',
-    'benchmark-builder': 'benchmark_stats',
-    'bip39-generator': 'bip39_generate',
-    'camera-recorder': None,
-    'case-converter': 'case_convert',
-    'chmod-calculator': 'chmod_calculate',
-    'chronometer': None,
-    'color-converter': 'color_convert',
-    'crontab-generator': 'crontab_describe',
-    'date-converter': 'date_time_convert',
-    'device-information': None,
-    'docker-run-to-docker-compose-converter': 'docker_run_to_compose',
-    'email-normalizer': 'email_normalize',
-    'emoji-picker': 'emoji_search',
-    'encryption': 'encrypt_text',
-    'eta-calculator': 'eta_calculate',
-    'git-memo': None,
-    'hash-text': 'hash_text',
-    'hmac-generator': 'hmac_generate',
-    'html-entities': 'html_escape',
-    'html-wysiwyg-editor': None,
-    'http-status-codes': 'http_status_lookup',
-    'iban-validator-and-parser': 'iban_validate',
-    'ipv4-address-converter': 'ipv4_convert',
-    'ipv4-range-expander': 'ipv4_range_expand',
-    'ipv4-subnet-calculator': 'ipv4_subnet_calculate',
-    'ipv6-ula-generator': 'ipv6_ula_generate',
-    'json-diff': 'json_diff',
-    'json-minify': 'json_minify',
-    'json-prettify': 'json_prettify',
-    'json-to-csv': 'json_to_csv',
-    'json-to-toml': 'json_to_toml',
-    'json-to-xml': 'json_to_xml',
-    'json-to-yaml-converter': 'json_to_yaml',
-    'jwt-parser': 'jwt_parse',
-    'keycode-info': None,
-    'list-converter': 'list_convert',
-    'lorem-ipsum-generator': 'lorem_ipsum_generate',
-    'mac-address-generator': 'mac_address_generate',
-    'mac-address-lookup': 'mac_address_lookup',
-    'markdown-to-html': 'markdown_to_html',
-    'math-evaluator': 'math_evaluate',
-    'mime-types': 'extension_to_mime',
-    'numeronym-generator': 'numeronym_generate',
-    'og-meta-generator': None,
-    'otp-generator': 'otp_generate_totp',
-    'password-strength-analyser': 'password_strength',
-    'pdf-signature-checker': None,
-    'percentage-calculator': 'percentage_calculate',
-    'phone-parser-and-formatter': 'phone_parse',
-    'qrcode-generator': 'qr_code_generate',
-    'random-port-generator': 'random_port_generate',
-    'regex-memo': None,
-    'regex-tester': 'regex_test',
-    'roman-numeral-converter': 'roman_to_arabic',
-    'rsa-key-pair-generator': 'rsa_keypair_generate',
-    'safelink-decoder': 'safelink_decode',
-    'slugify-string': 'slugify',
-    'sql-prettify': 'sql_format',
-    'string-obfuscator': 'string_obfuscate',
-    'svg-placeholder-generator': 'svg_placeholder_generate',
-    'temperature-converter': 'temperature_convert',
-    'text-diff': None,
-    'text-statistics': 'text_statistics',
-    'text-to-binary': 'text_to_binary',
-    'text-to-nato-alphabet': 'text_to_nato',
-    'text-to-unicode': 'text_to_unicode',
-    'token-generator': 'token_generate',
-    'toml-to-json': 'toml_to_json',
-    'toml-to-yaml': 'toml_to_yaml',
-    'ulid-generator': 'ulid_generate',
-    'url-encoder': 'url_encode',
-    'url-parser': 'url_parse',
-    'user-agent-parser': 'user_agent_parse',
-    'uuid-generator': 'uuid_generate',
-    'wifi-qrcode-generator': 'wifi_qr_code_generate',
-    'xml-formatter': 'xml_format',
-    'xml-to-json': 'xml_to_json',
-    'yaml-prettify': 'yaml_prettify',
-    'yaml-to-json-converter': 'yaml_to_json',
-    'yaml-to-toml': 'yaml_to_toml',
-}
+# Публичные утилиты, у которых исполняемого аналога нет вовсе. Список нужен не
+# для работы, а для наблюдаемости: «нечего исполнять» и «мост не подтвердил
+# вызов» — разные причины уступки, и склеивать их в журнале значит потерять
+# ответ на вопрос, куда расти дальше.
+NO_CORE_TOOL = frozenset({
+    'camera-recorder', 'chronometer', 'device-information', 'git-memo',
+    'html-wysiwyg-editor', 'keycode-info', 'og-meta-generator',
+    'pdf-signature-checker', 'regex-memo', 'text-diff',
+})
 
 
 def is_enabled(agent=None) -> bool:
@@ -300,12 +238,18 @@ def try_turn(
         if not _executor_available(agent):
             _record(agent, decision, outcome="ceded", detail="no-executor")
             return None
-        core_id = PUBLIC_TO_CORE.get(decision.tool_id or "")
-        if not core_id:
-            _record(agent, decision, outcome="ceded", detail="no-core-tool")
+        # Перевод в пространство имён исполнителя: и утилита, и КАЖДЫЙ
+        # аргумент. Мост отказывается переводить вызов целиком, если хоть один
+        # аргумент не подтверждён измерением, — см. agent/tool_arg_bridge.py.
+        bridged = translate(decision.tool_id or "", dict(decision.args))
+        if bridged is None:
+            detail = ("no-core-tool" if decision.tool_id in NO_CORE_TOOL
+                      else "no-arg-bridge")
+            _record(agent, decision, outcome="ceded", detail=detail)
             return None
+        core_id, core_args = bridged
 
-        result = _execute(agent, core_id, dict(decision.args),
+        result = _execute(agent, core_id, core_args,
                           task_id=task_id, turn_id=turn_id)
         if result is None:
             _record(agent, decision, outcome="ceded", detail="executor-declined")
