@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import type { DigitGitWorktree } from '@/global'
 import type { SessionInfo } from '@/digit'
+import type { DigitGitWorktree } from '@/global'
 import { useI18n } from '@/i18n'
 import { displayPath } from '@/lib/display-path'
 import { $dismissedWorktreeIds, dismissWorktree, setWorkspaceNodeOpen } from '@/store/layout'

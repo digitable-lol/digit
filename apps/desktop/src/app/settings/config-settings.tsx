@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getElevenLabsVoices, getDigitConfigSchema, saveDigitConfig } from '@/digit'
+import { getDigitConfigSchema, getElevenLabsVoices, saveDigitConfig } from '@/digit'
 import { useI18n } from '@/i18n'
 import { triggerHaptic } from '@/lib/haptics'
 import {

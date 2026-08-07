@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
-import { getDigitConfigRecord, type DigitConfigRecord, saveDigitConfig } from '@/digit'
+import { type DigitConfigRecord, getDigitConfigRecord, saveDigitConfig } from '@/digit'
 
 import { TRANSLATIONS } from './catalog'
 import { DEFAULT_LOCALE, localeConfigValue, normalizeLocale } from './languages'

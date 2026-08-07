@@ -5,8 +5,8 @@ import {
   NO_PROJECT_ID,
   type SidebarProjectTree
 } from '@/app/chat/sidebar/projects/workspace-groups'
+import { type DigitGateway, getDigitConfig } from '@/digit'
 import type { DigitGitBaseBranch, DigitGitBranch } from '@/global'
-import { getDigitConfig, type DigitGateway } from '@/digit'
 import { translateNow } from '@/i18n'
 import { desktopDefaultCwd, isDesktopFsRemoteMode, selectDesktopPaths, writeDesktopFileText } from '@/lib/desktop-fs'
 import { desktopGit } from '@/lib/desktop-git'

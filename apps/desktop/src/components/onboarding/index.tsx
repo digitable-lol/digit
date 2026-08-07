@@ -41,10 +41,10 @@ import {
 export {
   FeaturedProviderRow,
   FireworksProviderRow,
+  isDigitVisibleProvider,
   KeyProviderRow,
   OpenRouterProviderRow,
   ProviderRow,
-  isDigitVisibleProvider,
   providerTitle,
   sortProviders
 } from './providers'
@@ -434,10 +434,8 @@ export function Picker({ ctx }: { ctx: OnboardingContext }) {
     setOnboardingMode('apikey')
   }
 
-  const ordered = useMemo(
-    () => (providers ? sortProviders(providers.filter(isDigitVisibleProvider)) : []),
-    [providers]
-  )
+  const ordered = useMemo(() => (providers ? sortProviders(providers.filter(isDigitVisibleProvider)) : []), [providers])
+
   const hasOauth = ordered.length > 0
   const apiKeyOptions = useApiKeyCatalog()
 

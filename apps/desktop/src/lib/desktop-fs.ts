@@ -1,9 +1,4 @@
-import type {
-  DigitConnection,
-  DigitReadDirResult,
-  DigitReadFileTextResult,
-  DigitSelectPathsOptions
-} from '@/global'
+import type { DigitConnection, DigitReadDirResult, DigitReadFileTextResult, DigitSelectPathsOptions } from '@/global'
 import { $connection } from '@/store/session'
 
 export interface DesktopFsRemotePicker {

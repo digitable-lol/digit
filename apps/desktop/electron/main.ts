@@ -8574,10 +8574,7 @@ async function startDigit() {
     await advanceBootProgress('backend.port', 'Waiting for Digit backend to launch', 86)
 
     // Discover the ephemeral port the child bound to
-    const port = await Promise.race([
-      waitForDashboardPortAnnouncement(digitProcess, { readyFile }),
-      backendStartFailed
-    ])
+    const port = await Promise.race([waitForDashboardPortAnnouncement(digitProcess, { readyFile }), backendStartFailed])
 
     if (readyFile) {
       fs.unlink(readyFile, () => {})

@@ -104,9 +104,7 @@ describe('buildToolView web-search query', () => {
     )
 
     expect(view.searchQuery).toBe('Digit Desktop tool calls')
-    expect(view.searchHits).toEqual([
-      { snippet: 'Desktop docs', title: 'Digit docs', url: 'https://example.com/docs' }
-    ])
+    expect(view.searchHits).toEqual([{ snippet: 'Desktop docs', title: 'Digit docs', url: 'https://example.com/docs' }])
   })
 })
 

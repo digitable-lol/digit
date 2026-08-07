@@ -27,11 +27,11 @@ import { TextTab } from '@/components/ui/text-tab'
 import { Tip } from '@/components/ui/tooltip'
 import {
   authMcpServer,
+  type DigitGateway,
   getActionStatus,
   getLogs,
   getMcpCatalog,
   getMcpOAuthFlow,
-  type DigitGateway,
   installMcpCatalogEntry,
   type McpCatalogEntry,
   type McpTestResult,

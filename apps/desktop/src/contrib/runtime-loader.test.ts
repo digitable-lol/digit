@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { DigitReadDirResult } from '@/global'
 import type * as DigitModule from '@/digit'
+import type { DigitReadDirResult } from '@/global'
 
 import { discoverRuntimePlugins, watchRuntimePlugins } from './runtime-loader'
 

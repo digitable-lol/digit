@@ -63,10 +63,7 @@ test('resolveUnpackedRelease is null for AppImage / .deb / .rpm / dev / unresolv
   assert.equal(resolveUnpackedRelease('/usr/lib/digit/digit', ROOT, 'linux'), null)
   assert.equal(resolveUnpackedRelease('/opt/Digit/digit', ROOT, 'linux'), null)
   // dev electron
-  assert.equal(
-    resolveUnpackedRelease('/home/u/.digit/digit/node_modules/electron/dist/electron', ROOT, 'linux'),
-    null
-  )
+  assert.equal(resolveUnpackedRelease('/home/u/.digit/digit/node_modules/electron/dist/electron', ROOT, 'linux'), null)
   // empty / missing
   assert.equal(resolveUnpackedRelease('', ROOT, 'linux'), null)
   assert.equal(resolveUnpackedRelease(path.join(UNPACKED, 'digit'), '', 'linux'), null)

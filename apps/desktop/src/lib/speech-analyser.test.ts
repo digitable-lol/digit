@@ -61,18 +61,31 @@ describe('foldBands', () => {
     Uint8Array.from({ length }, (_, index) => fill(index))
 
   it('returns the requested number of bands', () => {
-    expect(foldBands(bins(256, () => 0), 12)).toHaveLength(12)
+    expect(
+      foldBands(
+        bins(256, () => 0),
+        12
+      )
+    ).toHaveLength(12)
   })
 
   it('normalises to 0..1', () => {
-    const bands = foldBands(bins(256, () => 255), 8)
+    const bands = foldBands(
+      bins(256, () => 255),
+      8
+    )
 
     expect(bands.every(level => level >= 0 && level <= 1)).toBe(true)
     expect(Math.max(...bands)).toBe(1)
   })
 
   it('silence folds to silence', () => {
-    expect(foldBands(bins(256, () => 0), 8)).toEqual(Array.from({ length: 8 }, () => 0))
+    expect(
+      foldBands(
+        bins(256, () => 0),
+        8
+      )
+    ).toEqual(Array.from({ length: 8 }, () => 0))
   })
 
   it('energy at the top of the spectrum lands in a high band', () => {
@@ -98,7 +111,12 @@ describe('foldBands', () => {
   })
 
   it('a nonsense band count folds to no bands', () => {
-    expect(foldBands(bins(64, () => 10), 0)).toEqual([])
+    expect(
+      foldBands(
+        bins(64, () => 10),
+        0
+      )
+    ).toEqual([])
   })
 
   it('defaults to the shared band count', () => {
