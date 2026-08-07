@@ -28,7 +28,7 @@ What makes Digit different:
 
 **This skill is a hub.** The body covers identity, quick start, spawning/orchestration, and hard invariants. Everything else lives in reference files — **load the matching reference (below) before answering**; do not answer detail questions from the body alone.
 
-**Docs:** https://hermes-agent.nousresearch.com/docs/
+**Docs:** https://docs.digitable.life/
 
 ## Scope & Verification
 
@@ -37,7 +37,7 @@ This skill is a concise operating guide, not the complete source of truth for ev
 Good verification targets:
 
 - CLI commands: `digit --help`, `digit <command> --help`, and `digit_cli/main.py`
-- User documentation: https://hermes-agent.nousresearch.com/docs/
+- User documentation: https://docs.digitable.life/
 - Source tree: https://github.com/NousResearch/hermes-agent
 
 ## Quick Start

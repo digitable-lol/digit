@@ -1,7 +1,7 @@
 # Configuration, Toolsets & Voice
 
 Edit with `digit config edit` or `digit config set section.key value`.
-Full reference: https://hermes-agent.nousresearch.com/docs/user-guide/configuration
+Full reference: https://docs.digitable.life/user-guide/configuration
 
 ### Config Sections (most-used keys)
 

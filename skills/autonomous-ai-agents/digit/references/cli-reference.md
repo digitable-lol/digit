@@ -1,7 +1,7 @@
 # Digit CLI Reference
 
 Live sources when anything looks stale: `digit --help`, `digit <command> --help`,
-https://hermes-agent.nousresearch.com/docs/reference/cli-commands
+https://docs.digitable.life/reference/cli-commands
 
 ### Global Flags
 
@@ -79,7 +79,7 @@ digit gateway run|install|start|stop|restart|status|setup
 ```
 
 20+ platforms: Telegram, Discord, Slack, WhatsApp (Baileys + Business Cloud API), iMessage (Photon — `digit photon setup`), Signal, Email, SMS, Matrix, Mattermost, Teams, LINE, SimpleX, ntfy, Google Chat, Home Assistant, DingTalk, Feishu, WeCom, Weixin, API Server, Webhooks. Open WebUI connects via the API Server adapter. Most adapters ship under `plugins/platforms/`.
-Docs: https://hermes-agent.nousresearch.com/docs/user-guide/messaging/
+Docs: https://docs.digitable.life/user-guide/messaging/
 
 ### Sessions
 
@@ -141,10 +141,10 @@ Plugin- and provider-supplied subcommands (e.g. `digit photon setup`) only appea
 
 | Looking for... | Location |
 |---|---|
-| Config options | `digit config edit` · [Configuration docs](https://hermes-agent.nousresearch.com/docs/user-guide/configuration) |
-| Tools / toolsets | `digit tools list` · [Tools reference](https://hermes-agent.nousresearch.com/docs/reference/tools-reference) |
-| Skills catalog | `digit skills browse` · [Skills catalog](https://hermes-agent.nousresearch.com/docs/reference/skills-catalog) |
-| Provider setup | `digit model` · [Providers guide](https://hermes-agent.nousresearch.com/docs/integrations/providers) |
-| Env variables | `digit config env-path` · [Env vars reference](https://hermes-agent.nousresearch.com/docs/reference/environment-variables) |
+| Config options | `digit config edit` · [Configuration docs](https://docs.digitable.life/user-guide/configuration) |
+| Tools / toolsets | `digit tools list` · [Tools reference](https://docs.digitable.life/reference/tools-reference) |
+| Skills catalog | `digit skills browse` · [Skills catalog](https://docs.digitable.life/reference/skills-catalog) |
+| Provider setup | `digit model` · [Providers guide](https://docs.digitable.life/integrations/providers) |
+| Env variables | `digit config env-path` · [Env vars reference](https://docs.digitable.life/reference/environment-variables) |
 | Gateway logs | `~/.digit/logs/gateway.log` (or `digit logs`) |
 | Sessions | `digit sessions browse` (reads state.db) |

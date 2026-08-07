@@ -3965,7 +3965,7 @@ def check_for_skill_updates(
 # Digit centralized index source
 # ---------------------------------------------------------------------------
 
-DIGIT_INDEX_URL = "https://hermes-agent.nousresearch.com/docs/api/skills-index.json"
+DIGIT_INDEX_URL = "https://docs.digitable.life/api/skills-index.json"
 DIGIT_INDEX_TTL = 6 * 3600  # 6 hours
 
 

@@ -2,7 +2,7 @@
 
 Set via `digit model` (picker) or `digit setup`. 35+ provider profiles ship as
 plugins under `plugins/model-providers/`; user plugins of the same name override.
-Full docs: https://hermes-agent.nousresearch.com/docs/integrations/providers
+Full docs: https://docs.digitable.life/integrations/providers
 
 ### Providers
 
