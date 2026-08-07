@@ -39,7 +39,13 @@ jobs:
     # main commit needs to ship live before the next release tag — e.g.
     # a skills-index PR that doesn't touch website/** paths and so
     # doesn't auto-deploy via the deploy-docs path.
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    #
+    # Маркетинговый лендинг апстрима живёт на Vercel; у форка его нет и
+    # секрета VERCEL_DEPLOY_HOOK тоже. Без проверки владельца задача падала бы
+    # на каждом релизе: curl по пустому URL возвращает ненулевой код.
+    if: >-
+      github.repository == 'NousResearch/hermes-agent'
+      && (github.event_name == 'release' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -47,7 +53,11 @@ jobs:
         run: curl -fsS --retry 3 --retry-delay 10 -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
 
   deploy-docs:
-    if: github.repository == 'NousResearch/hermes-agent'
+    # Проверка была прибита к апстриму, поэтому в форке сайт не собирался
+    # вообще — при живых ~180 ссылках на документацию из справки CLI.
+    # Оставляем проверку, но по нашему репозиторию: у форков форка нет ни
+    # Pages, ни домена docs.digitable.life, и падение деплоя им не нужно.
+    if: github.repository == 'digitable-lol/digit'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -146,12 +156,20 @@ jobs:
             echo "::warning::Could not use skills-index artifact from run $SKILLS_INDEX_RUN_ID; trying live index"
           fi
 
-          echo "Downloading currently live skills index"
-          if curl -fsSL --retry 3 --retry-delay 5 \
-            "https://hermes-agent.nousresearch.com/docs/api/skills-index.json" \
-            -o "$INDEX_PATH" && validate_index; then
-            exit 0
-          fi
+          # Сначала наш собственный сайт, потом апстримовый как загрузочный
+          # запас. Первый деплой берёт индекс у апстрима, потому что нашего
+          # ещё нет; все последующие — у себя. Полагаться только на апстрим
+          # нельзя: его сайт нам не подконтролен, а падение этого шага роняет
+          # весь деплой документации.
+          for INDEX_URL in \
+            "https://docs.digitable.life/api/skills-index.json" \
+            "https://hermes-agent.nousresearch.com/docs/api/skills-index.json"; do
+            echo "Downloading currently live skills index from $INDEX_URL"
+            if curl -fsSL --retry 3 --retry-delay 5 "$INDEX_URL" -o "$INDEX_PATH" \
+              && validate_index; then
+              exit 0
+            fi
+          done
 
           echo "::warning::Live skills index unavailable or unhealthy; falling back to a fresh crawl"
           rm -f "$INDEX_PATH"
@@ -176,18 +194,17 @@ jobs:
 
       - name: Stage deployment
         run: |
-          mkdir -p _site/docs
-          cp -r website/build/* _site/docs/
-          # llms.txt / llms-full.txt are also published at the site root
-          # (https://hermes-agent.nousresearch.com/llms.txt) because some
-          # agents and IDE plugins probe the classic root-level path rather
-          # than /docs/llms.txt. Same file, two URLs, one source of truth.
-          if [ -f website/build/llms.txt ]; then
-            cp website/build/llms.txt _site/llms.txt
-          fi
-          if [ -f website/build/llms-full.txt ]; then
-            cp website/build/llms-full.txt _site/llms-full.txt
-          fi
+          # У апстрима сайт документации — подпуть лендинга, поэтому сборка
+          # укладывалась в _site/docs, а llms.txt дублировался в корень: агенты
+          # и плагины IDE ищут его по классическому /llms.txt. На собственном
+          # домене документация занимает весь сайт (baseUrl '/'), llms.txt уже
+          # лежит в корне сборки — дублировать нечего и некуда.
+          mkdir -p _site
+          cp -r website/build/* _site/
+          # CNAME из website/static попадает в сборку и переживает деплой:
+          # без него GitHub Pages при каждой публикации может сбросить
+          # привязку домена docs.digitable.life.
+          test -f _site/CNAME
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa  # v3

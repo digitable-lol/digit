@@ -34,8 +34,14 @@ const llmsScript = join(scriptDir, "generate-llms-txt.py");
 const cronBlueprintsScript = join(scriptDir, "extract-automation-blueprints.py");
 const outputFile = join(websiteDir, "static", "api", "skills.json");
 const unifiedIndexFile = join(websiteDir, "static", "api", "skills-index.json");
-const UNIFIED_INDEX_URL =
-  "https://hermes-agent.nousresearch.com/docs/api/skills-index.json";
+// Сначала наш сайт, потом апстримовый как загрузочный запас. Пока
+// docs.digitable.life ещё не задеплоен (или временно лежит), локальная сборка
+// не должна оставаться без каталога: собственный обход источников занимает
+// минуты и жжёт квоту GitHub API.
+const UNIFIED_INDEX_URLS = [
+  "https://docs.digitable.life/api/skills-index.json",
+  "https://hermes-agent.nousresearch.com/docs/api/skills-index.json",
+];
 const UNIFIED_INDEX_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h
 
 function writeEmptyFallback(reason) {
@@ -74,49 +80,51 @@ async function ensureUnifiedIndex() {
       }
       console.log(
         `[prebuild] skills-index.json is ${(age / 3600000).toFixed(1)}h old; ` +
-          `refreshing from ${UNIFIED_INDEX_URL}`,
+          `refreshing from ${UNIFIED_INDEX_URLS[0]}`,
       );
     } catch {
       // fall through to re-fetch
     }
   }
 
-  try {
-    const resp = await fetch(UNIFIED_INDEX_URL, {
-      headers: { accept: "application/json" },
-    });
-    if (!resp.ok) {
-      console.warn(
-        `[prebuild] skills-index.json fetch returned HTTP ${resp.status}; ` +
-          `using local copy if any`,
-      );
-      return existsSync(unifiedIndexFile);
-    }
-    const text = await resp.text();
-    // Sanity check: must be valid JSON with a skills array
+  for (const url of UNIFIED_INDEX_URLS) {
     try {
-      const parsed = JSON.parse(text);
-      if (!parsed || !Array.isArray(parsed.skills)) {
+      const resp = await fetch(url, {
+        headers: { accept: "application/json" },
+      });
+      if (!resp.ok) {
         console.warn(
-          "[prebuild] skills-index.json from live site has no skills array; ignoring",
+          `[prebuild] skills-index.json fetch from ${url} returned HTTP ${resp.status}`,
         );
-        return existsSync(unifiedIndexFile);
+        continue;
       }
+      const text = await resp.text();
+      // Sanity check: must be valid JSON with a skills array
+      try {
+        const parsed = JSON.parse(text);
+        if (!parsed || !Array.isArray(parsed.skills)) {
+          console.warn(
+            `[prebuild] skills-index.json from ${url} has no skills array; ignoring`,
+          );
+          continue;
+        }
+      } catch (e) {
+        console.warn(`[prebuild] skills-index.json from ${url} is not valid JSON: ${e}`);
+        continue;
+      }
+      mkdirSync(dirname(unifiedIndexFile), { recursive: true });
+      writeFileSync(unifiedIndexFile, text);
+      console.log(
+        `[prebuild] downloaded skills-index.json from ${url} ` +
+          `(${(text.length / 1024).toFixed(0)} KB)`,
+      );
+      return true;
     } catch (e) {
-      console.warn(`[prebuild] skills-index.json from live site is not valid JSON: ${e}`);
-      return existsSync(unifiedIndexFile);
+      console.warn(`[prebuild] skills-index.json fetch from ${url} failed: ${e}`);
     }
-    mkdirSync(dirname(unifiedIndexFile), { recursive: true });
-    writeFileSync(unifiedIndexFile, text);
-    console.log(
-      `[prebuild] downloaded skills-index.json from ${UNIFIED_INDEX_URL} ` +
-        `(${(text.length / 1024).toFixed(0)} KB)`,
-    );
-    return true;
-  } catch (e) {
-    console.warn(`[prebuild] skills-index.json fetch failed: ${e}`);
-    return existsSync(unifiedIndexFile);
   }
+  console.warn("[prebuild] no live skills index reachable; using local copy if any");
+  return existsSync(unifiedIndexFile);
 }
 
 // 0) Pull unified index if we don't have a fresh one.

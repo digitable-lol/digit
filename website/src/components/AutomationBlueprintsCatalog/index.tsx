@@ -23,7 +23,10 @@ interface Blueprint {
   appUrl: string;
 }
 
-const INDEX_URL = "/docs/api/automation-blueprints-index.json";
+// Без префикса /docs: после переезда на docs.digitable.life baseUrl — корень
+// сайта, а static/api/ отдаётся из /api/. Это fetch, а не <Link>, поэтому
+// baseUrl не подставится сам и старый путь вернул бы 404 с пустым каталогом.
+const INDEX_URL = "/api/automation-blueprints-index.json";
 
 function CopyButton({ text }: { text: string }): JSX.Element {
   const [copied, setCopied] = useState(false);

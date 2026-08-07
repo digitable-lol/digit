@@ -424,7 +424,7 @@ function SkillCard({
               {skill.docsPath ? (
                 <a
                   className={styles.docsLink}
-                  href={`/docs/user-guide/skills/${skill.docsPath}`}
+                  href={`/user-guide/skills/${skill.docsPath}`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   View full documentation →
@@ -461,12 +461,17 @@ function StatCard({ value, label, color }: { value: number; label: string; color
 
 const PAGE_SIZE = 60;
 
-// Routes Docusaurus serves the static API JSON from. `baseUrl` is `/docs/`,
-// `static/api/` ends up at `/docs/api/`. Hardcoding here is fine because the
+// Routes Docusaurus serves the static API JSON from. `baseUrl` is `/`,
+// `static/api/` ends up at `/api/`. Hardcoding here is fine because the
 // same `baseUrl` is enforced repo-wide; if it ever changes, this is the only
 // place that needs to follow.
-const SKILLS_URL = "/docs/api/skills.json";
-const META_URL = "/docs/api/skills-meta.json";
+//
+// Префикс /docs исчез вместе с переездом на docs.digitable.life: у апстрима
+// документация была подпутём лендинга, у нас занимает весь домен. Это fetch,
+// а не <Link>, — baseUrl сам не подставится, и старый путь молча отдал бы
+// 404, оставив каталог навыков пустым.
+const SKILLS_URL = "/api/skills.json";
+const META_URL = "/api/skills-meta.json";
 
 function buildSearchHaystack(s: Skill): string {
   // Pre-compute the lowercase blob the search filter scans. Done once at

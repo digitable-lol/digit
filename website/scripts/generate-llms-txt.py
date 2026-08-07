@@ -9,13 +9,13 @@ Outputs:
                                     comments separating files.
 
 Both publish at:
-  https://hermes-agent.nousresearch.com/docs/llms.txt
-  https://hermes-agent.nousresearch.com/docs/llms-full.txt
+  https://docs.digitable.life/llms.txt
+  https://docs.digitable.life/llms-full.txt
 
-The `/docs/` prefix is not a mistake — Docusaurus serves `website/static/`
-at the `docs/` base path. Clients and IDE plugins that probe the classic
-`/llms.txt` root will miss these. Document the canonical URLs in the docs
-index and in the repo README.
+На собственном домене документации baseUrl — корень сайта, поэтому оба файла
+лежат ровно там, где их ищут клиенты и плагины IDE: `/llms.txt`. У апстрима
+документация была подпутём лендинга, и тот же файл приходилось выкладывать по
+двум адресам сразу (см. шаг Stage deployment в deploy-site.yml).
 
 Called from `website/scripts/prebuild.mjs` on every `npm run start` /
 `npm run build` so the output stays in sync with the docs tree.
@@ -31,7 +31,7 @@ WEBSITE = SCRIPT_DIR.parent
 DOCS = WEBSITE / "docs"
 STATIC = WEBSITE / "static"
 
-SITE_BASE = "https://hermes-agent.nousresearch.com/docs"
+SITE_BASE = "https://docs.digitable.life"
 
 # Curated sections for llms.txt — mirrors the product story, not the filesystem.
 # Each entry: (docs-relative path without .md, display title, optional short desc).
@@ -252,8 +252,8 @@ def emit_llms_full() -> str:
             "Started, Using Digit, Features, Messaging, Integrations, Guides, "
             "Developer Guide, Reference, then everything else.\n"
         ),
-        "Canonical site: https://hermes-agent.nousresearch.com/docs\n",
-        "Short index: https://hermes-agent.nousresearch.com/docs/llms.txt\n",
+        "Canonical site: https://docs.digitable.life\n",
+        "Short index: https://docs.digitable.life/llms.txt\n",
         "\n---\n\n",
     ]
 

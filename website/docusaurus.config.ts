@@ -7,10 +7,20 @@ const config: Config = {
   tagline: 'The self-improving AI agent',
   favicon: 'img/favicon.ico',
 
-  url: 'https://hermes-agent.nousresearch.com',
-  baseUrl: '/docs/',
+  // Свой хост документации форка. У апстрима сайт живёт на Vercel, а /docs —
+  // подпуть маркетингового лендинга, отсюда старый baseUrl '/docs/'. Здесь под
+  // документацию отдан весь домен (GitHub Pages репозитория digitable-lol/digit
+  // + CNAME в static/), поэтому baseUrl — корень: адрес страницы больше не
+  // повторяет слово docs дважды.
+  //
+  // Совместимость: ~500 внутренних ссылок были записаны как /docs/<путь> —
+  // при baseUrl '/docs/' Docusaurus отдавал их как есть, при '/' они бы
+  // упирались в 404. Генератор страниц навыков исправлен, а плагин редиректов
+  // ниже дополнительно ловит любой оставшийся /docs/* (и старые закладки).
+  url: 'https://docs.digitable.life',
+  baseUrl: '/',
 
-  organizationName: 'NousResearch',
+  organizationName: 'digitable-lol',
   projectName: 'digit',
 
   onBrokenLinks: 'warn',
@@ -56,7 +66,7 @@ const config: Config = {
         // reference/optional-skills-catalog) remain indexed.
         //
         // Note: ignoreFiles matches `route` (baseUrl stripped, no leading
-        // slash). With baseUrl '/docs/', `/docs/user-guide/skills/bundled/x`
+        // slash). With baseUrl '/', `/user-guide/skills/bundled/x`
         // becomes 'user-guide/skills/bundled/x'.
         ignoreFiles: [
           /^user-guide\/skills\/bundled\//,
@@ -78,8 +88,17 @@ const config: Config = {
     [
       '@docusaurus/plugin-client-redirects',
       {
+        // Страховка на переезд с baseUrl '/docs/' на '/'. Внутренние ссылки
+        // вида /docs/<путь> (генератор страниц навыков, каталоги, отдельные
+        // ручные ссылки) и любые внешние закладки на старый путь иначе стали
+        // бы 404. Генерируем зеркальный редирект для каждой существующей
+        // страницы, а не список вручную: страниц ~900 и они меняются.
+        createRedirects(existingPath: string) {
+          return [`/docs${existingPath}`];
+        },
+
         // Static-host redirects for renamed doc pages (GitHub Pages can't
-        // do server-side redirects). Paths are relative to baseUrl (/docs/).
+        // do server-side redirects). Paths are relative to baseUrl (/).
         redirects: [
           {
             // Renamed in #44470 (Automation Blueprints terminology rebrand)
@@ -99,6 +118,19 @@ const config: Config = {
             to: '/getting-started/quickstart',
           },
           {
+            // На эти два адреса ссылаются справка CLI и навык digit, но
+            // страниц по ним никогда не было: `link: generated-index` в
+            // _category_.json действует только для автогенерируемого сайдбара,
+            // а sidebars.ts здесь написан руками. Ссылки были битыми и на
+            // сайте апстрима — уводим на первую страницу раздела.
+            from: '/developer-guide',
+            to: '/developer-guide/architecture',
+          },
+          {
+            from: '/user-guide',
+            to: '/user-guide/cli',
+          },
+          {
             from: '/installation',
             to: '/getting-started/installation',
           },
@@ -112,9 +144,12 @@ const config: Config = {
       'classic',
       {
         docs: {
-          routeBasePath: '/',  // Docs at the root of /docs/
+          routeBasePath: '/',  // Docs at the root of the site
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/NousResearch/hermes-agent/edit/main/website/',
+          // «Edit this page» должна вести в репозиторий, где страница лежит.
+          // Апстримовый путь открывал бы редактор чужого файла, до которого у
+          // читателя Digit нет прав и в котором нет наших правок.
+          editUrl: 'https://github.com/digitable-lol/digit/edit/main/website/',
         },
         blog: false,
         theme: {
@@ -155,8 +190,11 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://hermes-agent.nousresearch.com/',
-          label: 'Download',
+          // Было — лендинг апстрима с установщиком Hermes Agent. Ставить по
+          // нему Digit нельзя: скачается другой агент. Ведём на нашу же
+          // страницу установки.
+          to: '/getting-started/installation',
+          label: 'Install',
           position: 'left',
         },
         {
@@ -164,18 +202,13 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://hermes-agent.nousresearch.com',
+          href: 'https://digitable.life',
           label: 'Home',
           position: 'right',
         },
         {
-          href: 'https://github.com/NousResearch/hermes-agent',
+          href: 'https://github.com/digitable-lol/digit',
           label: 'GitHub',
-          position: 'right',
-        },
-        {
-          href: 'https://discord.gg/NousResearch',
-          label: 'Discord',
           position: 'right',
         },
       ],
@@ -195,21 +228,28 @@ const config: Config = {
         {
           title: 'Community',
           items: [
-            { label: 'Discord', href: 'https://discord.gg/NousResearch' },
-            { label: 'GitHub Issues', href: 'https://github.com/NousResearch/hermes-agent/issues' },
+            // Баг-репорты по Digit заводят у нас: у апстрима нашего кода нет.
+            { label: 'GitHub Issues', href: 'https://github.com/digitable-lol/digit/issues' },
+            { label: 'Digitable', href: 'https://digitable.life' },
             { label: 'Skills Hub', href: 'https://agentskills.io' },
+            // Сообщество апстрима — подписано так, чтобы никто не принял его
+            // за канал поддержки Digit.
+            { label: 'Nous Research Discord', href: 'https://discord.gg/NousResearch' },
           ],
         },
         {
           title: 'More',
           items: [
-            { label: 'Desktop Download', href: 'https://hermes-agent.nousresearch.com/' },
-            { label: 'GitHub', href: 'https://github.com/NousResearch/hermes-agent' },
+            { label: 'Install', to: '/getting-started/installation' },
+            { label: 'GitHub', href: 'https://github.com/digitable-lol/digit' },
+            // Происхождение форка: условие MIT-лицензии Hermes Agent, ссылку
+            // не убирать (см. NOTICE в корне репозитория).
+            { label: 'Hermes Agent (upstream)', href: 'https://github.com/NousResearch/hermes-agent' },
             { label: 'Nous Research', href: 'https://nousresearch.com' },
           ],
         },
       ],
-      copyright: `Built by <a href="https://nousresearch.com">Nous Research</a> · MIT License · ${new Date().getFullYear()}`,
+      copyright: `Built by <a href="https://digitable.life">Digitable</a> · Based on <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a> by Nous Research · MIT License · ${new Date().getFullYear()}`,
     },
     prism: {
       theme: prismThemes.github,
