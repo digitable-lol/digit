@@ -59,6 +59,7 @@ Examples:
     digit config                  View configuration
     digit config edit             Edit config in $EDITOR
     digit config set model gpt-4  Set a config value
+    digit rule-check s.fts "..."  Check a Russian business rule against an FTS spec
     digit gateway                 Run messaging gateway
     digit -s digit-dev,github-auth
     digit -w                      Start in isolated git worktree

@@ -466,6 +466,7 @@ from digit_cli.subcommands.dashboard import build_dashboard_parser
 from digit_cli.subcommands.gui import build_gui_parser
 from digit_cli.subcommands.logs import build_logs_parser
 from digit_cli.subcommands.prompt_size import build_prompt_size_parser
+from digit_cli.subcommands.rule_check import build_rule_check_parser
 from digit_cli.subcommands.memory import build_memory_parser
 from digit_cli.subcommands.acp import build_acp_parser
 from digit_cli.subcommands.tools import build_tools_parser
@@ -10573,6 +10574,13 @@ def cmd_prompt_size(args):
     _impl(args)
 
 
+def cmd_rule_check(args):
+    """Check a Russian-language business rule against an FTS specification."""
+    from digit_cli.rule_check import cmd_rule_check as _impl
+
+    return _impl(args)
+
+
 def cmd_logs(args):
     """View and filter Digit log files."""
     from digit_cli.logs import tail_log, list_logs
@@ -10637,6 +10645,7 @@ _BUILTIN_SUBCOMMANDS = frozenset(
         "model", "monitoring", "pairing", "pets", "plugins", "portal", "profile",
         "project", "proxy",
         "prompt-size",
+        "rule-check",
         "send", "sessions", "setup",
         "skin", "skills", "slack", "status", "sync", "tasks", "tools", "uninstall", "update",
         "version", "webhook", "whatsapp", "whatsapp-cloud", "workbench", "chat", "secrets",
@@ -12486,6 +12495,11 @@ def main():
     # prompt-size command  (parser built in digit_cli/subcommands/prompt_size.py)
     # =========================================================================
     build_prompt_size_parser(subparsers, cmd_prompt_size=cmd_prompt_size)
+
+    # =========================================================================
+    # rule-check command  (parser built in digit_cli/subcommands/rule_check.py)
+    # =========================================================================
+    build_rule_check_parser(subparsers, cmd_rule_check=cmd_rule_check)
 
     # =========================================================================
     # Parse and execute

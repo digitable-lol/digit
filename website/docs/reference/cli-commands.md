@@ -65,6 +65,7 @@ digit [global-options] <command> [subcommand/options]
 | `digit approvals` | Approval-prompt tools — mine approval history into allowlist proposals. |
 | `digit dump` | Copy-pasteable setup summary for support/debugging. |
 | `digit prompt-size` | Show a byte breakdown of the system prompt + tool schemas (skills index, memory, profile). Runs offline. |
+| `digit rule-check` | Add a business rule to an existing FTS specification by writing it in Russian. Prints how the statement was *read*, then a verdict from the real compiler and `fts-gate`. No model involved. |
 | `digit debug` | Debug tools — upload logs and system info for support. |
 | `digit backup` | Back up Digit home directory to a zip file. |
 | `digit checkpoints` | Inspect / prune / clear `~/.digit/checkpoints/` (the shadow store used by `/rollback`). Run with no args for a status overview. |
@@ -1085,6 +1086,74 @@ The skills index and tool schemas scale with how many skills and tools you have
 enabled. To shrink the prompt, disable unused toolsets (`digit tools`) or
 uninstall skills you don't need (`digit skills`). Context files (AGENTS.md,
 .cursorrules) in your current directory also count toward the total.
+:::
+
+## `digit rule-check`
+
+```bash
+digit rule-check <SPEC.fts> "<statement>" ["<statement>" ...] [--utility <name>] [--fts] [--json]
+```
+
+Write a business rule in plain Russian and find out whether it actually holds in
+an existing FTS calculation. The statement is parsed by **rules — no model** —
+emitted as an FTS specification, compiled and executed by the real compiler, and
+screened by `fts-gate` for structural fallacies.
+
+The specification argument is mandatory and comes first, because that is the
+whole contract: the rule is added **to a declared schema**, it is not
+reconstructed from the sentence. A bare "если сумма больше 1000, скидка 10%"
+with no declared fields is rejected — without a declared `сумма` there is
+nothing to check the rule against, only a guess about what `сумма` means.
+
+The declared rules, properties and examples of the target utility are carried
+into the check, so the verdict is about the rule **in the calculation**, not the
+rule in isolation. That is what catches an uncovered gap between the new
+threshold and an old one, a rule fully shadowed by its neighbour, a violated
+property, and an example whose declared result the new rule changes.
+
+Output, in this order:
+
+1. **Прочитано так** — the parsed rule translated back into Russian. This is the
+   line that matters most: it is a reading of what will actually reach the
+   compiler, so a mismatch with what you meant is visible *before* you trust a
+   green verdict.
+2. **The verdict** — verified, refuted (naming the failed check and, where
+   possible, a counterexample), or "не удалось формализовать".
+3. **The boundary** — printed in every answer, including green ones.
+
+```bash
+# The rule holds in this calculation
+digit rule-check order.fts "если постоянный клиент равен да, то прибавить 5 процентов от суммы заказа"
+
+# Check a rule together with a property it must not break
+digit rule-check order.fts "если сумма заказа больше 1000, то прибавить 2000" "результат не больше 500"
+
+# Show the specification that was compiled, or emit everything as JSON
+digit rule-check order.fts "..." --fts
+digit rule-check order.fts "..." --json
+```
+
+Exit codes: `0` verified, `1` refuted, `3` could not formalize, `4` the check did
+not happen at all (no compiler, unreadable spec, ambiguous utility). Three
+outcomes get three codes on purpose — "I did not understand" and "I understood,
+and it is wrong" are different statements, and merging them lies in both
+directions.
+
+:::caution What this does *not* check
+It checks that the **conclusion follows from the premise**, never that the
+premise is true — the system has no world model. "На экспорт начислять НДС 20 %"
+is factually wrong (exports are zero-rated) and will pass every check and come
+back green. That is why the boundary is printed in every answer rather than
+filed away in documentation.
+:::
+
+:::tip Prerequisite
+The compiler and the fallacy detector are an external process, not a copy in the
+Digit tree — a second copy of the compiler would be a second implementation of
+FTS semantics, and the whole point is that there is only one. Install it with
+`digit mcp install fts-gate` (the compiler ships with it), or point
+`DIGIT_FTS_GATE_HOME` at your own build. Without it the command **refuses** with
+exit code 4; it never degrades into an unverified answer.
 :::
 
 ## `digit config`

@@ -405,7 +405,17 @@ include = ["agent", "agent.*", "tools", "tools.*", "digit_cli", "digit_cli.*", "
 # каскада правил выведен из него целиком, и без файла разбор не поднимется.
 # ruleparse/NOTICE едет рядом, потому что указание авторства OpenCorpora
 # обязано быть в поставке, а не только в git.
-digit_cli = ["observability/schemas/*.json", "ruleparse/tool_catalog.json", "ruleparse/NOTICE"]
+#
+# claimcheck/verify.mjs — тоже вход, а не украшение: это единственный кусок
+# проверки суждений, который умеет позвать настоящий компилятор FTS, и без
+# него `digit rule-check` не проверяет ничего. Питоновской зависимости у
+# claimcheck нет вовсе (только stdlib), поэтому extra под него в этом файле не
+# заведён: внешний кусок у него не пакет с PyPI, а node-процесс, и объявлен он
+# там, где Digit уже объявляет такие, — optional-mcps/fts-gate/manifest.yaml,
+# `digit mcp install fts-gate`. claimcheck/NOTICE едет рядом по той же
+# причине, что и у ruleparse: авторство обязано быть в поставке.
+digit_cli = ["observability/schemas/*.json", "ruleparse/tool_catalog.json", "ruleparse/NOTICE",
+             "claimcheck/verify.mjs", "claimcheck/NOTICE"]
 # gateway/assets/ ships status_phrases.yaml and the Telegram BotFather
 # screenshot. Without this, sealed venvs (uv2nix) silently lose both —
 # status phrases fall back to the tiny hardcoded set and the Telegram
