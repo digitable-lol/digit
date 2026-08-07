@@ -1,5 +1,6 @@
 ---
 sidebar_label: "Build a Plugin"
+slug: /developer-guide/plugins
 title: "构建 Digit 插件"
 description: "逐步指南：构建包含工具、钩子、数据文件和技能的完整 Digit 插件"
 ---
