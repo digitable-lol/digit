@@ -37,6 +37,22 @@ from agent.prompt_builder import (
 from digit_cli.nous_subscription import NousFeatureState, NousSubscriptionFeatures
 
 
+@pytest.fixture(autouse=True)
+def _drain_truncation_warnings_between_tests():
+    """Keep the truncation accumulator from outliving the test that filled it.
+
+    ``_truncate_content`` records into a ContextVar that only
+    ``build_system_prompt`` drains. Tests here call ``_truncate_content``
+    directly, so anything they record stays queued for whoever drains next —
+    in a shared-process run that is a *different* test file, which then hands
+    the warning to its own stub agent and dies on ``_emit_status``. Draining
+    around every test keeps the leak inside the test that caused it.
+    """
+    drain_truncation_warnings()
+    yield
+    drain_truncation_warnings()
+
+
 # =========================================================================
 # Guidance constants
 # =========================================================================
