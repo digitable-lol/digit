@@ -100,7 +100,7 @@ wsl --shutdown
 打开 WSL2 shell 后执行：
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 source ~/.bashrc
 digit
 ```

@@ -6,7 +6,7 @@ description: "完整操作指南：订阅、配置、切换模型、启用 gatew
 
 # 通过 Nous Portal 运行 Digit
 
-本指南带你从头到尾完成在 [Nous Portal](https://portal.nousresearch.com) 订阅下运行 Hermes Agent 的全过程——从注册账号到验证每个工具的路由是否正确。如果你只想了解 Portal 的概述及订阅内容，请参阅 [Nous Portal 集成页面](/integrations/nous-portal)。本页是操作步骤脚本。
+本指南带你从头到尾完成在 [Nous Portal](https://portal.nousresearch.com) 订阅下运行 Digit 的全过程——从注册账号到验证每个工具的路由是否正确。如果你只想了解 Portal 的概述及订阅内容，请参阅 [Nous Portal 集成页面](/integrations/nous-portal)。本页是操作步骤脚本。
 
 ## 前提条件
 
@@ -232,7 +232,7 @@ Portal 目录基于 OpenRouter 的模型列表（300+ 个），并补充了通�
 /model openai/o1-2025-12-17
 ```
 
-如果某个模型确实不可用，请[提交 issue](https://github.com/NousResearch/hermes-agent/issues)——大多数缺失是我们可以更新的路由配置问题。
+如果某个模型确实不可用，请[提交 issue](https://github.com/digitable-lol/digit/issues)——大多数缺失是我们可以更新的路由配置问题。
 
 ### 账单未出现在我的 Portal 账号中
 

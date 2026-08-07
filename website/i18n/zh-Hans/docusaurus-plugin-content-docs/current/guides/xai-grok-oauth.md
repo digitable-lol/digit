@@ -6,7 +6,7 @@ description: "使用 SuperGrok 或 X Premium+ 订阅登录，在 Digit 中使用
 
 # xAI Grok OAuth（SuperGrok / X Premium+）
 
-Hermes Agent 通过基于浏览器的 OAuth 登录流程支持 xAI Grok，认证服务器为 [accounts.x.ai](https://accounts.x.ai)，支持 **SuperGrok 订阅**（[grok.com](https://x.ai/grok)）或 **X Premium+ 订阅**（已关联的 X 账号）。无需 `XAI_API_KEY`——登录一次后，Digit 会在后台自动刷新会话。
+Digit 通过基于浏览器的 OAuth 登录流程支持 xAI Grok，认证服务器为 [accounts.x.ai](https://accounts.x.ai)，支持 **SuperGrok 订阅**（[grok.com](https://x.ai/grok)）或 **X Premium+ 订阅**（已关联的 X 账号）。无需 `XAI_API_KEY`——登录一次后，Digit 会在后台自动刷新会话。
 
 当你使用拥有 Premium+ 的 X 账号登录时，xAI 会自动将订阅状态关联到你的 xAI 会话，因此 OAuth 流程与直接 SuperGrok 订阅者的体验完全相同。
 

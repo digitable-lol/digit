@@ -15,7 +15,7 @@ Digit 不仅仅是一个 CLI 工具。你可以直接导入 `AIAgent`，在自�
 克隆 Digit 并创建受支持的可编辑开发环境：
 
 ```bash
-git clone https://github.com/NousResearch/hermes-agent.git
+git clone https://github.com/digitable-lol/digit.git
 cd digit
 uv sync
 ```

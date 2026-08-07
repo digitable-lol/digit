@@ -33,7 +33,7 @@ Digit 可与任何兼容 OpenAI 的 API 配合使用。支持的提供商包括�
 **原生不支持。** Digit 需要类 Unix 环境。在 Windows 上，请安装 [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) 并在其中运行 Digit。标准安装命令在 WSL2 中可完美运行：
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 ### 我在 WSL2 中运行 Digit，如何控制 Windows 上的普通 Chrome？
@@ -61,7 +61,7 @@ curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 快速安装：
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 完整的手动步骤、支持的扩展及当前限制，请参阅 [Termux 指南](../getting-started/termux.md)。
@@ -108,7 +108,7 @@ Digit 会自动检测本地端点并放宽流式传输超时（读取超时从 1
 
 ### 费用是多少？
 
-Hermes Agent 本身**免费且开源**（MIT 许可证）。您只需为所选提供商的 LLM API 用量付费。本地模型完全免费运行。
+Digit 本身**免费且开源**（MIT 许可证）。您只需为所选提供商的 LLM API 用量付费。本地模型完全免费运行。
 
 ### 多人可以使用同一个实例吗？
 
@@ -225,7 +225,7 @@ source ~/.bashrc
 # 如果之前使用 sudo 安装，请先清理：
 sudo rm /usr/local/bin/digit
 # 然后重新运行标准安装程序
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 ---
@@ -750,7 +750,7 @@ skills:
 
 1. 在新机器上安装 Digit：
    ```bash
-   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
    ```
 
 2. 在**源机器**上创建完整备份：
@@ -854,6 +854,6 @@ digit chat -q "hello" --model anthropic/claude-opus-4.7
 
 如果您的问题未在此处涵盖：
 
-1. **搜索现有 issue：** [GitHub Issues](https://github.com/NousResearch/hermes-agent/issues)
+1. **搜索现有 issue：** [GitHub Issues](https://github.com/digitable-lol/digit/issues)
 2. **向社区提问：** [Nous Research Discord](https://discord.gg/nousresearch)
 3. **提交 bug 报告：** 请包含您的操作系统、Python 版本（`python3 --version`）、Digit 版本（`digit --version`）以及完整的错误信息

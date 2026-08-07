@@ -6,7 +6,7 @@ description: "一个订阅，300+ 前沿模型，以及 Tool Gateway —— 运�
 
 # Nous Portal
 
-[Nous Portal](https://portal.nousresearch.com) 是 Nous Research 的统一订阅网关，也是**运行 Hermes Agent 的推荐方式**。一次 OAuth 登录，即可替代原本需要手动配置的各模型厂商独立账号、API 密钥和计费关系。
+[Nous Portal](https://portal.nousresearch.com) 是 Nous Research 的统一订阅网关，也是**运行 Digit 的推荐方式**。一次 OAuth 登录，即可替代原本需要手动配置的各模型厂商独立账号、API 密钥和计费关系。
 
 如果你只有时间配置一件事，就配置这个。最快路径：
 
@@ -256,7 +256,7 @@ Portal 会为每个模型选择合适的后端——部分模型通过 OpenRoute
 /model anthropic/claude-opus-4.6
 ```
 
-如果某个模型确实缺失，请[提交 issue](https://github.com/NousResearch/hermes-agent/issues)——我们将 Portal 目录同步至 Digit，缺口通常意味着可以更新的路由配置。
+如果某个模型确实缺失，请[提交 issue](https://github.com/digitable-lol/digit/issues)——我们将 Portal 目录同步至 Digit，缺口通常意味着可以更新的路由配置。
 
 ### 账单未出现在我的 Portal 账号中
 

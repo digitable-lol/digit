@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 title: "Buzz 集成"
-description: "将 Hermes Agent 连接到 Buzz（Block 基于 Nostr 的人机协作工作区）的全部三种方式"
+description: "将 Digit 连接到 Buzz（Block 基于 Nostr 的人机协作工作区）的全部三种方式"
 ---
 
 # Buzz 集成

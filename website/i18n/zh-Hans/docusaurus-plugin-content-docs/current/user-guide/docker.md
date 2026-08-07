@@ -11,18 +11,30 @@ Docker 与 Digit 的交集有两种截然不同的方式：
 1. **在 Docker 中运行 Digit** — agent 本身在容器内运行（本页的主要内容）
 2. **Docker 作为终端后端** — agent 在宿主机上运行，但将每条命令在单个持久化 Docker 沙箱容器中执行，该容器在工具调用、`/new` 和子 agent 之间保持存活，直至 Digit 进程结束（参见 [配置 → Docker 后端](./configuration.md#docker-backend)）
 
-本页介绍选项 1。容器将所有用户数据（配置、API 密钥、会话、技能、记忆）存储在从宿主机挂载于 `/opt/data` 的单个目录中。镜像本身是无状态的，可通过拉取新版本进行升级而不会丢失任何配置。
+本页介绍选项 1。容器将所有用户数据（配置、API 密钥、会话、技能、记忆）存储在从宿主机挂载于 `/opt/data` 的单个目录中。镜像本身是无状态的，可从更新后的代码检出重新构建以升级，而不会丢失任何配置。
 
 ## 快速开始
 
 如果这是你第一次运行 Digit，请在宿主机上创建一个数据目录，并以交互方式启动容器以运行设置向导：
 
 ```sh
+git clone https://github.com/digitable-lol/digit.git
+cd digit
+docker build -t digit .
+
 mkdir -p ~/.digit
 docker run -it --rm \
   -v ~/.digit:/opt/data \
-  nousresearch/hermes-agent setup
+  digit setup
 ```
+
+:::note 没有可 `docker pull` 的镜像
+Digit 不发布容器镜像 —— 只能通过 `docker build`（或 `docker compose build`，
+本仓库的 `docker-compose.yml` 与 `docker-compose.windows.yml` 已配置好
+`build: .` 与 `image: digit`）来获得镜像。上游的 `nousresearch/hermes-agent`
+是**另一个 agent**：拉取它并指向 `~/.digit`，等于让 Hermes Agent 接管 Digit
+自己的数据目录。
+:::
 
 这将进入设置向导，向导会提示你输入 API 密钥并将其写入 `~/.digit/.env`。你只需执行一次。强烈建议此时为 gateway 配置一个聊天系统。
 
@@ -36,7 +48,7 @@ docker run -d \
   --restart unless-stopped \
   -v ~/.digit:/opt/data \
   -p 8642:8642 \
-  nousresearch/hermes-agent gateway run
+  digit gateway run
 ```
 
 端口 8642 暴露 gateway 的 [OpenAI 兼容 API 服务器](./features/api-server.md)和健康检查端点。如果你只使用聊天平台（Telegram、Discord 等），该端口是可选的；但如果你希望 dashboard 或外部工具访问 gateway，则必须开放。
@@ -53,7 +65,7 @@ docker run -d \
   -e API_SERVER_HOST=0.0.0.0 \
   -e API_SERVER_KEY="$(openssl rand -hex 32)" \
   -e API_SERVER_CORS_ORIGINS='*' \
-  nousresearch/hermes-agent gateway run
+  digit gateway run
 ```
 
 在面向互联网的机器上开放任何端口都存在安全风险。除非你了解相关风险，否则不应这样做。
@@ -70,7 +82,7 @@ docker run -d \
   -p 8642:8642 \
   -p 9119:9119 \
   -e DIGIT_DASHBOARD=1 \
-  nousresearch/hermes-agent gateway run
+  digit gateway run
 ```
 
 Dashboard 由 s6 监管：若进程崩溃，`s6-supervise` 会在短暂退避后自动重启。Dashboard 的 stdout/stderr 会直接转发到 `docker logs <container>`；gateway 的主输出现在写入每个 profile 的 s6 日志文件，见下方的 per-profile 日志说明。
@@ -117,7 +129,7 @@ Dashboard 由 s6 监管：若进程崩溃，`s6-supervise` 会在短暂退避后
 ```sh
 docker run -it --rm \
   -v ~/.digit:/opt/data \
-  nousresearch/hermes-agent
+  digit
 ```
 
 或者，如果你已通过 Docker Desktop 等方式在运行中的容器内打开了终端，直接运行：
@@ -195,7 +207,7 @@ docker run -it --rm \
   -v ~/.digit:/opt/data \
   -e ANTHROPIC_API_KEY="sk-ant-..." \
   -e OPENAI_API_KEY="sk-..." \
-  nousresearch/hermes-agent
+  digit
 ```
 
 直接传入的 `-e` 标志会覆盖 `.env` 中的值。这对于不希望将密钥写入磁盘的 CI/CD 或密钥管理器集成非常有用。
@@ -211,7 +223,8 @@ docker run -it --rm \
 ```yaml
 services:
   digit:
-    image: nousresearch/hermes-agent:latest
+    build: .
+    image: digit
     container_name: digit
     restart: unless-stopped
     command: gateway run
@@ -255,7 +268,7 @@ docker run -d \
   --restart unless-stopped \
   --memory=4g --cpus=2 \
   -v ~/.digit:/opt/data \
-  nousresearch/hermes-agent gateway run
+  digit gateway run
 ```
 
 ## Dockerfile 说明
@@ -312,22 +325,23 @@ digit profile delete coder            # 拆除 s6 槽
 
 ## 升级
 
-拉取最新镜像并重建容器。你的数据目录不受影响。
+重新构建镜像并重建容器。你的数据目录不受影响。
 
 ```sh
-docker pull nousresearch/hermes-agent:latest
+git -C /path/to/your/digit/checkout pull
+docker build -t digit /path/to/your/digit/checkout
 docker rm -f digit
 docker run -d \
   --name digit \
   --restart unless-stopped \
   -v ~/.digit:/opt/data \
-  nousresearch/hermes-agent gateway run
+  digit gateway run
 ```
 
 或使用 Docker Compose：
 
 ```sh
-docker compose pull
+docker compose build
 docker compose up -d
 ```
 
@@ -355,10 +369,10 @@ SSH 和 Modal 后端也会进行相同的同步——技能和凭据文件在每
 
 ### 持久安装——构建派生镜像
 
-当工具必须在每次容器启动时立即可用且无需重新安装延迟时，构建一个继承自 `nousresearch/hermes-agent` 并在层中安装该工具的新镜像：
+当工具必须在每次容器启动时立即可用且无需重新安装延迟时，构建一个继承自本地构建的 `digit` 镜像并在层中安装该工具的新镜像：
 
 ```dockerfile
-FROM nousresearch/hermes-agent:latest
+FROM digit
 
 USER root
 RUN apt-get update \
@@ -379,7 +393,7 @@ docker run -d \
   my-digit:latest gateway run
 ```
 
-入口点脚本和 `/opt/data` 语义原样继承，本页其余内容仍然适用。拉取更新的上游 `nousresearch/hermes-agent` 时记得重新构建镜像。
+入口点脚本和 `/opt/data` 语义原样继承，本页其余内容仍然适用。拉取更新的代码检出后，记得先重新构建基础 `digit` 镜像，再重新构建这个镜像。
 
 ### 复杂工具或多服务栈——运行 sidecar 容器
 
@@ -388,7 +402,8 @@ docker run -d \
 ```yaml
 services:
   digit:
-    image: nousresearch/hermes-agent:latest
+    build: .
+    image: digit
     container_name: digit
     restart: unless-stopped
     command: gateway run
@@ -415,7 +430,7 @@ networks:
 
 ### 广泛有用的工具——提交 issue 或 pull request
 
-如果某个工具可能对大多数 Hermes Agent 用户有用，考虑将其贡献到上游，而不是在私有派生镜像中维护。在 [hermes-agent 仓库](https://github.com/NousResearch/hermes-agent)提交 issue 或 pull request，描述该工具及其使用场景。被纳入官方镜像的工具惠及所有用户，并避免了维护下游 fork 的开销。
+如果某个工具可能对大多数 Digit 用户有用，考虑将其贡献回项目，而不是在私有派生镜像中维护。在 [Digit 仓库](https://github.com/digitable-lol/digit)提交 issue 或 pull request，描述该工具及其使用场景。被纳入镜像的工具惠及所有用户，并避免了维护私有 fork 的开销。
 
 ## 连接本地推理服务器（vLLM、Ollama 等）
 
@@ -446,7 +461,8 @@ services:
             - capabilities: [gpu]
 
   digit:
-    image: nousresearch/hermes-agent:latest
+    build: .
+    image: digit
     container_name: digit
     restart: unless-stopped
     command: gateway run
@@ -490,7 +506,7 @@ docker run -d \
   --name digit \
   -v ~/.digit:/opt/data \
   -p 8642:8642 \
-  nousresearch/hermes-agent gateway run
+  digit gateway run
 ```
 
 ```yaml
@@ -509,7 +525,7 @@ docker run -d \
   --name digit \
   --network host \
   -v ~/.digit:/opt/data \
-  nousresearch/hermes-agent gateway run
+  digit gateway run
 ```
 
 ```yaml
@@ -575,7 +591,7 @@ docker run -d \
   --name digit \
   --shm-size=1g \
   -v ~/.digit:/opt/data \
-  nousresearch/hermes-agent gateway run
+  digit gateway run
 ```
 
 ### 网络问题后 gateway 无法重连
@@ -590,6 +606,6 @@ docker restart digit
 
 ```sh
 docker logs --tail 50 digit          # 最近日志
-docker run -it --rm nousresearch/hermes-agent:latest version     # 验证版本
+docker run -it --rm digit version     # 验证版本
 docker stats digit                    # 资源使用情况
 ```

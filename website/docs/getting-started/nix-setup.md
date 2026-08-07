@@ -41,17 +41,17 @@ No clone needed. Nix fetches, builds, and runs everything:
 
 ```bash
 # Run the desktop app
-nix run github:NousResearch/hermes-agent#desktop
+nix run github:digitable-lol/digit#desktop
 
 # Or install persistently
-nix profile install github:NousResearch/hermes-agent#desktop
+nix profile install github:digitable-lol/digit#desktop
 
 # run the tui
-nix run github:NousResearch/hermes-agent -- setup
-nix run github:NousResearch/hermes-agent -- --tui
+nix run github:digitable-lol/digit -- setup
+nix run github:digitable-lol/digit -- --tui
 
 # or install it in your profile
-nix profile install github:NousResearch/hermes-agent
+nix profile install github:digitable-lol/digit
 digit setup
 digit --tui
 ```
@@ -69,7 +69,7 @@ The `default` package adds ~700 MB to the closure. If you only need messaging pl
 <summary><strong>Running from a local clone</strong></summary>
 
 ```bash
-git clone https://github.com/NousResearch/hermes-agent.git
+git clone https://github.com/digitable-lol/digit.git
 cd digit
 nix develop
 digit setup
@@ -94,7 +94,7 @@ This module requires NixOS. For non-NixOS systems (macOS, other Linux distros), 
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    hermes-agent.url = "github:NousResearch/hermes-agent";
+    digit.url = "github:digitable-lol/digit";
   };
 
   outputs = { nixpkgs, digit, ... }: {
@@ -733,7 +733,7 @@ External flakes can override the package directly:
 
 ```nix
 {
-  inputs.hermes-agent.url = "github:NousResearch/hermes-agent";
+  inputs.digit.url = "github:digitable-lol/digit";
   outputs = { digit, nixpkgs, ... }: {
     nixpkgs.overlays = [ digit.overlays.default ];
     # Then:

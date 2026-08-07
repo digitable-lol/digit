@@ -6,7 +6,7 @@ description: "Start-to-finish walkthrough: subscribe, set up, switch models, ena
 
 # Run Digit with Nous Portal
 
-This guide walks you through running Hermes Agent on a [Nous Portal](https://portal.nousresearch.com) subscription end to end — from signing up to verifying that every tool routes correctly. If you just want the overview of what the Portal is and what's in the subscription, see the [Nous Portal integration page](/integrations/nous-portal). This page is the task script.
+This guide walks you through running Digit on a [Nous Portal](https://portal.nousresearch.com) subscription end to end — from signing up to verifying that every tool routes correctly. If you just want the overview of what the Portal is and what's in the subscription, see the [Nous Portal integration page](/integrations/nous-portal). This page is the task script.
 
 ## Prerequisites
 
@@ -235,7 +235,7 @@ The Portal catalog draws on OpenRouter's model list (300+) plus models served th
 /model openai/o1-2025-12-17
 ```
 
-If a model is genuinely unavailable, [open an issue](https://github.com/NousResearch/hermes-agent/issues) — most gaps are routing config we can update.
+If a model is genuinely unavailable, [open an issue](https://github.com/digitable-lol/digit/issues) — most gaps are routing config we can update.
 
 ### Billing not appearing on my Portal account
 

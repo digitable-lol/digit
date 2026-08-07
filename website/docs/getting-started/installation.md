@@ -14,25 +14,30 @@ platform-gated features are supported), see **[Platform Support](./platform-supp
 :::
 
 ## Quick Install
-### With the Digit Desktop installer on macOS or Windows (recommended)
-To easily install the command-line and desktop applications, [download the Digit Desktop installer](https://hermes-agent.nousresearch.com/) from our website and run it.
 
-### Without Digit Desktop:
-For a command-line only install without Digit Desktop, run:
+Digit installs from the command line. The desktop app ships with it — there is
+no separate installer to download.
+
+#### macOS (Homebrew)
+```bash
+brew install digitable-lol/tap/digit
+```
 
 #### Linux / macOS / WSL2 / Android (Termux)
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 #### Windows (native)
 
 Run in powershell:
 ```powershell
-iex (irm https://hermes-agent.nousresearch.com/install.ps1) 
+iex (irm https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.ps1) 
 ```
 
-If you want to install & run Digit Desktop after a command-line only install, simply run
+#### Desktop app
+
+Once the command line install is done, start the desktop app with
 ```bash
 digit desktop
 ```
@@ -124,12 +129,12 @@ Running Digit as a dedicated unprivileged user (e.g. a `digit` systemd service a
 
 2. **As the unprivileged service user**, run the regular installer. It will detect the missing sudo, skip `--with-deps`, and install Chromium into the user's local Playwright cache:
    ```bash
-   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
    ```
 
    If you want to skip the Playwright step entirely — for example because you're running headless and don't need browser automation — pass `--skip-browser`:
    ```bash
-   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-browser
+   curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash -s -- --skip-browser
    ```
 
 3. **Make `digit` available to the service user's shells.** The installer writes the launcher to `~/.local/bin/digit`. System service accounts often have a minimal PATH that doesn't include `~/.local/bin`. Either add it to the user's environment, or symlink the launcher into a system location:

@@ -3,7 +3,7 @@
   "updated_at": "2026-07-31T15:41:39Z",
   "metadata": {
     "source": "digit repo",
-    "docs": "https://hermes-agent.nousresearch.com/docs/reference/model-catalog"
+    "docs": "https://docs.digitable.life/reference/model-catalog"
   },
   "providers": {
     "openrouter": {

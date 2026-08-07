@@ -296,7 +296,7 @@ Safe-root violations return `Write denied: '…' is outside DIGIT_WRITE_SAFE_ROO
 
 When set, `write_file` and `patch` may only target paths inside the listed directory prefix(es). Anything outside is **hard-blocked** — not routed through dangerous-command approval.
 
-- Set automatically in the [official Docker image](https://github.com/NousResearch/hermes-agent) (`DIGIT_WRITE_SAFE_ROOT=/opt/data`)
+- Set automatically in the [official Docker image](https://github.com/digitable-lol/digit) (`DIGIT_WRITE_SAFE_ROOT=/opt/data`)
 - Supports multiple roots separated by `:` on Unix or `;` on Windows
 - **Do not add to `~/.digit/.env` casually.** If you set it to a project directory, the agent cannot write to `~/.digit/cron/jobs.json`, profile skills, or other Digit state outside that prefix
 

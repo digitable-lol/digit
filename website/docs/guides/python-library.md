@@ -15,7 +15,7 @@ Digit isn't just a CLI tool. You can import `AIAgent` directly and use it progra
 Clone Digit and create its supported editable development environment:
 
 ```bash
-git clone https://github.com/NousResearch/hermes-agent.git
+git clone https://github.com/digitable-lol/digit.git
 cd digit
 uv sync
 ```

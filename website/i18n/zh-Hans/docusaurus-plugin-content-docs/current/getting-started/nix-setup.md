@@ -35,11 +35,11 @@ Digit 提供了一个 Nix flake，支持三个层级的集成：
 
 ```bash
 # 直接运行（首次使用时构建，之后使用缓存）
-nix run github:NousResearch/hermes-agent -- setup
-nix run github:NousResearch/hermes-agent -- chat
+nix run github:digitable-lol/digit -- setup
+nix run github:digitable-lol/digit -- chat
 
 # 或持久化安装
-nix profile install github:NousResearch/hermes-agent
+nix profile install github:digitable-lol/digit
 digit setup
 digit chat
 ```
@@ -50,7 +50,7 @@ digit chat
 <summary><strong>从本地克隆构建</strong></summary>
 
 ```bash
-git clone https://github.com/NousResearch/hermes-agent.git
+git clone https://github.com/digitable-lol/digit.git
 cd digit
 nix build
 ./result/bin/digit setup
@@ -75,7 +75,7 @@ nix build
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    hermes-agent.url = "github:NousResearch/hermes-agent";
+    digit.url = "github:digitable-lol/digit";
   };
 
   outputs = { nixpkgs, digit, ... }: {
@@ -685,7 +685,7 @@ services.digit = {
 
 ```nix
 {
-  inputs.hermes-agent.url = "github:NousResearch/hermes-agent";
+  inputs.digit.url = "github:digitable-lol/digit";
   outputs = { digit, nixpkgs, ... }: {
     nixpkgs.overlays = [ digit.overlays.default ];
     # 然后：

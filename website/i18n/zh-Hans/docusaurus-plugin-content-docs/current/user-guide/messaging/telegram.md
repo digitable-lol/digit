@@ -6,7 +6,7 @@ description: "将 Digit 设置为 Telegram 机器人"
 
 # Telegram 设置
 
-Hermes Agent 与 Telegram 集成，作为功能完整的对话机器人。连接后，你可以从任何设备与 Agent 聊天、发送自动转录的语音备忘录、接收定时任务结果，并在群聊中使用 Agent。该集成基于 [python-telegram-bot](https://python-telegram-bot.org/) 构建，支持文本、语音、图片和文件附件。
+Digit 与 Telegram 集成，作为功能完整的对话机器人。连接后，你可以从任何设备与 Agent 聊天、发送自动转录的语音备忘录、接收定时任务结果，并在群聊中使用 Agent。该集成基于 [python-telegram-bot](https://python-telegram-bot.org/) 构建，支持文本、语音、图片和文件附件。
 
 ## 第一步：通过 BotFather 创建机器人
 

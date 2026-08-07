@@ -48,17 +48,19 @@ description: "与 Digit 的第一次对话——从安装到开始聊天，5 分
 
 ## 1. 安装 Digit
 
-### 在 macOS 或 Windows 上使用 Digit Desktop 安装器（推荐）
+Digit 从命令行安装；桌面应用随之一起安装，运行 `digit desktop` 即可启动。没有单独的桌面安装器可供下载。
 
-如需同时安装命令行与桌面应用，请从我们的官网[下载 Digit Desktop 安装器](https://hermes-agent.nousresearch.com/)并运行。
+### macOS（Homebrew）
 
-### 不使用 Digit Desktop：
+```bash
+brew install digitable-lol/tap/digit
+```
 
-仅安装命令行版本（跟踪 main 分支）：
+### 命令行安装（跟踪 main 分支）：
 
 ```bash
 # Linux / macOS / WSL2 / Android (Termux)
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 安装脚本会在 `~/.digit/digit` 创建一个受管理的隔离环境（独立的 uv 托管解释器和 venv），这是唯一受支持的安装方式 —— 包括开发用途。请勿使用 `pip install digit`。

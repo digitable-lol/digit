@@ -6,7 +6,7 @@ description: "One subscription, 300+ frontier models, and the Tool Gateway — t
 
 # Nous Portal
 
-[Nous Portal](https://portal.nousresearch.com) is Nous Research's unified subscription gateway and **the recommended way to run Hermes Agent**. One OAuth login replaces the juggling act of separate accounts, API keys, and billing relationships across every model lab, search API, image generator, and browser provider you'd otherwise need to wire up by hand.
+[Nous Portal](https://portal.nousresearch.com) is Nous Research's unified subscription gateway and **the recommended way to run Digit**. One OAuth login replaces the juggling act of separate accounts, API keys, and billing relationships across every model lab, search API, image generator, and browser provider you'd otherwise need to wire up by hand.
 
 If you only have time to set up one thing, set up this. The fastest path:
 
@@ -264,7 +264,7 @@ The Portal routes each model to a suitable backend — some through OpenRouter, 
 /model anthropic/claude-opus-4.6
 ```
 
-If a model is genuinely missing, [open an issue](https://github.com/NousResearch/hermes-agent/issues) — we surface the Portal's catalog to Digit and gaps usually mean a routing config we can update.
+If a model is genuinely missing, [open an issue](https://github.com/digitable-lol/digit/issues) — we surface the Portal's catalog to Digit and gaps usually mean a routing config we can update.
 
 ### Bills not appearing on my Portal account
 

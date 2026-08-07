@@ -1,12 +1,12 @@
 ---
 sidebar_position: 3
 title: 'Learning Path'
-description: 'Choose your learning path through the Hermes Agent documentation based on your experience level and goals.'
+description: 'Choose your learning path through the Digit documentation based on your experience level and goals.'
 ---
 
 # Learning Path
 
-Hermes Agent can do a lot — CLI assistant, Telegram/Discord bot, task automation, RL training, and more. This page helps you figure out where to start and what to read based on your experience level and what you're trying to accomplish.
+Digit can do a lot — CLI assistant, Telegram/Discord bot, task automation, RL training, and more. This page helps you figure out where to start and what to read based on your experience level and what you're trying to accomplish.
 
 :::tip Start Here
 If you haven't installed Digit yet, begin with the [Installation guide](/getting-started/installation) and then run through the [Quickstart](/getting-started/quickstart). Everything below assumes you have a working installation.
@@ -100,7 +100,7 @@ page is for built-in Digit core development, not the usual user/custom-tool path
 
 ### "I want to train models"
 
-Use reinforcement learning to fine-tune model behavior with Hermes Agent's RL training pipeline (powered by [Atropos](https://github.com/NousResearch/atropos)).
+Use reinforcement learning to fine-tune model behavior with Digit's RL training pipeline (powered by [Atropos](https://github.com/NousResearch/atropos)).
 
 1. [Quickstart](/getting-started/quickstart)
 2. [Configuration](/user-guide/configuration)

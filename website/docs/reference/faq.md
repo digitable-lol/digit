@@ -89,7 +89,7 @@ Digit auto-detects local endpoints and relaxes streaming timeouts (read timeout 
 
 ### How much does it cost?
 
-Hermes Agent itself is **free and open-source** (MIT license). You pay only for the LLM API usage from your chosen provider. Local models are completely free to run.
+Digit itself is **free and open-source** (MIT license). You pay only for the LLM API usage from your chosen provider. Local models are completely free to run.
 
 ### Can multiple people use one instance?
 
@@ -206,7 +206,7 @@ source ~/.bashrc
 # If you previously installed with sudo, clean up:
 sudo rm /usr/local/bin/digit
 # Then re-run the standard installer
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 ---
@@ -738,7 +738,7 @@ Skills with very long descriptions are truncated to 40 characters in the Telegra
 
 1. Install Digit on the new machine:
    ```bash
-   curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
    ```
 
 2. On the **source machine**, create a full backup:
@@ -842,6 +842,6 @@ If using OpenRouter, make sure your API key has credits. A 400 from OpenRouter o
 
 If your issue isn't covered here:
 
-1. **Search existing issues:** [GitHub Issues](https://github.com/NousResearch/hermes-agent/issues)
+1. **Search existing issues:** [GitHub Issues](https://github.com/digitable-lol/digit/issues)
 2. **Ask the community:** [Nous Research Discord](https://discord.gg/nousresearch)
 3. **File a bug report:** Include your OS, Python version (`python3 --version`), Digit version (`digit --version`), and the full error message

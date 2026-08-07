@@ -51,7 +51,7 @@ That does not stop Digit from working well as a phone-native CLI agent — it ju
 Digit now ships a Termux-aware installer path:
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 On Termux, the installer automatically:
@@ -87,7 +87,7 @@ Why these packages?
 ### 2. Clone Digit
 
 ```bash
-git clone https://github.com/NousResearch/hermes-agent.git
+git clone https://github.com/digitable-lol/digit.git
 cd digit
 ```
 

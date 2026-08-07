@@ -155,7 +155,7 @@ You no longer need to wrap `digit update` in `screen` or `tmux` to survive a ter
 digit version
 ```
 
-Compare against the latest release at the [GitHub releases page](https://github.com/NousResearch/hermes-agent/releases).
+Compare against the latest release at the [GitHub releases page](https://github.com/digitable-lol/digit/releases).
 
 ### Updating from Messaging Platforms
 

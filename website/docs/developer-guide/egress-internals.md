@@ -311,8 +311,8 @@ The CLI uses argparse, so `--help` is a good first probe for "did my new flag re
 
 ## See also
 
-- User-facing setup + troubleshooting: [Egress proxy](https://hermes-agent.nousresearch.com/docs/user-guide/egress/iron-proxy)
-- Docker backend internals: [Docker](https://hermes-agent.nousresearch.com/docs/user-guide/docker)
-- Bitwarden Secrets Manager integration: [`digit secrets bitwarden`](https://hermes-agent.nousresearch.com/docs/user-guide/secrets/bitwarden)
-- CLI command reference: [`digit egress`](https://hermes-agent.nousresearch.com/docs/reference/cli-commands#digit-egress)
-- Sandbox-injected environment variables: [Egress proxy (sandbox-injected)](https://hermes-agent.nousresearch.com/docs/reference/environment-variables#egress-proxy-sandbox-injected)
+- User-facing setup + troubleshooting: [Egress proxy](https://docs.digitable.life/user-guide/egress/iron-proxy)
+- Docker backend internals: [Docker](https://docs.digitable.life/user-guide/docker)
+- Bitwarden Secrets Manager integration: [`digit secrets bitwarden`](https://docs.digitable.life/user-guide/secrets/bitwarden)
+- CLI command reference: [`digit egress`](https://docs.digitable.life/reference/cli-commands#digit-egress)
+- Sandbox-injected environment variables: [Egress proxy (sandbox-injected)](https://docs.digitable.life/reference/environment-variables#egress-proxy-sandbox-injected)
