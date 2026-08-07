@@ -7,9 +7,9 @@ import {
   FEATURED_ID,
   FeaturedProviderRow,
   FireworksProviderRow,
+  isDigitVisibleProvider,
   OpenRouterProviderRow,
   ProviderRow,
-  isDigitVisibleProvider,
   providerTitle,
   sortProviders
 } from '@/components/onboarding'

@@ -1,4 +1,4 @@
-import { getGlobalModelOptions, type DigitGateway, type ModelOptionsResponse } from '@/digit'
+import { type DigitGateway, getGlobalModelOptions, type ModelOptionsResponse } from '@/digit'
 import type { ModelOptionProvider } from '@/types/digit'
 
 /**

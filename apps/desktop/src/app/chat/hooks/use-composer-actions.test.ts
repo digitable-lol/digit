@@ -4,9 +4,9 @@ import { $connection } from '@/store/session'
 
 import {
   attachmentPreviewDataUrl,
+  DIGIT_PATHS_MIME,
   type DroppedFile,
   extractDroppedFiles,
-  DIGIT_PATHS_MIME,
   partitionDroppedFiles
 } from './use-composer-actions'
 

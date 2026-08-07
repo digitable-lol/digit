@@ -2076,8 +2076,7 @@ export const ja = defineLocale({
       'セッショントークンまたはブラウザーサインインでリモートバックエンドを使用します。ローカルインストールは開始されません。',
     installLocalTitle: 'Digit をローカルにインストール',
     installLocalDesc: 'Digit をダウンロードし、Python 環境を作成して、このコンピューターでバックエンドを実行します。',
-    localStartUnavailable:
-      'ローカルインストールを開始できません。Digit Desktop を再起動して、もう一度お試しください。',
+    localStartUnavailable: 'ローカルインストールを開始できません。Digit Desktop を再起動して、もう一度お試しください。',
     remoteSetupTitle: '既存の Digit に接続',
     remoteSetupDesc:
       'ゲートウェイ URL を入力してください。Digit Desktop がトークンとブラウザーサインインのどちらが必要かを検出します。',
@@ -2461,8 +2460,7 @@ export const ja = defineLocale({
       showConsole: 'プレビューコンソールを表示',
       hideDevTools: 'プレビュー DevTools を非表示',
       openDevTools: 'プレビュー DevTools を開く',
-      finishedRestarting: message =>
-        `Digit がプレビューサーバーの再起動を完了しました${message ? `: ${message}` : ''}`,
+      finishedRestarting: message => `Digit がプレビューサーバーの再起動を完了しました${message ? `: ${message}` : ''}`,
       failedRestarting: message => `サーバーの再起動に失敗しました: ${message}`,
       unknownError: '不明なエラー',
       restartedTitle: 'プレビューサーバーが再起動しました',

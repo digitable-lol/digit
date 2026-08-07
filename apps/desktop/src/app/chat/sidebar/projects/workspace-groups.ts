@@ -1,5 +1,5 @@
-import type { DigitGitWorktree } from '@/global'
 import type { ProjectInfo, SessionInfo } from '@/digit'
+import type { DigitGitWorktree } from '@/global'
 import { normalize } from '@/lib/text'
 
 // Session grouping is now computed authoritatively on the backend

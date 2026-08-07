@@ -49,8 +49,8 @@ import { ComposerTriggerPopover } from '@/app/chat/composer/trigger-popover'
 import { isRedoShortcut, isUndoShortcut } from '@/app/chat/composer/undo-history'
 import { chipTypedUrlOnSpace, linkifyUrls } from '@/app/chat/composer/url-refs'
 import {
-  extractDroppedFiles,
   DIGIT_PATHS_MIME,
+  extractDroppedFiles,
   isImagePath,
   partitionDroppedFiles
 } from '@/app/chat/hooks/use-composer-actions'

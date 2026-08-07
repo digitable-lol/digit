@@ -1,8 +1,8 @@
 import { isGatewayReauthRequired, resolveGatewayWsUrl } from '@digit/shared'
 import { useEffect, useRef } from 'react'
 
-import type { DigitConnection } from '@/global'
 import { DigitGateway } from '@/digit'
+import type { DigitConnection } from '@/global'
 import { translateNow } from '@/i18n'
 import { desktopDefaultCwd } from '@/lib/desktop-fs'
 import {

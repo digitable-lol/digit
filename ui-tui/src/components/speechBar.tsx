@@ -2,7 +2,6 @@ import { Box, Text } from '@digit/ink'
 import { useStore } from '@nanostores/react'
 
 import { $speech } from '../app/speechStore.js'
-
 import type { Theme } from '../theme.js'
 
 /**

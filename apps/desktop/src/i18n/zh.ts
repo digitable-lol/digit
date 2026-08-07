@@ -2386,8 +2386,7 @@ export const zh: Translations = {
     copy: '复制',
     copied: '已复制',
     done: '完成',
-    applyingBody:
-      'Digit 更新器会在自己的窗口中接管，并在完成后自动重新打开 Digit。更新期间请不要自行重新打开 Digit。',
+    applyingBody: 'Digit 更新器会在自己的窗口中接管，并在完成后自动重新打开 Digit。更新期间请不要自行重新打开 Digit。',
     applyingBodyBackend: '远程后端正在应用更新并将重启。恢复后 Digit 会自动重新连接。',
     applyingClose: '此窗口会在更新期间关闭，随后 Digit 会自动重新打开。',
     errorTitle: '更新未完成',

@@ -21,8 +21,8 @@
 import {
   atom,
   cn,
-  haptic,
   type DigitPlugin,
+  haptic,
   host,
   type KeybindContribution,
   KEYBINDS_AREA,

@@ -212,8 +212,8 @@ function verifyDigitCli(digitCommand: string, opts?: { shell?: boolean }) {
 export {
   canImportDigitCli,
   DEFAULT_PROBE_TIMEOUT_MS,
-  execProbeSync,
   digitRuntimeImportProbe,
+  execProbeSync,
   PROBE_TIMEOUT_MS,
   resolveProbeTimeoutMs,
   shouldTrustDigitOverride,
