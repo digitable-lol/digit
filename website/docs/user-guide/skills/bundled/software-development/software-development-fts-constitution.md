@@ -21,7 +21,7 @@ Write project invariants as a checkable FTS model.
 | License | Apache-2.0 |
 | Platforms | linux, macos, windows |
 | Tags | `fts`, `spec-driven`, `constitution`, `invariants`, `requirements`, `ftspec` |
-| Related skills | [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts), [`fts-specify`](/docs/user-guide/skills/bundled/software-development/software-development-fts-specify), [`fts-admit`](/docs/user-guide/skills/bundled/software-development/software-development-fts-admit), [`fts-memory`](/docs/user-guide/skills/bundled/software-development/software-development-fts-memory) |
+| Related skills | [`fts`](/user-guide/skills/bundled/software-development/software-development-fts), [`fts-specify`](/user-guide/skills/bundled/software-development/software-development-fts-specify), [`fts-admit`](/user-guide/skills/bundled/software-development/software-development-fts-admit), [`fts-memory`](/user-guide/skills/bundled/software-development/software-development-fts-memory) |
 
 ## Reference: full SKILL.md
 

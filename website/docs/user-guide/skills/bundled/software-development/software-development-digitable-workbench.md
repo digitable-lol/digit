@@ -21,7 +21,7 @@ Use when embedding Digit into Digitable Workbench.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digitable`, `workbench`, `acp`, `mcp`, `integration` |
-| Related skills | [`digit-runtime`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit-runtime), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools) |
+| Related skills | [`digit-runtime`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit-runtime), [`digitable-tools`](/user-guide/skills/bundled/software-development/software-development-digitable-tools) |
 
 ## Reference: full SKILL.md
 

@@ -21,7 +21,7 @@ Use when routing work to tools.digitable.life utilities.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digitable`, `tools`, `converters`, `generators`, `developer-utilities` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses) |
+| Related skills | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/user-guide/skills/bundled/productivity/productivity-digitable-courses) |
 
 ## Reference: full SKILL.md
 

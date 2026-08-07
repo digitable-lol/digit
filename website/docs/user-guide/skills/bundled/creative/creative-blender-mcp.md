@@ -21,7 +21,7 @@ Drive Blender over MCP to model, render and export 3D assets — including headl
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `blender`, `mcp`, `3d`, `glb`, `gltf`, `modelling`, `rendering`, `game-assets`, `headless`, `xvfb`, `procedural-geometry` |
-| Related skills | [`touchdesigner-mcp`](/docs/user-guide/skills/bundled/creative/creative-touchdesigner-mcp), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses) |
+| Related skills | [`touchdesigner-mcp`](/user-guide/skills/bundled/creative/creative-touchdesigner-mcp), [`digitable-workbench`](/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`digitable-courses`](/user-guide/skills/bundled/productivity/productivity-digitable-courses) |
 
 ## Reference: full SKILL.md
 

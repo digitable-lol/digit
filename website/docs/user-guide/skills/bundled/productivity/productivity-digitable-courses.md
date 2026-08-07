@@ -21,7 +21,7 @@ Use when finding or planning Digitable courses.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digitable`, `courses`, `learning`, `curriculum`, `russian` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts) |
+| Related skills | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-tools`](/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`fts`](/user-guide/skills/bundled/software-development/software-development-fts) |
 
 ## Reference: full SKILL.md
 

@@ -21,7 +21,7 @@ Keep accepted decisions as checkable FTS models.
 | License | Apache-2.0 |
 | Platforms | linux, macos, windows |
 | Tags | `fts`, `spec-driven`, `decisions`, `adr`, `memory`, `ftspec` |
-| Related skills | [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts), [`fts-constitution`](/docs/user-guide/skills/bundled/software-development/software-development-fts-constitution), [`fts-specify`](/docs/user-guide/skills/bundled/software-development/software-development-fts-specify), [`fts-admit`](/docs/user-guide/skills/bundled/software-development/software-development-fts-admit) |
+| Related skills | [`fts`](/user-guide/skills/bundled/software-development/software-development-fts), [`fts-constitution`](/user-guide/skills/bundled/software-development/software-development-fts-constitution), [`fts-specify`](/user-guide/skills/bundled/software-development/software-development-fts-specify), [`fts-admit`](/user-guide/skills/bundled/software-development/software-development-fts-admit) |
 
 ## Reference: full SKILL.md
 

@@ -21,7 +21,7 @@ Use when a specification, a test suite or a regression corpus needs examples and
 | License | Apache-2.0 |
 | Platforms | linux, macos |
 | Tags | `ouroboros`, `tracing`, `instrumentation`, `fts`, `examples`, `mcp`, `provenance` |
-| Related skills | [`fts-gate`](/docs/user-guide/skills/bundled/software-development/software-development-fts-gate), [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts), [`digit-tools-core`](/docs/user-guide/skills/bundled/software-development/software-development-digit-tools-core), [`verified-answers`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-verified-answers) |
+| Related skills | [`fts-gate`](/user-guide/skills/bundled/software-development/software-development-fts-gate), [`fts`](/user-guide/skills/bundled/software-development/software-development-fts), [`digit-tools-core`](/user-guide/skills/bundled/software-development/software-development-digit-tools-core), [`verified-answers`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-verified-answers) |
 
 ## Reference: full SKILL.md
 

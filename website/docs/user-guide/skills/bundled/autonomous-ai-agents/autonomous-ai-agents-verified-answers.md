@@ -21,7 +21,7 @@ Use when an answer must be traceable to a source rather than generated — Digit
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digit`, `verification`, `grounding`, `refusal`, `rag`, `fts` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`fts-gate`](/docs/user-guide/skills/bundled/software-development/software-development-fts-gate), [`digit-tools-core`](/docs/user-guide/skills/bundled/software-development/software-development-digit-tools-core), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts) |
+| Related skills | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`fts-gate`](/user-guide/skills/bundled/software-development/software-development-fts-gate), [`digit-tools-core`](/user-guide/skills/bundled/software-development/software-development-digit-tools-core), [`digitable-courses`](/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`fts`](/user-guide/skills/bundled/software-development/software-development-fts) |
 
 ## Reference: full SKILL.md
 

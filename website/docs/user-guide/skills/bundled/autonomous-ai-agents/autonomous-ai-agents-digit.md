@@ -21,7 +21,7 @@ Use when operating or explaining Digit and Digitable.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `digit`, `digitable`, `identity`, `russian`, `english` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts) |
+| Related skills | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`fts`](/user-guide/skills/bundled/software-development/software-development-fts) |
 
 ## Reference: full SKILL.md
 

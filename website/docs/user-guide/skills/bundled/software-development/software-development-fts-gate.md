@@ -21,7 +21,7 @@ Use when an FTS specification must be certified before it drives a consequential
 | License | Apache-2.0 |
 | Platforms | linux, macos, windows |
 | Tags | `fts`, `verification`, `certification`, `morphisms`, `mcp`, `fallacies` |
-| Related skills | [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts), [`verified-answers`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-verified-answers), [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench) |
+| Related skills | [`fts`](/user-guide/skills/bundled/software-development/software-development-fts), [`verified-answers`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-verified-answers), [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-workbench`](/user-guide/skills/bundled/software-development/software-development-digitable-workbench) |
 
 ## Reference: full SKILL.md
 

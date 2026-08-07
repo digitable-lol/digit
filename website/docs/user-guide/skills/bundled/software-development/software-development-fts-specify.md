@@ -21,7 +21,7 @@ Turn a business requirement into an FTS specification.
 | License | Apache-2.0 |
 | Platforms | linux, macos, windows |
 | Tags | `fts`, `spec-driven`, `requirements`, `specification`, `ddd`, `ftspec` |
-| Related skills | [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts), [`fts-constitution`](/docs/user-guide/skills/bundled/software-development/software-development-fts-constitution), [`fts-admit`](/docs/user-guide/skills/bundled/software-development/software-development-fts-admit), [`fts-memory`](/docs/user-guide/skills/bundled/software-development/software-development-fts-memory) |
+| Related skills | [`fts`](/user-guide/skills/bundled/software-development/software-development-fts), [`fts-constitution`](/user-guide/skills/bundled/software-development/software-development-fts-constitution), [`fts-admit`](/user-guide/skills/bundled/software-development/software-development-fts-admit), [`fts-memory`](/user-guide/skills/bundled/software-development/software-development-fts-memory) |
 
 ## Reference: full SKILL.md
 

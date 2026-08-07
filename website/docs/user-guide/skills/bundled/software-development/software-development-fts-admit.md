@@ -21,7 +21,7 @@ Check a new requirement against the corpus before coding.
 | License | Apache-2.0 |
 | Platforms | linux, macos, windows |
 | Tags | `fts`, `spec-driven`, `ftspec`, `requirements`, `review`, `verification` |
-| Related skills | [`fts`](/docs/user-guide/skills/bundled/software-development/software-development-fts), [`fts-specify`](/docs/user-guide/skills/bundled/software-development/software-development-fts-specify), [`fts-constitution`](/docs/user-guide/skills/bundled/software-development/software-development-fts-constitution), [`fts-memory`](/docs/user-guide/skills/bundled/software-development/software-development-fts-memory) |
+| Related skills | [`fts`](/user-guide/skills/bundled/software-development/software-development-fts), [`fts-specify`](/user-guide/skills/bundled/software-development/software-development-fts-specify), [`fts-constitution`](/user-guide/skills/bundled/software-development/software-development-fts-constitution), [`fts-memory`](/user-guide/skills/bundled/software-development/software-development-fts-memory) |
 
 ## Reference: full SKILL.md
 

@@ -34,7 +34,7 @@ Create diagrams by writing standard Excalidraw element JSON and saving as `.exca
 
 ## When to use
 
-Generate `.excalidraw` files for architecture diagrams, flowcharts, sequence diagrams, concept maps, and more. Files can be opened at excalidraw.com or uploaded for shareable links.
+Generate `.excalidraw` files for architecture diagrams, flowcharts, sequence diagrams, concept maps, and more. Files can be opened at excalidraw.com, opened locally on a canvas the owner shares with you (`scripts/canvas.py`), or uploaded for shareable links.
 
 ## Workflow
 
@@ -42,6 +42,10 @@ Generate `.excalidraw` files for architecture diagrams, flowcharts, sequence dia
 2. **Write the elements JSON** -- an array of Excalidraw element objects
 3. **Save the file** using `write_file` to create a `.excalidraw` file
 4. **Optionally upload** for a shareable link using `scripts/upload.py` via `terminal`
+
+For a diagram the owner is also editing, this one-way workflow is the wrong one:
+read [Revising a Diagram](#revising-a-diagram-someone-else-is-editing) and
+[Letting the Owner Open the Same File](#letting-the-owner-open-the-same-file).
 
 ### Saving a Diagram
 
@@ -60,6 +64,74 @@ Wrap your elements array in the standard `.excalidraw` envelope and save with `w
 ```
 
 Save to any path, e.g. `~/diagrams/my_diagram.excalidraw`.
+
+### Revising a Diagram Someone Else Is Editing
+
+`write_file` is for a diagram you are creating. For one the owner has drawn in —
+the "owner sketches rough shapes, agent tidies them" loop — use
+`scripts/revise.py`, and do **not** rewrite the file wholesale.
+
+The reason is that most of what is in the file is not yours. Each element carries
+`seed`, `versionNonce`, `groupIds`, `boundElements`, `frameId`, `customData` and
+whatever the current app version added; arrows attach to shapes through
+`startBinding`/`endBinding`, text sits inside a shape via `containerId`; and
+Excalidraw reconciles edits using `version`/`versionNonce`/`updated`. Re-emitting
+"the same" element from the subset you understand drops the rest, breaks the
+arrows, and can lose to a stale copy in the owner's open tab. All three failures
+are silent.
+
+```bash
+# See what is there, without pulling the whole JSON into the conversation
+python skills/creative/excalidraw/scripts/revise.py inspect ~/diagrams/d.excalidraw
+
+# Change things by element id; everything else is left exactly as it was
+python skills/creative/excalidraw/scripts/revise.py apply ~/diagrams/d.excalidraw --edits - <<'EOF'
+[{"id": "box1", "set": {"backgroundColor": "#a5d8ff", "x": 140}},
+ {"id": "label1", "set": {"text": "Payment gateway"}},
+ {"add": {"type": "rectangle", "id": "box9", "x": 400, "y": 100,
+          "width": 180, "height": 80}}]
+EOF
+```
+
+`inspect` prints, per element, how many fields it does **not** interpret. Treat
+that count as the measure of what a from-scratch rewrite would throw away.
+
+Deleting an element that something else refers to is refused, because Excalidraw
+drops the orphaned arrow or label without reporting it. Either fix the referring
+elements first, or pass `--force` to delete and have the references cleaned.
+`--output` writes elsewhere and leaves the original alone.
+
+### Letting the Owner Open the Same File
+
+`revise.py` is only half of the loop. The other half is the owner opening the
+file — and "drag it onto excalidraw.com" is not that half, because the site
+opens a *copy*: its save goes to the downloads folder, not back to the path you
+are editing. Two people working on a file and its copy are exchanging versions,
+not editing together.
+
+`scripts/canvas.py` serves a canvas on 127.0.0.1 that reads and writes **that
+exact path**. Excalidraw itself is vendored under `canvas/vendor` (MIT), so no
+network is involved.
+
+```bash
+python skills/creative/excalidraw/scripts/canvas.py ~/diagrams/d.excalidraw
+# prints: Холст: http://127.0.0.1:PORT/?t=TOKEN   (and opens the browser)
+python skills/creative/excalidraw/scripts/canvas.py ~/diagrams/d.excalidraw --no-browser
+```
+
+Give the owner the printed URL. The loop then looks like this:
+
+- The owner draws; the file is written a moment later, and your next `inspect`
+  sees it.
+- You run `revise.py`; the open tab picks the change up within ~2 s without a
+  reload — the owner watches the tidy-up land.
+- If both sides changed the file, the save is refused and the owner is asked
+  which version to keep. Nothing is overwritten silently in either direction.
+- Merely opening a file does not rewrite it.
+
+Two things to know before promising anything: the token in the URL is required
+(the API refuses without it), and one server serves one file — start another
+for another diagram.
 
 ### Uploading for a Shareable Link
 

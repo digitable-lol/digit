@@ -21,7 +21,7 @@ Create and verify executable FTS specifications.
 | License | Apache-2.0 |
 | Platforms | linux, macos, windows |
 | Tags | `fts`, `executable-specifications`, `ddd`, `testing`, `mcp` |
-| Related skills | [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-courses`](/docs/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`test-driven-development`](/docs/user-guide/skills/bundled/software-development/software-development-test-driven-development) |
+| Related skills | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-courses`](/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-workbench`](/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`test-driven-development`](/user-guide/skills/bundled/software-development/software-development-test-driven-development) |
 
 ## Reference: full SKILL.md
 

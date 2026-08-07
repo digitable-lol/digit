@@ -21,7 +21,7 @@ Use when a task needs a deterministic local computation — hashes, HMAC, encodi
 | License | GPL-3.0 |
 | Platforms | linux, macos, windows |
 | Tags | `digitable`, `tools`, `mcp`, `deterministic`, `converters`, `crypto` |
-| Related skills | [`digitable-tools`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`verified-answers`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-verified-answers), [`digit`](/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-workbench`](/docs/user-guide/skills/bundled/software-development/software-development-digitable-workbench) |
+| Related skills | [`digitable-tools`](/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`verified-answers`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-verified-answers), [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-workbench`](/user-guide/skills/bundled/software-development/software-development-digitable-workbench) |
 
 ## Reference: full SKILL.md
 
