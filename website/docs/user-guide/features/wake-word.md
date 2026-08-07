@@ -142,13 +142,17 @@ At the shipped defaults (`sensitivity: 0.6`, `confirmation_frames: 2`):
 
 | What you say | Clean | Noisy |
 |---|---|---|
-| "hey digit" — **missed** (you say it, nothing happens) | 6.2% | 25.6% |
-| "hey hermes" — false wake (the retired phrase) | 0.0% | 0.1% |
-| near-misses ("hey digital", "hey gadget", "hey did it", …) — false wake | 14.5% | 20.2% |
-| ordinary sentences — false wake | 0.0% | 0.1% |
+| "hey digit" — **missed** (you say it, nothing happens) | 6.2% (12/192) | 25.7% (247/960) |
+| "hey hermes" — false wake (the retired phrase) | 0.0% (0/896) | 0.1% (3/4480) |
+| near-misses ("hey digital", "hey gadget", "hey did it", …) — false wake | 14.5% (93/640) | 20.2% (647/3200) |
+| ordinary sentences — false wake | 0.0% (0/256) | 0.0% (0/1280) |
 
 **False wakes on real speech: 0.19 per hour** — roughly one every five hours of
 continuous conversation in the room.
+
+Counts are given because the zeros are small-sample zeros, not proofs: 0 of 896
+clean "hey hermes" utterances woke it, which bounds the rate below roughly 0.3%,
+not at nothing.
 
 Both directions have a price and neither is zero. `confirmation_frames: 3` cuts
 false wakes to 0.09/hour and near-miss fires to 7.5%, but more than doubles the

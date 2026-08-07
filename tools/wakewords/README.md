@@ -52,10 +52,10 @@ At the shipped defaults (0.6 / 2 frames), on held-out voices:
 
 | | clean | noisy (5–20 dB SNR + RIR) |
 |---|---|---|
-| "hey digit" missed | 6.2% | 25.6% |
-| "hey hermes" false wake | 0.0% | 0.1% |
-| near-miss phrases false wake | 14.5% | 20.2% |
-| ordinary sentences false wake | 0.0% | 0.1% |
+| "hey digit" missed | 6.2% (12/192) | 25.7% (247/960) |
+| "hey hermes" false wake | 0.0% (0/896) | 0.1% (3/4480) |
+| near-miss phrases false wake | 14.5% (93/640) | 20.2% (647/3200) |
+| ordinary sentences false wake | 0.0% (0/256) | 0.0% (0/1280) |
 
 False wakes on 10.7 h of real recorded speech: **0.19/hour**.
 
