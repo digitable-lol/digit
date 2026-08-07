@@ -1,4 +1,4 @@
-"""Tests for tools.wake_word — the "Hey Hermes" hotword detector.
+"""Tests for tools.wake_word — the "Hey Digit" hotword detector.
 
 No live audio or network: the sounddevice import is faked, engines are stubbed,
 and lazy-dep availability is monkeypatched. Covers config resolution, engine
@@ -6,6 +6,7 @@ dispatch, the requirements probe, the detector fire/cooldown loop, and the
 process-wide singleton lifecycle.
 """
 
+import logging
 import multiprocessing
 import os
 import sys
@@ -36,7 +37,7 @@ def test_config_defaults_and_clamping():
     assert ww._sensitivity({"sensitivity": "nope"}) == ww._DEFAULTS["sensitivity"]
     assert ww._sensitivity({}) == ww._DEFAULTS["sensitivity"]
     assert ww.wake_phrase({"phrase": "hey hermes"}) == "hey hermes"
-    assert ww.wake_phrase({}) == "hey hermes"
+    assert ww.wake_phrase({}) == "hey digit"
 
 
 def test_wake_surface_enabled_gate():
@@ -226,12 +227,130 @@ def test_openwakeword_ensures_base_models_for_custom_path(monkeypatch):
 
 
 def test_bundled_hey_digit_model_ships_on_disk():
-    # The "hey hermes" wake word works out of the box only if the model is
+    # The "hey digit" wake word works out of the box only if the model is
     # actually bundled. Both framework artifacts must exist and be non-trivial.
     for framework in ("onnx", "tflite"):
         path = ww._bundled_wakeword_path(framework)
         assert os.path.exists(path), path
         assert os.path.getsize(path) > 1024, path
+
+
+def test_the_bundled_model_has_the_contract_sensitivity_assumes():
+    """``sensitivity`` is compared to the model's raw output, so it must be a probability.
+
+    ``_OpenWakeWordEngine.process`` fires on ``score >= self._threshold`` with
+    the threshold taken straight from ``wake_word.sensitivity`` (default 0.6).
+    That only means anything if the model emits a 0..1 score from one
+    ``[1, 16, 96]`` frame window. Swap in a model with a different input shape
+    or a raw logit output and nothing raises -- the listener just stops firing,
+    or fires constantly, with the documented 0.0-1.0 knob quietly meaningless.
+    openWakeWord also reads ``input_details[0]['shape'][1]`` as the frame count
+    (model.py), so the middle dimension is load-bearing too.
+    """
+    ort = pytest.importorskip("onnxruntime")
+    import numpy as np
+
+    sess = ort.InferenceSession(
+        ww._bundled_wakeword_path("onnx"), providers=["CPUExecutionProvider"]
+    )
+    (inp,) = sess.get_inputs()
+    (out,) = sess.get_outputs()
+    assert inp.shape == [1, 16, 96], inp.shape
+    assert out.shape == [1, 1], out.shape
+
+    rng = np.random.default_rng(0)
+    scores = [
+        float(sess.run(None, {inp.name: rng.random((1, 16, 96), dtype=np.float32)})[0][0, 0])
+        for _ in range(64)
+    ]
+    assert all(0.0 <= s <= 1.0 for s in scores), (min(scores), max(scores))
+
+
+def test_the_two_shipped_backends_agree_on_the_same_input():
+    """A Mac and a Linux box must not disagree about whether you said the phrase.
+
+    ``default_inference_framework`` runs tflite on macOS ARM64 and onnx
+    everywhere else, from two separate files converted by separate toolchains.
+    If the conversion drifts, the wake word works on one platform and not the
+    other and nothing in the codebase would notice. Skipped where no tflite
+    runtime is installed (it is a lazy dep, present on macOS).
+    """
+    ort = pytest.importorskip("onnxruntime")
+    import numpy as np
+
+    try:
+        from ai_edge_litert.interpreter import Interpreter
+    except ImportError:
+        try:
+            from tflite_runtime.interpreter import Interpreter
+        except ImportError:
+            pytest.skip("no tflite runtime installed")
+
+    sess = ort.InferenceSession(
+        ww._bundled_wakeword_path("onnx"), providers=["CPUExecutionProvider"]
+    )
+    iname = sess.get_inputs()[0].name
+    interp = Interpreter(model_path=ww._bundled_wakeword_path("tflite"))
+    interp.allocate_tensors()
+    ii, oi = interp.get_input_details()[0], interp.get_output_details()[0]
+    assert list(ii["shape"]) == [1, 16, 96], ii["shape"]
+
+    rng = np.random.default_rng(0)
+    worst = 0.0
+    for _ in range(64):
+        x = rng.random((1, 16, 96), dtype=np.float32)
+        a = float(sess.run(None, {iname: x})[0][0, 0])
+        interp.set_tensor(ii["index"], x)
+        interp.invoke()
+        b = float(interp.get_tensor(oi["index"])[0, 0])
+        worst = max(worst, abs(a - b))
+    # Far below any plausible margin around the 0.6 default threshold.
+    assert worst < 1e-4, f"backends disagree by {worst}"
+
+
+def test_pre_rebrand_model_name_loads_the_bundled_model_and_says_so(monkeypatch, caplog):
+    """An old config naming ``hey_hermes`` must not break, and must not lie.
+
+    Before hey_digit existed, ``wake_word.openwakeword.model: hey_hermes`` was
+    the documented default, so it is written into real config files. That model
+    no longer ships. Passing the name through to openWakeWord would fail to
+    load, and resolving it silently would leave the user saying a phrase that
+    stopped working with nothing to explain it. So: resolve to the bundled
+    model AND warn, naming the phrase that now works.
+    """
+    calls = _install_fake_openwakeword(monkeypatch)
+    monkeypatch.setattr(ww.sys, "platform", "linux")
+    monkeypatch.setattr("platform.machine", lambda: "x86_64")
+    with caplog.at_level(logging.WARNING, logger=ww.logger.name):
+        ww._OpenWakeWordEngine(
+            {"provider": "openwakeword", "openwakeword": {"model": "hey_hermes"}}
+        )
+
+    (downloaded,) = calls["download"]
+    assert downloaded == [ww._bundled_wakeword_path("onnx")], (
+        "a legacy model name must resolve to the bundled artifact, not be passed through"
+    )
+    warning = "\n".join(r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING)
+    assert "hey_hermes" in warning, "the warning must name what the user configured"
+    assert ww._DEFAULTS["phrase"] in warning, "the warning must name the phrase that now works"
+
+
+def test_every_legacy_alias_resolves_and_none_of_them_is_silent(monkeypatch, caplog):
+    """The bare forms count too -- ``hermes`` and ``hey hermes``, not just the filename."""
+    for alias in sorted(ww._LEGACY_MODEL_ALIASES):
+        calls = _install_fake_openwakeword(monkeypatch)
+        monkeypatch.setattr(ww.sys, "platform", "linux")
+        monkeypatch.setattr("platform.machine", lambda: "x86_64")
+        caplog.clear()
+        with caplog.at_level(logging.WARNING, logger=ww.logger.name):
+            ww._OpenWakeWordEngine(
+                {"provider": "openwakeword", "openwakeword": {"model": alias}}
+            )
+        (downloaded,) = calls["download"]
+        assert downloaded == [ww._bundled_wakeword_path("onnx")], alias
+        assert any(r.levelno >= logging.WARNING for r in caplog.records), (
+            f"{alias!r} resolved silently"
+        )
 
 
 # ── platform-aware backend selection (openWakeWord onnx is broken on macOS ARM64,

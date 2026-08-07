@@ -10,7 +10,7 @@ Digit supports full voice interaction across CLI and messaging platforms. Talk t
 
 If you want a practical setup walkthrough with recommended configurations and real usage patterns, see [Use Voice Mode with Digit](/guides/use-voice-mode-with-digit).
 
-For hands-free session start — saying "hey hermes" (or any phrase) to open a fresh voice session on the CLI, TUI, or desktop app — see [Wake Word](/user-guide/features/wake-word).
+For hands-free session start — saying "hey digit" (or any phrase) to open a fresh voice session on the CLI, TUI, or desktop app — see [Wake Word](/user-guide/features/wake-word).
 
 ## Prerequisites
 

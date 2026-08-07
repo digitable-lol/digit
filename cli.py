@@ -12788,7 +12788,7 @@ class DigitCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
 
         _cprint(f"\n{_DIM}Voice mode disabled.{_RST}")
 
-    # ── Wake word ("Hey Hermes") ─────────────────────────────────────────
+    # ── Wake word ("Hey Digit") ──────────────────────────────────────────
     #
     # An always-on hotword listener (tools/wake_word.py) that, on detecting
     # the wake phrase, starts a fresh session and captures one utterance via
@@ -17575,7 +17575,7 @@ class DigitCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         process_thread = threading.Thread(target=process_loop, daemon=True)
         process_thread.start()
 
-        # Wake word ("Hey Hermes") — start the always-on hotword listener if
+        # Wake word ("Hey Digit") — start the always-on hotword listener if
         # enabled. Off-thread so a first-run engine install never blocks the
         # prompt; best-effort, so deps/mic/key gaps are surfaced, never fatal.
         def _wake_startup():

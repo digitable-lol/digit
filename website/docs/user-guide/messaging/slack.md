@@ -573,7 +573,7 @@ slack:
   # Custom mention patterns that trigger the bot
   # (in addition to the default @mention detection)
   mention_patterns:
-    - "hey hermes"
+    - "hey digit"
     - "digit,"
 
   # Text prepended to every outgoing message

@@ -215,6 +215,11 @@ def test_shipped_config_defaults_agree_with_the_wake_word_engine():
 
     They are separate literals in separate files, so they can drift; when they
     do, the documented default stops describing the running one.
+
+    The two detection knobs are included because their values are now a
+    *measurement* (see the wake-word docs): a drift between the number the
+    engine runs on and the number the docs derive their error rates from makes
+    the published rates describe a configuration nobody is running.
     """
     from digit_cli.config_defaults import DEFAULT_CONFIG
     from tools import wake_word
@@ -222,42 +227,93 @@ def test_shipped_config_defaults_agree_with_the_wake_word_engine():
     configured = DEFAULT_CONFIG["wake_word"]
     assert configured["phrase"] == wake_word._DEFAULTS["phrase"]
     assert configured["openwakeword"]["model"] == wake_word._BUNDLED_MODEL_NAME
+    assert configured["sensitivity"] == wake_word._DEFAULTS["sensitivity"]
+    assert configured["confirmation_frames"] == wake_word._DEFAULTS["confirmation_frames"]
 
 
-def test_the_wake_phrase_pin_is_documented_where_the_rebrand_is_explained():
-    """README's replacement table is where a reader checks what survived.
+def test_the_wake_phrase_change_is_documented_where_the_rebrand_is_explained():
+    """README's replacement table is where a reader checks what changed.
 
-    The wake phrase is the one user-visible string still saying "hermes", so
-    an undocumented pin reads as an oversight and invites exactly the blanket
-    rename that would break detection. Requiring the explanation here keeps
-    the reason next to the rest of the rebrand contract, not only in a
-    source comment nobody reading the README will reach.
+    The wake phrase was the last user-visible string saying "hermes", and it
+    was pinned for a reason a reader had to be told: it labels trained weights.
+    Now that the weights were retrained, the same section has to carry the new
+    fact AND what became of the old phrase -- someone upgrading needs to learn
+    from the README, not from a wake word that stopped answering. Requiring
+    both keeps the explanation next to the rest of the rebrand contract
+    instead of only in a source comment nobody reading the README will reach.
     """
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     _, _, origins = readme.partition("## Происхождение")
 
-    assert "hey hermes" in origins.lower()
+    assert "hey digit" in origins.lower(), "README does not name the current wake phrase"
+    assert "hey hermes" in origins.lower(), "README does not say what became of the old phrase"
     assert "tools/wakewords/" in origins
 
 
-def test_the_runtime_defaults_that_pin_the_phrase_say_why():
-    """The two literals a rename would hit first must carry the marker.
+def test_the_runtime_defaults_agree_and_name_no_upstream_phrase():
+    """The literals a rename would hit first, checked against the real risk.
 
-    ``rebrand:keep`` is what separates a deliberate keep from a leftover. It
-    is required on the *default values* -- not on prose -- because those are
-    the lines a search-and-replace rewrites without anyone reading the
-    paragraph above them.
+    While the phrase was pinned to upstream's weights the risk was a blanket
+    search-and-replace renaming the string without the model; the marker
+    ``rebrand:keep`` guarded it. The model has since been retrained, so the
+    risk inverted: what must not happen now is "hermes" creeping back into the
+    default phrase or the bundled model name. Both defaults are asserted
+    directly, in both files that carry them, because they are separate literals
+    that can drift.
     """
     for path, needle in [
-        ("tools/wake_word.py", '"phrase": "hey hermes"'),
-        ("digit_cli/config_defaults.py", '"phrase": "hey hermes"'),
-        ("tools/wake_word.py", '_BUNDLED_MODEL_NAME = "hey_hermes"'),
-        ("digit_cli/config_defaults.py", '"model": "hey_hermes"'),
+        ("tools/wake_word.py", '"phrase": "hey digit"'),
+        ("digit_cli/config_defaults.py", '"phrase": "hey digit"'),
+        ("tools/wake_word.py", '_BUNDLED_MODEL_NAME = "hey_digit"'),
+        ("digit_cli/config_defaults.py", '"model": "hey_digit"'),
     ]:
-        lines = [
-            line for line in (REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
-            if needle in line
-        ]
-        assert lines, f"{path}: pinned default {needle!r} disappeared"
-        for line in lines:
-            assert "rebrand:keep" in line, f"{path}: unmarked pinned default: {line.strip()}"
+        text = (REPO_ROOT / path).read_text(encoding="utf-8")
+        assert needle in text, f"{path}: default {needle!r} disappeared"
+
+
+def test_the_retired_wake_phrase_survives_only_as_a_marked_compatibility_alias():
+    """"hermes" may appear in the wake-word engine exactly once, as compat.
+
+    ``_LEGACY_MODEL_ALIASES`` is why an existing config naming the upstream
+    model still loads instead of crashing -- the same practice as
+    LS_BOARD_KEY_LEGACY. It is also precisely the kind of line a tidy-up
+    deletes without noticing it is load-bearing, so it must carry the
+    ``rebrand:keep`` marker. Everything else in the module must be clean:
+    an unmarked "hermes" here is either a leftover or a regression of the
+    phrase itself.
+    """
+    from tools import wake_word
+
+    assert wake_word._LEGACY_MODEL_ALIASES >= {"hey_hermes", "hey hermes"}
+    assert not (wake_word._BUNDLED_MODEL_ALIASES & wake_word._LEGACY_MODEL_ALIASES), (
+        "a legacy name must be resolved on the announced path, not the silent one"
+    )
+
+    source = (REPO_ROOT / "tools" / "wake_word.py").read_text(encoding="utf-8")
+    unmarked = [
+        line for line in source.splitlines()
+        if "hermes" in line.lower() and "rebrand:keep" not in line
+    ]
+    assert not unmarked, "unmarked 'hermes' in the wake-word engine: " + repr(unmarked)
+
+
+def test_no_wake_word_artifact_named_after_upstream_ships():
+    """``tools/wakewords/`` is where the rebrand was most visible to a user.
+
+    The phrase was never a string we could edit -- it was the label of the
+    weights in this directory. Shipping a file called ``hey_hermes.*`` again
+    would mean either a second model answering to upstream's name or, worse,
+    the old weights back under the new default. The directory must hold the
+    bundled model and nothing named for upstream.
+    """
+    from tools import wake_word
+
+    wakewords = REPO_ROOT / "tools" / "wakewords"
+    artifacts = sorted(p.name for p in wakewords.iterdir() if p.suffix in (".onnx", ".tflite"))
+
+    assert artifacts, "no wake-word artifacts ship at all"
+    assert not [a for a in artifacts if "hermes" in a.lower()], artifacts
+    for name in artifacts:
+        assert name.startswith(wake_word._BUNDLED_MODEL_NAME), (
+            f"{name} is not the bundled model and nothing selects it by default"
+        )

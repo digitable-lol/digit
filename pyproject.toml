@@ -192,7 +192,7 @@ voice = [
   "sounddevice==0.5.5",
   "numpy==2.4.3",
 ]
-# "Hey Hermes" wake word — on-device hotword detection. All engines are
+# "Hey Digit" wake word — on-device hotword detection. All engines are
 # optional; openWakeWord (ONNX) is the free default, sherpa-onnx adds
 # open-vocabulary phrases (any typed phrase, zero training), Porcupine is
 # the premium alternative. Desktop installs ([--include-desktop]) eager-install

@@ -51,6 +51,22 @@ they affect, and what their authors have to change. Rollback:
   redirects. The upstream host survives in exactly two places, as a bootstrap
   fallback for the skills catalog when our own site has not been deployed yet:
   `deploy-site.yml` and `website/scripts/prebuild.mjs`.
+- **Wake word: the phrase is now "hey digit".** It stayed "hey hermes" until
+  now for a reason that has not changed — the phrase labels trained weights,
+  not a string we own — so the fix was to retrain, not to rename. A `hey_digit`
+  openWakeWord model was trained (synthetic TTS positives, ACAV100M and
+  adversarial negatives, with a deliberately weighted block of "hey hermes" so
+  the new model actively *rejects* the old phrase) and ships in
+  `tools/wakewords/` in both ONNX and TFLite. Measured behaviour, including the
+  working point and its cost in both directions, is in
+  `website/docs/user-guide/features/wake-word.md`.
+  **`hey_hermes.onnx`/`.tflite` no longer ship.** Configs naming the old model
+  (`wake_word.openwakeword.model: hey_hermes`, or the bare `hermes` /
+  `hey hermes`) still load — they resolve to the bundled model and log a warning
+  that the phrase is now "hey digit", rather than failing to load or silently
+  changing what you have to say. To keep the old phrase, point
+  `wake_word.openwakeword.model` at your own copy of a `hey_hermes` model, or
+  use the `sherpa` provider, which detects any typed phrase with no model.
 
 ### Deprecated
 
@@ -84,9 +100,11 @@ software or breach a licence:
   licence; see the Origin section in the README.
 - **`hermes-0day`** — the name of a real security incident whose indicators of
   compromise ship in `digit_cli/mcp_security.py`.
-- **The "hey hermes" wake word**, which is baked into the bundled ONNX/TFLite
+- ~~**The "hey hermes" wake word**, which is baked into the bundled ONNX/TFLite
   weights. The detector fires on those acoustics regardless of what the
-  identifier is called.
+  identifier is called.~~ **No longer kept** — the weights were retrained, see
+  "Wake word: the phrase is now hey digit" below. This entry stays because the
+  reasoning was right: the phrase could only change together with the model.
 - **`contributors/` and `.mailmap`** — third-party identity records.
 
 ### Added

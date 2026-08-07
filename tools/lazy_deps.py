@@ -176,7 +176,7 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # small silk-v3 codec binding; installed on first .silk transcription.
     "stt.silk": ("pilk==0.2.4",),
 
-    # ─── Wake word ("Hey Hermes") engines ──────────────────────────────────
+    # ─── Wake word ("Hey Digit") engines ───────────────────────────────────
     # Keep in sync with the `wake` extra in pyproject.toml. openWakeWord is the
     # free, local default (ONNX runtime); Porcupine is the premium engine.
     # openWakeWord's ONNX embedding model returns near-zero scores on macOS

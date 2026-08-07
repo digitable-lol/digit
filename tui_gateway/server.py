@@ -12831,7 +12831,7 @@ def _voice_record_key() -> str:
     return str(record_key) if isinstance(record_key, str) and record_key else "ctrl+b"
 
 
-# ── Wake word ("Hey Hermes") ──────────────────────────────────────────────
+# ── Wake word ("Hey Digit") ───────────────────────────────────────────────
 # The detector is process-global (one mic), like voice. The first eligible
 # transport to call wake.start owns it until stop, disconnect, or stream failure.
 # On detection we emit wake.detected; the client opens a new session and starts

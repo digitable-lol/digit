@@ -119,7 +119,7 @@ export const wakeCommands: SlashCommand[] = [
     // Без зашитой фразы: она берётся из wake_word.phrase и на движке sherpa
     // пользователь задаёт её сам. Живую фразу печатают statusLine/runOn
     // («wake: listening for “…”»), поэтому в списке команд по `/` её дублировать
-    // нечем — а «Hey Hermes» там ещё и врало бы после смены фразы.
+    // нечем — а зашитая фраза там ещё и врала бы после её смены.
     help: 'toggle the hands-free wake word listener [on|off|status]',
     name: 'wake',
     usage: '/wake [on|off|status]',

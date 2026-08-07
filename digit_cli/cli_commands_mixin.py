@@ -3254,7 +3254,7 @@ class CLICommandsMixin:
             _cprint("Usage: /voice [on|off|tts|status]")
 
     def _handle_wake_command(self, command: str):
-        """Handle /wake [on|off|status] — the 'Hey Hermes' hotword listener.
+        """Handle /wake [on|off|status] — the 'Hey Digit' hotword listener.
 
         The toggle IS the config: an explicit on/off (or bare toggle) also
         writes ``wake_word.enabled`` to config.yaml so the choice persists

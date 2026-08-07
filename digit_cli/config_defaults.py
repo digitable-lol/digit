@@ -1536,30 +1536,31 @@ DEFAULT_CONFIG = {
         "stop_phrases": ["stop"],
     },
 
-    # "Hey Hermes" hands-free wake word. Always-on, on-device hotword
+    # "Hey Digit" hands-free wake word. Always-on, on-device hotword
     # detection that starts a fresh voice session — the "Hey Siri" pattern.
     # Off by default; toggle with /wake or `wake_word.enabled: true`.
     #
-    # rebrand:keep — the phrase stayed "hey hermes" through the Digit rebrand
-    # on purpose: it names a trained openWakeWord artifact shipped in
-    # tools/wakewords/, so the string cannot be renamed without retraining the
-    # model. See tools/wake_word.py for the full reasoning.
+    # The phrase names a trained openWakeWord artifact shipped in
+    # tools/wakewords/, so it cannot be renamed without retraining the model —
+    # which is why "hey hermes" survived the rebrand until hey_digit was
+    # trained. Pre-rebrand model names still load (with a warning). See
+    # tools/wake_word.py and tools/wakewords/README.md.
     "wake_word": {
         "enabled": False,
         "surface": "auto",            # eligible surface: "auto" (first claimant) | "cli" | "tui" | "gui"
         "input_device": None,          # PortAudio input device index/name; null uses the process default
         "provider": "openwakeword",   # "openwakeword" (free, local) | "sherpa" (free, ANY phrase, no training) | "porcupine" (premium; needs PORCUPINE_ACCESS_KEY)
-        "phrase": "hey hermes",       # rebrand:keep (trained model, see above) — for "sherpa" this IS the detected phrase (any text works); for other engines it's a cosmetic label — detection is keyed by the model/keyword below
+        "phrase": "hey digit",        # matches the bundled trained model (see above) — for "sherpa" this IS the detected phrase (any text works); for other engines it's a cosmetic label — detection is keyed by the model/keyword below
         "sensitivity": 0.6,           # 0.0-1.0 detection threshold, consistent across engines (higher = stricter, fewer false triggers)
-        "confirmation_frames": 3,     # openWakeWord only: consecutive over-threshold frames required to fire (higher = fewer false triggers on ambient speech, slightly more latency; 1 = old single-frame behavior)
+        "confirmation_frames": 2,     # openWakeWord only: consecutive over-threshold frames required to fire (higher = fewer false triggers on ambient speech, slightly more latency; 1 = old single-frame behavior). 2 is measured: 3 misses 14.6% of utterances in a quiet room vs 6.2%, buying 0.09 vs 0.19 false wakes/hour — see the wake-word docs
         "start_new_session": True,    # start a fresh session on wake vs. continue the current one
         "profile_routing": True,      # sherpa only: also listen for every wake-enabled profile's phrase and route the wake to the matching profile
         "openwakeword": {
-            # "hey_hermes" (the bundled, works-out-of-the-box default) OR a
+            # "hey_digit" (the bundled, works-out-of-the-box default) OR a
             # built-in openWakeWord name ("hey_jarvis", "alexa", "hey_mycroft",
             # ...) OR a path to a custom .onnx/.tflite model for another phrase.
             # See the wake-word docs for the custom-model training guide.
-            "model": "hey_hermes",  # rebrand:keep — filename of the bundled trained model
+            "model": "hey_digit",  # filename of the bundled trained model; "hey_hermes" still resolves here with a warning
             # "" (auto — tflite on macOS ARM64, onnx elsewhere) | "onnx" | "tflite".
             # openWakeWord's onnx backend scores near-zero on macOS ARM64
             # (dscripka/openWakeWord#336), so auto avoids a listener that arms
@@ -3741,7 +3742,7 @@ OPTIONAL_ENV_VARS = {
         "category": "tool",
     },
     "PORCUPINE_ACCESS_KEY": {
-        "description": "Picovoice access key for the Porcupine 'Hey Hermes' wake word engine (optional; openWakeWord is the free default)",
+        "description": "Picovoice access key for the Porcupine 'Hey Digit' wake word engine (optional; openWakeWord is the free default)",
         "prompt": "Picovoice access key",
         "url": "https://console.picovoice.ai/",
         "password": True,
