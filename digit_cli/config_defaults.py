@@ -2410,7 +2410,7 @@ DEFAULT_CONFIG = {
     # The default URL is served by the docs site GitHub Pages deploy.
     "model_catalog": {
         "enabled": True,
-        "url": "https://hermes-agent.nousresearch.com/docs/api/model-catalog.json",
+        "url": "https://docs.digitable.life/api/model-catalog.json",
         # Digit does not surface the upstream vendor cloud in provider pickers.
         # Existing explicit configs remain loadable for compatibility.
         "excluded_providers": ["nous"],
