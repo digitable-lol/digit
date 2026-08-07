@@ -38,7 +38,7 @@
 <div dir="ltr">
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 </div>
@@ -52,7 +52,7 @@ curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 <div dir="ltr">
 
 ```powershell
-iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+iex (irm https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.ps1)
 ```
 
 </div>
@@ -149,7 +149,7 @@ digit setup --portal
 
 ## دستاویزات (Documentation)
 
-تمام دستاویزات **[hermes-agent.nousresearch.com/docs](https://docs.digitable.life/)** پر موجود ہیں:
+تمام دستاویزات **[docs.digitable.life](https://docs.digitable.life/)** پر موجود ہیں:
 
 <div dir="ltr">
 

@@ -124,7 +124,7 @@ development environment on the same layout the CLI, updater, lazy dependency
 installer, gateway, and docs assume.
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 cd "${DIGIT_HOME:-$HOME/.digit}/digit"
 
 # Add dev/test extras on top of the standard install.
@@ -275,7 +275,7 @@ digit/
 ├── skills/                   # Bundled skills (copied to ~/.digit/skills/ on install)
 ├── optional-skills/          # Official optional skills (discoverable via hub, not activated by default)
 ├── tests/                    # Test suite
-├── website/                  # Documentation site (hermes-agent.nousresearch.com)
+├── website/                  # Documentation site (docs.digitable.life)
 │
 ├── cli-config.yaml.example   # Example configuration (copied to ~/.digit/config.yaml)
 └── AGENTS.md                 # Development guide for AI coding assistants

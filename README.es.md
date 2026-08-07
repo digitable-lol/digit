@@ -4,7 +4,7 @@
 
 # Digit ☤
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/">Hermes Agent</a> | <a href="https://hermes-agent.nousresearch.com/">Digit Desktop</a>
+  <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a> | <a href="https://docs.digitable.life/getting-started/installation">Digit Desktop</a>
 </p>
 <p align="center">
   <a href="https://docs.digitable.life/"><img src="https://img.shields.io/badge/Docs-digit--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentación"></a>
@@ -37,7 +37,7 @@ Usa cualquier modelo que quieras — [Nous Portal](https://portal.nousresearch.c
 ### Linux, macOS, WSL2, Termux
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 ### Windows (nativo, PowerShell)
@@ -47,7 +47,7 @@ curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 Ejecuta esto en PowerShell:
 
 ```powershell
-iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+iex (irm https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.ps1)
 ```
 
 El instalador se encarga de todo: uv, Python 3.11, Node.js, ripgrep, ffmpeg, **y un Git Bash portátil** (MinGit, descomprimido en `%LOCALAPPDATA%\digit\git` — no requiere administrador, completamente aislado de cualquier instalación de Git del sistema). Digit usa este Git Bash incluido para ejecutar comandos de shell.
@@ -126,7 +126,7 @@ Para las listas de comandos completas, consulta la [guía de CLI](https://docs.d
 
 ## Documentación
 
-Toda la documentación está en **[hermes-agent.nousresearch.com/docs](https://docs.digitable.life/)**:
+Toda la documentación está en **[docs.digitable.life](https://docs.digitable.life/)**:
 
 | Sección                                                                                             | Contenido                                                    |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |

@@ -194,7 +194,7 @@ digit/
 ├── skills/                   # Habilidades incluidas (copiadas a ~/.digit/skills/ en la instalación)
 ├── optional-skills/          # Habilidades opcionales oficiales (descubribles vía hub, no activadas por defecto)
 ├── tests/                    # Suite de tests
-├── website/                  # Sitio de documentación (hermes-agent.nousresearch.com)
+├── website/                  # Sitio de documentación (docs.digitable.life)
 │
 ├── cli-config.yaml.example   # Configuración de ejemplo (copiada a ~/.digit/config.yaml)
 └── AGENTS.md                 # Guía de desarrollo para asistentes de codificación IA

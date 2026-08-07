@@ -40,6 +40,17 @@ they affect, and what their authors have to change. Rollback:
   warning. The new name always wins when both are set.
 - `setup-hermes.sh` → `setup-digit.sh`.
 - npm workspace scopes `@hermes/*` and `@hermes-agent/*` → `@digit/*`.
+- **Documentation moved to its own host: `docs.digitable.life`.** The site was
+  always built from `website/` in this repository, but `deploy-site.yml` was
+  gated on `github.repository == 'NousResearch/hermes-agent'`, so the fork
+  never published it and every doc link in the CLI help, command hints and
+  dashboard pointed at the upstream site. It is now published to the GitHub
+  Pages of `digitable-lol/digit`, `baseUrl` is the site root (no `/docs/`
+  prefix), and `hermes-agent.nousresearch.com/docs` was replaced everywhere it
+  is printed to a user. Old `/docs/<path>` URLs keep working via generated
+  redirects. The upstream host survives in exactly two places, as a bootstrap
+  fallback for the skills catalog when our own site has not been deployed yet:
+  `deploy-site.yml` and `website/scripts/prebuild.mjs`.
 
 ### Deprecated
 
@@ -71,8 +82,6 @@ software or breach a licence:
   [Hermes Agent](https://github.com/NousResearch/hermes-agent) and the
   `Copyright (c) 2025 Nous Research` notice in `LICENSE`. Required by the MIT
   licence; see the Origin section in the README.
-- **The upstream docs host** `hermes-agent.nousresearch.com`, which still
-  serves the model catalog Digit fetches at runtime.
 - **`hermes-0day`** — the name of a real security incident whose indicators of
   compromise ship in `digit_cli/mcp_security.py`.
 - **The "hey hermes" wake word**, which is baked into the bundled ONNX/TFLite

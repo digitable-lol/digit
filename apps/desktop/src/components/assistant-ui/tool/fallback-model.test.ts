@@ -120,7 +120,7 @@ describe('buildToolView browser_navigate title', () => {
     )
 
     expect(view.status).toBe('error')
-    expect(view.title).toBe('Failed to open hermes-agent.nousresearch.com/docs')
+    expect(view.title).toBe('Failed to open docs.digitable.life')
   })
 
   it('shows opened title on success', () => {
@@ -134,7 +134,7 @@ describe('buildToolView browser_navigate title', () => {
     )
 
     expect(view.status).toBe('success')
-    expect(view.title).toBe('Opened hermes-agent.nousresearch.com/docs')
+    expect(view.title).toBe('Opened docs.digitable.life')
   })
 })
 

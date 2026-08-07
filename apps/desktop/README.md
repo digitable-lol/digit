@@ -34,7 +34,7 @@ It builds and launches the GUI against your existing install — same config, ke
 
 ### Prebuilt installers
 
-Prebuilt installers are built and distributed via [the Digit Desktop website.](https://hermes-agent.nousresearch.com/).
+Digit publishes no prebuilt desktop installer — the releases carry a source archive only. Install Digit with any method from the [installation guide](https://docs.digitable.life/getting-started/installation) and start the app with `digit desktop`.
 
 ---
 

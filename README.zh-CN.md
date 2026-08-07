@@ -32,7 +32,7 @@
 ## 快速安装
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 ```
 
 支持 Linux、macOS、WSL2 和 Android (Termux)。安装程序会自动处理平台特定的配置。
@@ -41,7 +41,7 @@ curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 >
 > **Windows：** 在 PowerShell 中运行：
 > ```powershell
-> iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+> iex (irm https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.ps1)
 > ```
 > 安装完成后，可能需要重启终端，然后运行 `digit` 开始对话。
 
@@ -113,7 +113,7 @@ Digit 有两种入口：用 `digit` 启动终端 UI，或运行网关从 Telegra
 
 ## 文档
 
-所有文档位于 **[hermes-agent.nousresearch.com/docs](https://docs.digitable.life/)**：
+所有文档位于 **[docs.digitable.life](https://docs.digitable.life/)**：
 
 | 章节 | 内容 |
 |------|------|
@@ -173,7 +173,7 @@ digit claw migrate --overwrite  # 覆盖已有冲突
 `digit update`、托管 venv、lazy dependencies、gateway 和 docs tooling 使用的布局。
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/digitable-lol/digit/main/scripts/install.sh | bash
 cd "${DIGIT_HOME:-$HOME/.digit}/digit"
 uv pip install -e ".[all,dev]"
 scripts/run_tests.sh
