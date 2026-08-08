@@ -69,6 +69,18 @@ class PortraitObserver(MemoryProvider):
         # Пусто намеренно: см. модульную докстроку.
         return ""
 
+    def shutdown(self) -> None:
+        """Закрыть индекс решений.
+
+        Не косметика: SQLite в режиме WAL сворачивает журнал в базу при
+        закрытии последнего соединения. Брошенное соединение оставляет рядом
+        с портретом ``decisions.db-wal`` — файл с теми же цитатами, который
+        никто не ждёт и который переживёт процесс.
+        """
+        from . import index as index_mod
+
+        index_mod.forget()
+
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         return ""
 
@@ -105,10 +117,21 @@ class PortraitObserver(MemoryProvider):
         stats = store.read_json(store.STYLE_FILE) or style_mod.blank()
         if stats.get("version") != style_mod.SCHEMA_VERSION:
             stats = style_mod.blank()
-        style_mod.observe(stats, user_content, side="owner")
-        if assistant_content:
-            style_mod.observe(stats, assistant_content, side="baseline")
+        # Тот же счёт вторым экземпляром — по одной сессии. Это и есть то,
+        # чем «забудь этот разговор» потом вычитается из агрегата: без среза
+        # forget чистил бы журнал решений, а словарь и длины оставлял.
+        slice_ = None
+        if session_id:
+            slice_ = store.read_session(session_id) or style_mod.blank()
+        for side, text in (("owner", user_content), ("baseline", assistant_content)):
+            if not text:
+                continue
+            style_mod.observe(stats, text, side=side)
+            if slice_ is not None:
+                style_mod.observe(slice_, text, side=side)
         store.write_json(store.STYLE_FILE, stats)
+        if slice_ is not None:
+            store.write_session(session_id, slice_)
 
         found = decisions_mod.extract(
             user_content,
@@ -169,14 +192,14 @@ class PortraitObserver(MemoryProvider):
     def _dispatch(self, action: str, query: str) -> str:
         from .provenance import render
 
-        stats = store.read_json(store.STYLE_FILE)
-        profile = style_mod.profile(stats)
-        records = decisions_mod.load()
-
+        # Журнал читается только там, где он нужен целиком. С запросом за
+        # решениями ходит индекс, и весь файл при этом не трогается вообще —
+        # ради этого он и заведён.
         if action == "style":
-            return render(profile)
+            return render(style_mod.profile(store.read_json(store.STYLE_FILE)))
         if action == "decisions":
-            found = decisions_mod.search(records, query) if query else records[-10:]
+            found = (decisions_mod.find(query) if query
+                     else decisions_mod.load()[-10:])
             if not found:
                 return (
                     "Решений не найдено. Поиск лексический — синонимов не "
@@ -187,13 +210,14 @@ class PortraitObserver(MemoryProvider):
             from .provenance import Origin
             body = "\n\n".join(r.as_text() for r in found)
             return f"[{label(Origin.RECORD)}]\n{body}"
+        profile = style_mod.profile(store.read_json(store.STYLE_FILE))
         if action == "draft":
             if not query:
                 return "draft требует query — вопрос, на который нужен ответ."
-            draft = build(query, profile, decisions_mod.search(records, query))
+            draft = build(query, profile, decisions_mod.find(query))
             return draft.for_owner() + "\n\n---\n" + brief_for_model(draft)
         # view
-        return summary_text(profile, records)
+        return summary_text(profile, decisions_mod.load())
 
 
 def summary_text(profile, records) -> str:

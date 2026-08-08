@@ -75,6 +75,63 @@ PRUNE_TO = 4000
 #: не может быть характерным для него.
 _FENCE = re.compile(r"```.*?```|~~~.*?~~~|<[a-zA-Z/!][^>\n]{0,300}>", re.S)
 
+# ---------------------------------------------------------------------------
+# Вывод команд, вставленный без разметки
+# ---------------------------------------------------------------------------
+# Огородить лог тройными кавычками помнит не каждый и не всегда. Неразмеченный
+# вывод `systemctl status` или `journalctl` попадал в словарь наравне с речью,
+# и верх «отличительной лексики» занимали `service`, `loaded`, `active`,
+# `statu`, `kern` — слова, которых владелец не произносил ни разу. Ассистент их
+# тоже не пишет, поэтому лог-шансы к фону не спасают: там, где обе стороны
+# молчат, любая частота выглядит отличительностью.
+#
+# Единица разбора — строка, а не сообщение: человек вставляет лог ВНУТРЬ
+# сообщения, и выбрасывать сообщение целиком значило бы терять его слова.
+# Приметы явные и проверяемые: распознаватель ошибается предсказуемо, и
+# ошибку видно глазами на любой строке.
+_MACHINE_LINE: Tuple[re.Pattern, ...] = (
+    # syslog / journalctl: «Aug 08 10:47:51 host proc[3358]: …»
+    re.compile(r"^[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s"),
+    # время в начале строки: «2026-08-01 06:13:06 …», «[2026-08-01T06:13]»
+    re.compile(r"^\s*\[?\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}"),
+    # dmesg / Xorg: «[   41.275] …»
+    re.compile(r"^\s*\[\s*\d+\.\d+\]"),
+    # уровень журнала в начале строки
+    re.compile(
+        r"^\s*[\[<(]?(?:TRACE|DEBUG|INFO|NOTICE|WARN|WARNING|ERROR|ERR|"
+        r"CRIT|CRITICAL|FATAL|PANIC)[\]>)]?\s*[:\-]"),
+    # трассировки Python / JVM / Node
+    re.compile(r'^\s*Traceback \(most recent call last\)'),
+    re.compile(r'^\s*File "[^"]+", line \d+'),
+    re.compile(r"^\s*at [\w$.]+\("),
+    re.compile(r"^\s*\w+(?:Error|Exception)\b\s*:"),
+    # diff / patch
+    re.compile(r"^\s*(?:diff --git |index [0-9a-f]{7,}|\+\+\+ |--- |@@ )"),
+    # ls -l
+    re.compile(r"^[-dlbcps][-rwxsStT]{9}[.+@]?\s"),
+    # ip addr / ifconfig
+    re.compile(r"^\s*\d+:\s+[\w.@\-]+:\s*<[A-Z_,\-]*>"),
+    # строка access-лога
+    re.compile(r'"(?:GET|POST|PUT|PATCH|DELETE|HEAD) /'),
+)
+
+#: Приметы, которым можно верить только на строке без кириллицы. «# Заголовок»
+#: — это разметка русского текста, а не приглашение root: одна и та же примета
+#: значит разное, и различает их язык строки.
+_SHELL_PROMPT = re.compile(r"^\s*(?:[$❯➜]\s+\S|#\s+\S|[\w.\-]+@[\w.\-]+:\S*\s*[$#])")
+_BOX_DRAWING = re.compile(r"[─│├└┌┐┘┴┬┼╭╰▶►]")
+_LONE_PATH = re.compile(r"^[~.]?/[\w./+\-]{4,}[,;:]?$")
+#: Маркер состояния, которым `systemctl`, `docker` и сборщики размечают вывод.
+_STATUS_BULLET = re.compile(r"^[●○✔✓✗×✖⏺⚠]\s")
+#: Строка «поле: значение» из вывода: ``Loaded: loaded (…)``, ``Active: active``.
+#: Знак конца фразы её исключает — «Note: it works.» этим приметам не отвечает.
+_KEY_VALUE = re.compile(r"^[A-Z][A-Za-z][\w .\-]{0,22}:\s+\S")
+_COLUMN_GAP = re.compile(r"\S {2,}\S")
+_SENTENCE_END = re.compile(r"[.!?…][»\"')]*$")
+#: Поле, которое не бывает словом речи: с цифрой, косой чертой, знаком
+#: равенства, аббревиатура целиком или хеш.
+_MACHINE_FIELD = re.compile(r"[/\\=]|\d|^[A-Z][A-Z0-9_]+$|^[0-9a-f]{7,}$")
+
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+|\n+")
 _WORD = re.compile(r"[0-9A-Za-zА-Яа-яЁё][0-9A-Za-zА-Яа-яЁё'’\-]*")
 _LATIN = re.compile(r"^[A-Za-z][A-Za-z0-9'’\-]*$")
@@ -158,6 +215,66 @@ def sentences(text: str) -> List[str]:
     return out
 
 
+def _machine_line(line: str) -> bool:
+    """Похожа ли строка на вывод программы, а не на сказанное человеком."""
+    for pattern in _MACHINE_LINE:
+        if pattern.search(line):
+            return True
+    stripped = line.strip()
+    if len(stripped) < 6 or _CYRILLIC.search(stripped):
+        return False
+    if _SHELL_PROMPT.match(stripped) or _BOX_DRAWING.search(stripped):
+        return True
+    if _LONE_PATH.match(stripped) or _STATUS_BULLET.match(stripped):
+        return True
+    fields = stripped.split()
+    if len(fields) < 2 or _SENTENCE_END.search(stripped):
+        return False
+    if _KEY_VALUE.match(stripped):
+        return True
+    # Таблица: колонки выровнены пробелами, а поля не похожи на слова.
+    gaps = len(_COLUMN_GAP.findall(line))
+    machineish = sum(1 for field in fields if _MACHINE_FIELD.search(field))
+    if len(fields) == 2:
+        return gaps >= 1 and machineish >= 1
+    return gaps >= 2 or machineish >= max(2, len(fields) * 0.5)
+
+
+def strip_machine_output(text: str) -> str:
+    """Убрать из сообщения строки вставленного вывода, оставив речь.
+
+    После построчного разбора идёт сшивание: строка без собственной приметы,
+    но зажатая между двумя строками вывода и без единой кириллической буквы,
+    тоже считается выводом. Внутри вставленного блока такие есть всегда —
+    ``built-ins``, английская фраза из справки, пустая рамка, — а речь
+    владельца не вклинивается в чужой лог на одну строку.
+    """
+    lines = (text or "").split("\n")
+    if len(lines) == 1:
+        return text if not _machine_line(lines[0]) else ""
+    flags = [_machine_line(line) for line in lines]
+    kept: List[str] = []
+    for index, line in enumerate(lines):
+        if flags[index]:
+            continue
+        if not _CYRILLIC.search(line) and line.strip():
+            if any(flags[max(0, index - 2):index]) and any(flags[index + 1:index + 3]):
+                continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
+def speech_only(text: str) -> str:
+    """Оставить от сообщения то, что владелец действительно произнёс.
+
+    Один и тот же вычет на оба слоя: сначала снимается размеченное (блоки
+    кода, HTML), потом неразмеченный вывод команд. Если стиль перестанет
+    считать лог речью, а решения продолжат из него вычитываться, портрет
+    начнёт ссылаться на фразы, которых в измеренной речи нет.
+    """
+    return strip_machine_output(_FENCE.sub(" ", text or ""))
+
+
 def _empty_side() -> Dict[str, Any]:
     return {
         "messages": 0,
@@ -201,7 +318,7 @@ def observe(stats: Dict[str, Any], text: str, *, side: str = "owner") -> Dict[st
     речевые акты и длины — нет. Мерить «как ассистент отказывает» смысла нет:
     это свойство промпта, а не человека.
     """
-    text = _FENCE.sub(" ", (text or "")).strip()
+    text = speech_only(text).strip()
     if not text:
         return stats
     side_stats = stats.setdefault(side, _empty_side())
@@ -286,6 +403,72 @@ def _prune(terms: Dict[str, int]) -> None:
     keep = sorted(terms.items(), key=lambda kv: -kv[1])[:PRUNE_TO]
     terms.clear()
     terms.update(keep)
+
+
+# ---------------------------------------------------------------------------
+# Вычитание одной сессии
+# ---------------------------------------------------------------------------
+# Стиль — сумма достаточных статистик, и сумма разбирается обратно: счётчик
+# уменьшается ровно на то, что принесла забываемая сессия. Это и делает
+# «забудь этот разговор» правдой, а не половиной правды: иначе журнал решений
+# чистился, а словарь и длины оставались, то есть по портрету всё ещё можно
+# было сказать, о чём и как в том разговоре говорили.
+
+_COUNTERS = ("len_hist", "sent_hist", "terms", "openers")
+_SCALARS = ("messages", "chars", "words", "sentences", "questions",
+            "imperatives", "emoji", "caps", "latin", "cyr")
+
+
+def _take(counter: Dict[str, int], key: str, by: int) -> None:
+    """Уменьшить счётчик, не уводя его ниже нуля.
+
+    Ниже нуля он уйти может: агрегат подрезается (:func:`_prune`), и терм,
+    выброшенный из него как редкий, в посессионном журнале остался. Обрезка
+    по нулю смещает результат в единственную сторону, допустимую для
+    забывания: остаться может меньше, чем было, но не больше.
+    """
+    left = counter.get(key, 0) - by
+    if left > 0:
+        counter[key] = left
+    else:
+        counter.pop(key, None)
+
+
+def subtract(stats: Dict[str, Any], delta: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Вычесть из агрегата стиля достаточные статистики одной сессии."""
+    if not stats or not delta:
+        return stats
+    for side in ("owner", "baseline"):
+        target = stats.get(side)
+        source = delta.get(side)
+        if not isinstance(target, dict) or not isinstance(source, dict):
+            continue
+        for key in _SCALARS:
+            target[key] = max(0, int(target.get(key, 0)) - int(source.get(key, 0)))
+        for key in _COUNTERS:
+            bucket = target.get(key)
+            if not isinstance(bucket, dict):
+                continue
+            for term, count in (source.get(key) or {}).items():
+                _take(bucket, term, int(count))
+        acts = target.get("acts")
+        if isinstance(acts, dict):
+            for act, surfaces in (source.get("acts") or {}).items():
+                inner = acts.get(act)
+                if not isinstance(inner, dict):
+                    continue
+                for surface, count in (surfaces or {}).items():
+                    _take(inner, surface, int(count))
+                if not inner:
+                    acts.pop(act, None)
+    return stats
+
+
+def observed_messages(stats: Optional[Dict[str, Any]]) -> int:
+    """Сколько сообщений владельца стоит за агрегатом."""
+    if not stats:
+        return 0
+    return int((stats.get("owner") or {}).get("messages", 0))
 
 
 # ---------------------------------------------------------------------------

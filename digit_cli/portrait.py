@@ -29,10 +29,14 @@ def _load():
     return store, style_mod, decisions_mod
 
 
+def _profile():
+    store, style_mod, _decisions_mod = _load()
+    return style_mod.profile(store.read_json(store.STYLE_FILE))
+
+
 def _profile_and_records():
-    store, style_mod, decisions_mod = _load()
-    stats = store.read_json(store.STYLE_FILE)
-    return style_mod.profile(stats), decisions_mod.load()
+    _store, _style_mod, decisions_mod = _load()
+    return _profile(), decisions_mod.load()
 
 
 # ---------------------------------------------------------------------------
@@ -62,10 +66,22 @@ def _cmd_show(args: argparse.Namespace) -> int:
 
 
 def _print_privacy_note() -> None:
+    from agent.portrait import forget as forget_mod
     from agent.portrait import store
 
     path = store.portrait_dir()
     note = f"\nЛежит в {path} (только владелец). В системный промпт не уходит."
+    sessions = sum(1 for _ in store.iter_session_slices())
+    note += (
+        f"\nЗабывается посессионно: `digit portrait forget --session <id>` "
+        f"убирает и решения, и стиль ({sessions} сессий учтено)."
+    )
+    orphan = forget_mod.unattributed_messages()
+    if orphan:
+        note += (
+            f"\n⚠ {orphan} сообщений наблюдались без идентификатора сессии — "
+            "они убираются только через `--all`."
+        )
     if not store.permissions_ok():
         note += "\n⚠ Права на директорию шире 0700 — портрет виден другим на этой машине."
     print(note)
@@ -74,7 +90,7 @@ def _print_privacy_note() -> None:
 def _cmd_style(args: argparse.Namespace) -> int:
     from agent.portrait.provenance import render
 
-    profile, _ = _profile_and_records()
+    profile = _profile()
     if getattr(args, "json", False):
         print(json.dumps(_style_json(profile), ensure_ascii=False, indent=2))
         return 0
@@ -86,13 +102,18 @@ def _cmd_style(args: argparse.Namespace) -> int:
     return 0
 
 
+#: Сколько решений показывает поиск из терминала. Инструменту хватает
+#: восьми — модель читает выдачу целиком; человеку у экрана нужно шире.
+_LIST_LIMIT = 40
+
+
 def _cmd_decisions(args: argparse.Namespace) -> int:
     from agent.portrait import decisions as decisions_mod
     from agent.portrait.provenance import Origin, label
 
-    _, records = _profile_and_records()
     query = " ".join(getattr(args, "query", []) or [])
-    found = decisions_mod.search(records, query) if query else records
+    # С запросом журнал не читается вообще — за записями ходит индекс.
+    found = decisions_mod.find(query, limit=_LIST_LIMIT) if query else decisions_mod.load()
     if not getattr(args, "all", False):
         found = [r for r in found if not r.superseded_by]
     if getattr(args, "json", False):
@@ -119,8 +140,8 @@ def _cmd_draft(args: argparse.Namespace) -> int:
     if not question:
         print("Нужен вопрос: digit portrait draft \"<вопрос>\"", file=sys.stderr)
         return 2
-    profile, records = _profile_and_records()
-    draft = build(question, profile, decisions_mod.search(records, question))
+    profile = _profile()
+    draft = build(question, profile, decisions_mod.find(question))
     if getattr(args, "outside", False):
         # То же самое, но глазами не владельца: остаются только записи со
         # ссылками. Ключ существует, чтобы разницу можно было увидеть, а не
@@ -296,12 +317,17 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
 
     for path in paths:
         session = path.stem
+        # Посессионный срез копится в памяти и пишется один раз на файл:
+        # перечитывать его на каждое сообщение значило бы платить за
+        # забывание на каждом шаге заливки.
+        slice_ = store.read_session(session) or style_mod.blank()
         pending: Optional[Tuple[int, str, Optional[int]]] = None
         tools: List[str] = []
         for role, text, called, when in iter_transcript(path):
             if role == "assistant":
                 if text:
                     style_mod.observe(stats, text, side="baseline")
+                    style_mod.observe(slice_, text, side="baseline")
                 tools.extend(called)
                 continue
             flush(pending, session, path.name, tools)
@@ -315,10 +341,13 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
                     continue
             user_msgs += 1
             style_mod.observe(stats, text, side="owner")
+            style_mod.observe(slice_, text, side="owner")
             if first_act_at is None and _has_repeated_act(stats, style_mod):
                 first_act_at = user_msgs
             pending = (user_msgs, text, when)
         flush(pending, session, path.name, tools)
+        if not args.dry_run:
+            store.write_session(session, slice_)
 
     acted = sum(1 for r in found_total if r.evidence == "сделано")
     if args.dry_run:
@@ -363,28 +392,42 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 def _cmd_forget(args: argparse.Namespace) -> int:
-    store, _style_mod, _decisions_mod = _load()
+    from agent.portrait import forget as forget_mod
 
     if args.all:
         if not args.yes:
             print("Это удалит портрет целиком. Повторите с -y.", file=sys.stderr)
             return 2
-        removed = store.wipe()
+        removed = forget_mod.everything()
         print(f"Удалено файлов портрета: {removed}.")
         return 0
     if not args.session:
         print("Укажите --session <id> или --all.", file=sys.stderr)
         return 2
-    rows = [
-        row for row in store.iter_lines(store.DECISIONS_FILE)
-        if not (row.get("t") == "d" and str(row.get("session", "")).startswith(args.session))
-    ]
-    kept = store.rewrite_lines(store.DECISIONS_FILE, rows)
+
+    report = forget_mod.session(args.session)
+    if getattr(args, "json", False):
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0
+    if not report["сессий"] and not report["записей решений убрано"]:
+        print(f"Сессий с префиксом «{args.session}» в портрете нет.")
+        return 0
     print(
-        f"Из журнала решений убраны записи сессии {args.session}; осталось строк: {kept}.\n"
-        "Слой стиля — агрегат, из него запись одной сессии не вычитается: "
-        "если нужно убрать и её, это `--all`."
+        f"Забыто сессий: {report['сессий']} "
+        f"({', '.join(report['идентификаторы']) or '—'}).\n"
+        f"Из журнала решений убрано строк: {report['записей решений убрано']}.\n"
+        f"Из стиля вычтено сообщений: {report['сообщений вычтено из стиля']}; "
+        f"осталось {report['сообщений осталось в стиле']}."
     )
+    if report["не привязано к сессиям"]:
+        # Названо вслух, потому что это единственное, что команда убрать не
+        # может: сказать «убрано» про то, что осталось, — ровно та ложь,
+        # ради которой посессионный учёт и заводился.
+        print(
+            f"⚠ {report['не привязано к сессиям']} сообщений наблюдались без "
+            "идентификатора сессии (или до появления посессионного учёта) — "
+            "их вычесть нельзя, только `--all`."
+        )
     return 0
 
 
@@ -499,6 +542,7 @@ def register_cli(parent: argparse.ArgumentParser) -> None:
     p_forget.add_argument("--session", default="", help="Префикс id сессии.")
     p_forget.add_argument("--all", action="store_true")
     p_forget.add_argument("-y", "--yes", action="store_true")
+    p_forget.add_argument("--json", action="store_true")
     p_forget.set_defaults(func=_cmd_forget)
 
     p_on = sub.add_parser("on", help="Включить накопление портрета.")

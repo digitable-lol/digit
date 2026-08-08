@@ -44,11 +44,23 @@
 Позднее решение о том же предмете не стирает прежнее, а помечает его
 отменённым отдельной строкой журнала. История выбора — часть портрета: «мы
 уходили с X на Y, потом вернулись» знает только тот, кто хранит оба хода.
+
+Как это ищется
+--------------
+Два пути, и они обязаны давать один ответ. :func:`search` — перебор по уже
+прочитанным записям; она и есть определение того, что считается совпадением и
+в каком порядке. :func:`find` — тот же ответ через индекс FTS5
+(:mod:`agent.portrait.index`), без чтения журнала вообще; индекс только
+сужает, ранжирует всё равно :func:`search`. Совпадение здесь не проверено на
+выборке, а следует из построения: обе стороны сравнивают одни и те же основы
+(:func:`haystack`), и выражение запроса перечисляет ровно те случаи, которые
+:func:`search` засчитывает.
 """
 
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import time
 from dataclasses import dataclass, field
@@ -56,12 +68,16 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from digit_cli.kb.lexical import STOPWORDS, stem
 
+from . import index as index_mod
 from . import store
 from .provenance import Origin
 # Один и тот же вычет «это не речь» на оба слоя: если стиль перестанет
-# считать разметку, а решения продолжат из неё вычитываться, портрет начнёт
-# ссылаться на фразы, которых в измеренной речи нет.
-from .style import _FENCE, sentences
+# считать разметку и вставленный вывод команд, а решения продолжат из них
+# вычитываться, портрет начнёт ссылаться на фразы, которых в измеренной речи
+# нет.
+from .style import sentences, speech_only
+
+logger = logging.getLogger(__name__)
 
 MAX_QUOTE_CHARS = 400
 
@@ -362,10 +378,10 @@ def extract(
             wrote.append(tool)
     evidence = "сделано" if wrote else "сказано"
 
-    # Код, вставленный в сообщение, — не речь владельца: в нём есть и
-    # «не», и «if», и имена файлов, но нет ни одного его слова. Мерить по
-    # нему стиль и вычитывать из него решения одинаково бессмысленно.
-    body = _FENCE.sub(" ", text)
+    # Код и вставленный вывод команд — не речь владельца: в них есть и «не»,
+    # и «if», и имена файлов, но нет ни одного его слова. Мерить по ним стиль
+    # и вычитывать из них решения одинаково бессмысленно.
+    body = speech_only(text)
 
     scored: List[Tuple[float, int, DecisionRecord]] = []
     seen: set = set()
@@ -444,21 +460,25 @@ def tools_of_turn(messages: Optional[Sequence[Dict[str, Any]]]) -> List[str]:
 # Журнал
 # ---------------------------------------------------------------------------
 
-def load() -> List[DecisionRecord]:
-    """Прочитать журнал и разложить отмены по записям."""
+def _from_rows(rows: Iterable[Dict[str, Any]]) -> List[DecisionRecord]:
     records: List[DecisionRecord] = []
-    index: Dict[str, DecisionRecord] = {}
-    for row in store.iter_lines(store.DECISIONS_FILE):
+    by_id: Dict[str, DecisionRecord] = {}
+    for row in rows:
         kind = row.get("t")
         if kind == "d":
             record = DecisionRecord.from_row(row)
             records.append(record)
-            index[record.id] = record
+            by_id[record.id] = record
         elif kind == "s":
-            target = index.get(str(row.get("id", "")))
+            target = by_id.get(str(row.get("id", "")))
             if target is not None:
                 target.superseded_by = str(row.get("by", ""))
     return records
+
+
+def load() -> List[DecisionRecord]:
+    """Прочитать журнал и разложить отмены по записям."""
+    return _from_rows(store.iter_lines(store.DECISIONS_FILE))
 
 
 def append(records: Iterable[DecisionRecord]) -> int:
@@ -475,10 +495,17 @@ def append(records: Iterable[DecisionRecord]) -> int:
     new = list(records)
     if not new:
         return 0
-    existing = load()
-    live = [r for r in existing if not r.superseded_by]
+    # Журнал читается ОДИН раз и служит сразу двум делам: разложить отмены и
+    # сверить индекс. Второе чтение ради сверки стоило бы столько же, сколько
+    # само дописывание.
+    rows = list(store.iter_lines(store.DECISIONS_FILE))
+    live = [r for r in _from_rows(rows) if not r.superseded_by]
+    index = _index(rows=rows)
     for record in new:
-        store.append_line(store.DECISIONS_FILE, record.to_row())
+        row = record.to_row()
+        store.append_line(store.DECISIONS_FILE, row)
+        if index is not None:
+            index.add(row, index_text)
         mentioned = _all_keys(record)
         if mentioned:
             for old in live:
@@ -490,7 +517,14 @@ def append(records: Iterable[DecisionRecord]) -> int:
                     store.append_line(store.DECISIONS_FILE, {
                         "t": "s", "id": old.id, "by": record.id, "ts": record.ts,
                     })
+                    if index is not None:
+                        index.mark_superseded(old.id, record.id)
         live.append(record)
+    if index is not None:
+        # Отпечаток снимается ПОСЛЕ всех дописываний: снятый раньше он
+        # соответствовал бы журналу, которого уже нет, и следующая сверка
+        # признала бы индекс свежим, не увидев новых записей.
+        index.stamp()
     return len(new)
 
 
@@ -504,6 +538,109 @@ def _all_keys(record: DecisionRecord) -> set:
     return {stem(obj.lower()) for obj in record.objects}
 
 
+def _index(*, rows: Optional[List[Dict[str, Any]]] = None):
+    """Индекс журнала, приведённый в соответствие с ним. ``None`` — без индекса.
+
+    ``rows`` передаются, когда журнал уже прочитан вызывающим: пересборка
+    возьмёт их, а не станет читать файл второй раз.
+    """
+    index = index_mod.open_index()
+    if index is None:
+        return None
+    try:
+        index.ensure_fresh(
+            (lambda: rows) if rows is not None
+            else (lambda: store.iter_lines(store.DECISIONS_FILE)),
+            index_text,
+        )
+    except Exception as exc:  # pragma: no cover - защитный контур
+        logger.warning("portrait: индекс решений не сверился (%s)", exc)
+        return None
+    return index
+
+
+def _query_terms(query: str) -> set:
+    return {
+        stem(word.lower())
+        for word in _WORD.findall(query or "")
+        if word.lower() not in STOPWORDS and len(word) >= 3
+    }
+
+
+def haystack(quote: str, objects: Iterable[str]) -> set:
+    """Основы, по которым запись сравнивается с запросом.
+
+    Одно определение на оба пути поиска. Индекс хранит ровно эти основы, а не
+    исходный текст, — поэтому совпадение его выдачи с перебором не «сошлось на
+    проверке», а следует из построения: сравнивается одно и то же.
+    """
+    terms = {stem(word.lower()) for word in _WORD.findall(quote or "")}
+    terms |= {stem(str(obj).lower()) for obj in (objects or [])}
+    return {t for t in terms if t}
+
+
+def index_text(row: Dict[str, Any]) -> str:
+    """Индексируемая форма строки журнала — те же основы, через пробел."""
+    return " ".join(sorted(haystack(str(row.get("quote") or ""),
+                                    row.get("objects") or [])))
+
+
+def _fts_expressions(terms: Iterable[str]) -> List[str]:
+    """По одному выражению на ТЕРМ запроса, точно повторяющему правило отбора.
+
+    Одно выражение на терм, а не одно на запрос: по ним индекс считает, СКОЛЬКО
+    термов совпало, а это число и есть основа прежнего порядка выдачи.
+
+    Внутри терма перечислено ровно то, что засчитывает :func:`search`:
+
+    ``"основа"*``   основа записи начинается с основы запроса («прокси» →
+                    «прокси-сервером»);
+    ``"обрубок"``   основа записи целиком равна началу основы запроса
+                    («конфигурация» → «конфиг»). Такие обрубки перечислимы —
+                    их ровно столько, какова длина основы, — поэтому обратное
+                    направление берётся точно, а не приближается коротким
+                    префиксом, который тянул бы за собой полкорпуса.
+    """
+    from digit_cli.kb.lexical import MIN_STEM_LEN
+
+    out: List[str] = []
+    for term in terms:
+        safe = term.replace('"', "")
+        if not safe:
+            continue
+        parts = [f'"{safe}"*']
+        parts.extend(f'"{safe[:n]}"' for n in range(MIN_STEM_LEN, len(safe)))
+        out.append(" OR ".join(parts))
+    return out
+
+
+def find(query: str, limit: int = 8) -> List[DecisionRecord]:
+    """Найти решения по запросу, не перечитывая журнал целиком.
+
+    Индекс только сужает: он отдаёт пул кандидатов, а порядок внутри пула
+    считает та же :func:`search`, что и раньше. Поэтому ускорение не меняет
+    ответы — это проверяемое требование, а не пожелание.
+    """
+    # Порядок термов не влияет на выдачу, но влияет на текст SQL-запроса:
+    # отсортированный делает его одинаковым от запуска к запуску, и план
+    # исполнения перестаёт зависеть от хеша строки.
+    terms = sorted(_query_terms(query))
+    if not terms:
+        return []
+    index = _index()
+    if index is None:
+        return search(load(), query, limit)
+    rows = index.candidates(_fts_expressions(terms))
+    if not rows:
+        return []
+    records = []
+    for row in rows:
+        record = DecisionRecord.from_row(row)
+        record.superseded_by = row.get("superseded_by") or None
+        records.append(record)
+    return search(records, query, limit)
+
+
 def search(records: Sequence[DecisionRecord], query: str, limit: int = 8) -> List[DecisionRecord]:
     """Найти решения, относящиеся к запросу. Лексически, по основам слов.
 
@@ -512,21 +649,27 @@ def search(records: Sequence[DecisionRecord], query: str, limit: int = 8) -> Lis
     «прокси-сервером» — один токен каждый, и точное равенство основ развело
     бы их в разные вещи. Синонимов такой поиск не понимает — и это сказано
     вслух, чтобы промах не выглядел как «решений не было».
+
+    Обратное направление («слово запроса длиннее слова записи»: «конфигурация»
+    находит «конфиг») требует от слова записи длины: :func:`stem` короче
+    :data:`MIN_STEM_LEN` ничего не отрезает и возвращает служебное слово как
+    есть. Без этого порога запрос «тесты падают» находил запись про
+    ``SKILL.md`` — потому что в ней есть слово «те», а «тест» с него
+    начинается. Совпадение по двум буквам — не совпадение.
     """
-    terms = {
-        stem(word.lower())
-        for word in _WORD.findall(query or "")
-        if word.lower() not in STOPWORDS and len(word) >= 3
-    }
+    from digit_cli.kb.lexical import MIN_STEM_LEN
+
+    terms = _query_terms(query)
     if not terms:
         return []
     scored: List[Tuple[float, DecisionRecord]] = []
     for record in records:
-        haystack = {stem(w.lower()) for w in _WORD.findall(record.quote)}
-        haystack |= {stem(o.lower()) for o in record.objects}
+        found = haystack(record.quote, record.objects)
         overlap = sum(
             1 for term in terms
-            if any(h.startswith(term) or term.startswith(h) for h in haystack)
+            if any(h.startswith(term)
+                   or (len(h) >= MIN_STEM_LEN and term.startswith(h))
+                   for h in found)
         )
         if not overlap:
             continue

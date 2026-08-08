@@ -15,6 +15,7 @@ import pytest
 
 from agent.portrait import conjecture as conj_mod
 from agent.portrait import decisions as dec_mod
+from agent.portrait import forget as forget_mod
 from agent.portrait import store as store_mod
 from agent.portrait import style as style_mod
 from agent.portrait.observer import PortraitObserver
@@ -196,6 +197,92 @@ def test_поиск_находит_решение_по_словоформе(digi
     assert found and "прокси" in found[0].quote
 
 
+def test_совпадение_по_двум_буквам_совпадением_не_считается(digit_home):
+    """«тесты» не находит запись, где есть только слово «те»."""
+    dec_mod.append(dec_mod.extract(
+        "Правим SKILL.md — в том числе те, что лежат внутри блоков.",
+        session_id="s1"))
+    assert dec_mod.search(dec_mod.load(), "тесты падают") == []
+
+
+# ---------------------------------------------------------------------------
+# Слой 2: индекс вместо перебора
+# ---------------------------------------------------------------------------
+
+def _журнал(digit_home, сколько: int):
+    """Журнал из ``сколько`` записей о разных предметах."""
+    from agent.portrait import index as index_mod
+
+    records = []
+    for i in range(сколько):
+        (record,) = dec_mod.extract(
+            f"Переходим на `пакет-{i}` вместо `модуль{i}.py`.",
+            session_id=f"s{i // 10}", ts=1_700_000_000 + i,
+        )
+        records.append(record)
+    dec_mod.append(records)
+    index_mod.forget()
+    return records
+
+
+def test_индексированный_поиск_отвечает_то_же_что_перебор(digit_home):
+    """Индекс ускоряет, а не меняет ответ: это проверяемое требование."""
+    _журнал(digit_home, 120)
+    records = dec_mod.load()
+    for query in ("пакет-7", "модуль42.py", "старого решения", "переходим пакет"):
+        assert ([r.id for r in dec_mod.find(query)]
+                == [r.id for r in dec_mod.search(records, query)]), query
+
+
+def test_поиск_без_индекса_отвечает_так_же(digit_home, monkeypatch):
+    """Сборка SQLite без FTS5 существует — поиск обязан работать и на ней."""
+    from agent.portrait import index as index_mod
+
+    _журнал(digit_home, 40)
+    records = dec_mod.load()
+    monkeypatch.setattr(index_mod, "open_index", lambda: None)
+    assert ([r.id for r in dec_mod.find("пакет-7")]
+            == [r.id for r in dec_mod.search(records, "пакет-7")])
+
+
+def test_индекс_переживает_дописывание_журнала(digit_home):
+    _журнал(digit_home, 20)
+    assert dec_mod.find("пакет-5")
+    dec_mod.append(dec_mod.extract(
+        "С этого момента ставим свежий-пакет вместо `пакет-5`.", session_id="поздняя"))
+    found = dec_mod.find("свежий-пакет")
+    assert found and "свежий-пакет" in found[0].quote
+    # ...и отмена прежнего решения видна через индекс так же, как через журнал.
+    отменено = {r.id for r in dec_mod.load() if r.superseded_by}
+    assert отменено, "позднее решение должно было отменить прежнее"
+    через_индекс = {r.id for r in dec_mod.find("пакет-5") if r.superseded_by}
+    assert через_индекс == отменено & {r.id for r in dec_mod.find("пакет-5")}
+    assert через_индекс
+
+
+def test_испорченный_индекс_не_ломает_поиск(digit_home):
+    from agent.portrait import index as index_mod
+
+    _журнал(digit_home, 20)
+    assert dec_mod.find("пакет-5")
+    index_mod.forget()
+    (store_mod.portrait_dir() / store_mod.INDEX_FILE).write_bytes(b"not a database")
+    assert dec_mod.find("пакет-5"), "битый индекс должен пересобраться, а не молчать"
+
+
+def test_правка_журнала_мимо_индекса_замечается(digit_home):
+    """Индекс — кэш; расхождение с журналом обязано ловиться отпечатком."""
+    from agent.portrait import index as index_mod
+
+    _журнал(digit_home, 20)
+    dec_mod.find("пакет-5")
+    rows = [row for row in store_mod.iter_lines(store_mod.DECISIONS_FILE)
+            if "пакет-5" not in str(row.get("quote", ""))]
+    store_mod.rewrite_lines(store_mod.DECISIONS_FILE, rows)
+    index_mod.forget()
+    assert dec_mod.find("пакет-5") == []
+
+
 # ---------------------------------------------------------------------------
 # Слой 1: измеримое, без типологий
 # ---------------------------------------------------------------------------
@@ -241,6 +328,68 @@ def test_блок_кода_не_меняет_стиль():
     style_mod.observe(with_code, "смотри:\n```\n" + "x = 1\n" * 40 + "```\nвсё.")
     style_mod.observe(without, "смотри:\nвсё.")
     assert with_code["owner"]["sentences"] == without["owner"]["sentences"]
+
+
+_ВСТАВЛЕННЫЙ_ЛОГ = """\
+Aug 08 10:47:51 sbx-us systemd[3358]: Started app-com.google.Chrome-978961.scope.
+● ssh.service - OpenBSD Secure Shell server
+     Loaded: loaded (/usr/lib/systemd/system/ssh.service; enabled)
+     Active: active (running) since Thu 2026-08-07 06:28:01 UTC
+2026-08-01 06:13:06 upgrade distro-info-data:all 0.60ubuntu0.6 0.72-0ubuntu0
+[    41.275] (--) Log file renamed from "/var/log/Xorg.pid-1292.log"
+drwxrwsr-x+ 40 m mprojects   4096 Aug  8 10:53 .
+google-auth               2.55.1
+"""
+
+
+@pytest.mark.parametrize("слово", ["service", "loaded", "active", "systemd",
+                                   "upgrade", "google-auth"])
+def test_вставленный_вывод_команд_не_попадает_в_словарь(слово):
+    """Слово, которого человек не произносил, не может быть характерным для него."""
+    stats = style_mod.blank()
+    style_mod.observe(stats, f"вот что вывело:\n{_ВСТАВЛЕННЫЙ_ЛОГ}\nчиним.")
+    from digit_cli.kb.lexical import stem
+
+    assert stem(слово) not in stats["owner"]["terms"], слово
+
+
+def test_вставленный_вывод_не_меняет_измеренную_речь():
+    с_логом = style_mod.blank()
+    без = style_mod.blank()
+    style_mod.observe(с_логом, f"смотри вывод:\n{_ВСТАВЛЕННЫЙ_ЛОГ}\nвсё сломалось.")
+    style_mod.observe(без, "смотри вывод:\nвсё сломалось.")
+    assert с_логом["owner"]["terms"] == без["owner"]["terms"]
+    assert с_логом["owner"]["sentences"] == без["owner"]["sentences"]
+    assert с_логом["owner"]["latin"] == без["owner"]["latin"]
+
+
+def test_речь_вокруг_вставленного_вывода_сохраняется():
+    stats = style_mod.blank()
+    style_mod.observe(stats, f"лог:\n{_ВСТАВЛЕННЫЙ_ЛОГ}\nпочини авторизацию.")
+    from digit_cli.kb.lexical import stem
+
+    assert stem("авторизацию") in stats["owner"]["terms"]
+    assert stats["owner"]["messages"] == 1
+
+
+@pytest.mark.parametrize("строка", [
+    "Переходим на uv вместо poetry.",
+    "Не трогай digit_cli/main.py — там другой агент.",
+    "Ставим версию 2.1.0 и на этом останавливаемся.",
+    "ok, let's go with uv here",
+    "# Заголовок раздела",
+])
+def test_речь_за_вывод_команд_не_принимается(строка):
+    """Распознаватель ошибается предсказуемо — и на речи не срабатывает."""
+    assert style_mod.strip_machine_output(строка).strip() == строка.strip()
+
+
+def test_решения_не_вычитываются_из_вставленного_вывода():
+    """Один и тот же вычет на оба слоя: в логе нет ни одного слова владельца."""
+    text = ("вот вывод:\n"
+            "Aug 08 10:47:51 sbx-us apt[311]: never use /etc/apt/sources.list\n"
+            "     Active: active (running) since Thu 2026-08-07 06:28:01 UTC\n")
+    assert dec_mod.extract(text, session_id="s") == []
 
 
 def test_пустой_портрет_называется_пустым():
@@ -309,13 +458,106 @@ def test_портрет_лежит_отдельно_от_памяти(digit_home
 def test_забыть_сессию_убирает_её_записи(digit_home):
     dec_mod.append(dec_mod.extract("Переходим на uv.", session_id="уйдёт"))
     dec_mod.append(dec_mod.extract("Не трогаем digit_cli/main.py.", session_id="останется"))
-    rows = [
-        row for row in store_mod.iter_lines(store_mod.DECISIONS_FILE)
-        if not (row.get("t") == "d" and row.get("session") == "уйдёт")
-    ]
-    store_mod.rewrite_lines(store_mod.DECISIONS_FILE, rows)
+    forget_mod.session("уйдёт")
     sessions = {r.session_id for r in dec_mod.load()}
     assert sessions == {"останется"}
+
+
+# ---------------------------------------------------------------------------
+# Забывание одной сессии: и решения, и стиль
+# ---------------------------------------------------------------------------
+
+#: Третий разговор нарочно говорит словами, которых нет ни в первом, ни во
+#: втором: только так видно, вычлось ли из словаря стиля именно его.
+_РАЗГОВОРЫ = {
+    "s1": ["Переходим на uv вместо poetry.", "Тесты гоняем через pytest."],
+    "s2": ["Не трогаем digit_cli/main.py.", "Коммиты только по-русски."],
+    "s3": ["Ставим краснотал вместо бересклета.",
+           "Обвязку жимолости выпиливаем совсем."],
+}
+
+
+def _наговорить(*сессии: str) -> None:
+    observer = PortraitObserver()
+    for session_id in сессии:
+        for текст in _РАЗГОВОРЫ[session_id]:
+            observer.sync_turn(текст, "принято, делаю", session_id=session_id)
+
+
+def test_забывание_сессии_вычитает_её_из_стиля(digit_home):
+    """Главное про портрет: «забудь этот разговор» обязано работать целиком."""
+    _наговорить("s1", "s2", "s3")
+    было = style_mod.profile(store_mod.read_json(store_mod.STYLE_FILE))
+    assert было.messages == 6
+
+    forget_mod.session("s3")
+
+    stats = store_mod.read_json(store_mod.STYLE_FILE)
+    стало = style_mod.profile(stats)
+    assert стало.messages == 4, "сообщения забытой сессии остались в счётчике"
+    словарь = stats["owner"]["terms"]
+    for слово in ("краснотал", "бересклет", "жимолост"):
+        assert not any(t.startswith(слово) for t in словарь), (
+            f"слово «{слово}» из забытой сессии осталось в словаре стиля")
+    # ...а слова оставшихся сессий не пострадали.
+    assert any(t.startswith("poetry") for t in словарь)
+
+
+def test_забывание_сессии_совпадает_с_портретом_без_неё(digit_home):
+    """Проверка не «что-то убралось», а «убралось ровно то, что принесла сессия».
+
+    Эталон строится честно: тот же портрет, набранный без третьей сессии.
+    Совпадение до счётчика — единственное доказательство, что вычитание
+    точное, а не приблизительное.
+    """
+    _наговорить("s1", "s2", "s3")
+    forget_mod.session("s3")
+    после = store_mod.read_json(store_mod.STYLE_FILE)
+
+    store_mod.wipe()
+    _наговорить("s1", "s2")
+    эталон = store_mod.read_json(store_mod.STYLE_FILE)
+
+    for сторона in ("owner", "baseline"):
+        for ключ in ("messages", "chars", "words", "sentences", "imperatives"):
+            assert после[сторона][ключ] == эталон[сторона][ключ], (сторона, ключ)
+        assert после[сторона]["terms"] == эталон[сторона]["terms"], сторона
+        assert после[сторона]["openers"] == эталон[сторона]["openers"], сторона
+
+
+def test_забытая_сессия_не_оставляет_посессионного_среза(digit_home):
+    _наговорить("s1", "s2", "s3")
+    assert {s["session"] for s in store_mod.iter_session_slices()} == {"s1", "s2", "s3"}
+    forget_mod.session("s3")
+    assert {s["session"] for s in store_mod.iter_session_slices()} == {"s1", "s2"}
+
+
+def test_срез_сессии_закрыт_теми_же_правами_что_портрет(digit_home):
+    """Срез содержит те же слова владельца — «производное» не значит «открытое»."""
+    PortraitObserver().sync_turn("Переходим на uv.", "ок", session_id="s")
+    directory = store_mod.sessions_dir()
+    assert stat.S_IMODE(directory.stat().st_mode) & 0o077 == 0
+    for path in directory.glob("*.json"):
+        assert stat.S_IMODE(path.stat().st_mode) & 0o077 == 0
+
+
+def test_наблюдение_без_идентификатора_сессии_названо_вслух(digit_home):
+    """Что вычесть нельзя — должно быть сосчитано, а не умолчано."""
+    PortraitObserver().sync_turn("Переходим на uv.", "ок", session_id="")
+    assert forget_mod.unattributed_messages() == 1
+    PortraitObserver().sync_turn("Не трогаем main.py.", "ок", session_id="s")
+    assert forget_mod.unattributed_messages() == 1
+
+
+def test_forget_all_сносит_и_срезы_и_индекс(digit_home):
+    PortraitObserver().sync_turn("Переходим на uv.", "ок", session_id="s")
+    dec_mod.find("uv")  # индекс появляется на первом поиске
+    directory = store_mod.portrait_dir()
+    assert (directory / store_mod.INDEX_FILE).exists()
+    forget_mod.everything()
+    assert not (directory / store_mod.INDEX_FILE).exists()
+    assert not (directory / store_mod.SESSIONS_DIR).exists()
+    assert not (directory / store_mod.STYLE_FILE).exists()
 
 
 def test_битый_файл_стиля_не_обнуляет_портрет_молча(digit_home):

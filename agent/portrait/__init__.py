@@ -12,10 +12,18 @@
 Наполняется портрет :class:`agent.portrait.observer.PortraitObserver` — по
 ходу разговора, без отдельной команды «запомни». Читается явно: ``digit
 portrait`` или инструмент ``portrait``. В системный промпт не попадает.
+
+Рядом с тремя слоями стоят два служебных модуля, и оба существуют ради
+обещаний, которые иначе были бы неточными:
+
+``forget``  «забудь этот разговор» — по всему портрету сразу, а не по журналу
+            решений в отдельности (:mod:`agent.portrait.forget`).
+``index``   поиск по решениям индексом, а не перебором журнала
+            (:mod:`agent.portrait.index`).
 """
 
 from .conjecture import Conjecture, Draft, build, brief_for_model
-from .decisions import DecisionRecord, extract, load, search
+from .decisions import DecisionRecord, extract, find, load, search
 from .observer import PortraitObserver, summary_text
 from .provenance import (
     ConjectureLeak,
@@ -40,6 +48,7 @@ __all__ = [
     "brief_for_model",
     "build",
     "extract",
+    "find",
     "label",
     "load",
     "outward_safe",

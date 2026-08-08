@@ -21,18 +21,32 @@
 * Накопление **выключено по умолчанию**. Профиль речи не должен начать
   собираться оттого, что человек обновил пакет.
 
-Формат — два файла, по одному на слой, который вообще хранится:
+Хранится два слоя, и у каждого свой файл:
 
 ``style.json``      достаточные статистики слоя STYLE (счётчики, гистограммы)
 ``decisions.jsonl`` журнал слоя RECORD, только дописывание
 
-Третьего файла нет и не будет. Догадка (``CONJECTURE``) не хранится нигде:
-записанная догадка через неделю неотличима от записи решения, а именно этого
-различия ради всё и построено. Она собирается на запрос и умирает с ним.
+Третьего слоя на диске нет и не будет. Догадка (``CONJECTURE``) не хранится
+нигде: записанная догадка через неделю неотличима от записи решения, а именно
+этого различия ради всё и построено. Она собирается на запрос и умирает с ним.
+
+Рядом лежит производное, и оно производное по-настоящему — то есть его можно
+удалить, не потеряв ничего:
+
+``sessions/<хеш>.json``  те же статистики стиля, но по одной сессии. Это то,
+    чем «забудь этот разговор» вычитается из агрегата: без них команда чистила
+    бы журнал решений, а словарь и длины оставляла, и обещание было бы ложным.
+``decisions.db``         индекс FTS5 над журналом решений. Кэш: журнал —
+    источник истины, индекс пересобирается из него целиком.
+
+Права у всего одни и те же — ``0700`` на директории, ``0600`` на файлы:
+посессионные срезы и индекс содержат ровно те же слова владельца, что и
+портрет, и «производное» не значит «менее чувствительное».
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -47,6 +61,8 @@ FILE_MODE = 0o600
 
 STYLE_FILE = "style.json"
 DECISIONS_FILE = "decisions.jsonl"
+SESSIONS_DIR = "sessions"
+INDEX_FILE = "decisions.db"
 
 
 def portrait_dir(*, create: bool = False) -> Path:
@@ -208,13 +224,93 @@ def rewrite_lines(name: str, rows: list) -> int:
     return len(rows)
 
 
+# ---------------------------------------------------------------------------
+# Посессионные срезы стиля
+# ---------------------------------------------------------------------------
+
+def sessions_dir(*, create: bool = False) -> Path:
+    path = portrait_dir(create=create) / SESSIONS_DIR
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+        _chmod(path, DIR_MODE)
+    return path
+
+
+def _session_file(session_id: str) -> str:
+    """Имя файла среза — хеш идентификатора сессии.
+
+    Не сам идентификатор: он приходит из имени транскрипта и из чужих систем,
+    то есть может содержать ``/``, ``..`` и что угодно ещё. Хеш снимает
+    вопрос целиком, а искать по префиксу всё равно приходится по полю внутри
+    файла — идентификатор хранится там дословно.
+    """
+    return hashlib.sha1(session_id.encode("utf-8")).hexdigest()[:20] + ".json"
+
+
+def read_session(session_id: str) -> Optional[Dict[str, Any]]:
+    path = sessions_dir() / _session_file(session_id)
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as exc:
+        logger.warning("portrait: срез сессии %s нечитаем (%s)", path.name, exc)
+        return None
+
+
+def write_session(session_id: str, payload: Dict[str, Any]) -> None:
+    """Атомарно записать посессионный срез стиля."""
+    directory = sessions_dir(create=True)
+    path = directory / _session_file(session_id)
+    payload = dict(payload)
+    payload["session"] = session_id
+    fd, tmp = tempfile.mkstemp(dir=str(directory), prefix=".sess.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, ensure_ascii=False, separators=(",", ":"))
+        os.chmod(tmp, FILE_MODE)
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def iter_session_slices() -> Iterator[Dict[str, Any]]:
+    """Все посессионные срезы. Битые пропускаются, а не роняют команду."""
+    directory = sessions_dir()
+    if not directory.exists():
+        return
+    for path in sorted(directory.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(payload, dict) and payload.get("session"):
+            yield payload
+
+
+def drop_session(session_id: str) -> bool:
+    try:
+        (sessions_dir() / _session_file(session_id)).unlink()
+        return True
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        logger.warning("portrait: не удалось удалить срез %s: %s", session_id, exc)
+        return False
+
+
 def wipe() -> int:
     """Удалить портрет целиком. Возвращает число удалённых файлов."""
     directory = portrait_dir()
     if not directory.exists():
         return 0
     removed = 0
-    for name in (STYLE_FILE, DECISIONS_FILE):
+    for name in (STYLE_FILE, DECISIONS_FILE, INDEX_FILE,
+                 INDEX_FILE + "-wal", INDEX_FILE + "-shm"):
         try:
             (directory / name).unlink()
             removed += 1
@@ -222,4 +318,16 @@ def wipe() -> int:
             continue
         except OSError as exc:
             logger.warning("portrait: не удалось удалить %s: %s", name, exc)
+    slices = directory / SESSIONS_DIR
+    if slices.exists():
+        for path in slices.glob("*.json"):
+            try:
+                path.unlink()
+                removed += 1
+            except OSError as exc:
+                logger.warning("portrait: не удалось удалить %s: %s", path.name, exc)
+        try:
+            slices.rmdir()
+        except OSError:
+            pass
     return removed
