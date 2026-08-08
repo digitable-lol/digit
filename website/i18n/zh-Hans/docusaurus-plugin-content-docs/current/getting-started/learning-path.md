@@ -24,7 +24,7 @@ Digit 功能丰富——CLI 助手、Telegram/Discord 机器人、任务自动�
 |---|---|---|---|
 | **初级** | 快速上手，进行基本对话，使用内置工具 | [安装](/getting-started/installation) → [快速入门](/getting-started/quickstart) → [CLI 用法](/user-guide/cli) → [配置](/user-guide/configuration) | 约 1 小时 |
 | **中级** | 搭建消息机器人，使用记忆、cron 任务、技能等高级功能 | [会话](/user-guide/sessions) → [消息](/user-guide/messaging) → [工具](/user-guide/features/tools) → [技能](/user-guide/features/skills) → [记忆](/user-guide/features/memory) → [Cron](/user-guide/features/cron) | 约 2–3 小时 |
-| **高级** | 构建自定义工具、创建技能、使用强化学习训练模型、参与项目贡献 | [架构](/developer-guide/architecture) → [添加工具](/developer-guide/adding-tools) → [创建技能](/developer-guide/creating-skills) → [强化学习训练](/user-guide/features/rl-training) → [贡献指南](/developer-guide/contributing) | 约 4–6 小时 |
+| **高级** | 构建自定义工具、创建技能、使用强化学习训练模型、参与项目贡献 | [架构](/developer-guide/architecture) → [添加工具](/developer-guide/adding-tools) → [创建技能](/developer-guide/creating-skills) → [贡献指南](/developer-guide/contributing) | 约 4–6 小时 |
 
 ## 按使用场景
 
@@ -99,7 +99,7 @@ Cron 任务让 Digit 按计划执行任务——每日摘要、定期检查、�
 
 1. [快速入门](/getting-started/quickstart)
 2. [配置](/user-guide/configuration)
-3. [强化学习训练](/user-guide/features/rl-training)
+3. [Atropos RL 环境](https://github.com/NousResearch/atropos)（外部）
 4. [Provider 路由](/user-guide/features/provider-routing)
 5. [架构](/developer-guide/architecture)
 
@@ -135,7 +135,6 @@ Cron 任务让 Digit 按计划执行任务——每日摘要、定期检查、�
 | **浏览器** | 网页浏览与抓取 | [浏览器](/user-guide/features/browser) |
 | **Hooks** | 事件驱动的回调与中间件 | [Hooks](/user-guide/features/hooks) |
 | **批处理** | 批量处理多个输入 | [批处理](/user-guide/features/batch-processing) |
-| **强化学习训练** | 使用强化学习微调模型 | [强化学习训练](/user-guide/features/rl-training) |
 | **Provider 路由** | 在多个 LLM provider 之间路由请求 | [Provider 路由](/user-guide/features/provider-routing) |
 
 ## 下一步阅读

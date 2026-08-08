@@ -20,7 +20,6 @@ Digit 在执行 `digit update` 时也会同步内置技能，但同步清单会�
 | [`apple-reminders`](/user-guide/skills/bundled/apple/apple-apple-reminders) | 通过 remindctl 操作 Apple Reminders：添加、列出、完成。 | `apple/apple-reminders` |
 | [`findmy`](/user-guide/skills/bundled/apple/apple-findmy) | 在 macOS 上通过 FindMy.app 追踪 Apple 设备/AirTag。 | `apple/findmy` |
 | [`imessage`](/user-guide/skills/bundled/apple/apple-imessage) | 在 macOS 上通过 imsg CLI 发送和接收 iMessage/SMS。 | `apple/imessage` |
-| [`macos-computer-use`](/user-guide/skills/bundled/apple/apple-macos-computer-use) | 在后台驱动 macOS 桌面——截图、鼠标、键盘、滚动、拖拽——不抢占用户的光标、键盘焦点或 Space。适用于任何支持工具调用的模型。每当需要 `computer_use` 工具时加载此技能。 | `apple/macos-computer-use` |
 
 ## autonomous-ai-agents
 
@@ -28,6 +27,7 @@ Digit 在执行 `digit update` 时也会同步内置技能，但同步清单会�
 |-------|-------------|------|
 | [`claude-code`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-claude-code) | 将编码任务委托给 Claude Code CLI（功能开发、PR）。 | `autonomous-ai-agents/claude-code` |
 | [`codex`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-codex) | 将编码任务委托给 OpenAI Codex CLI（功能开发、PR）。 | `autonomous-ai-agents/codex` |
+| [`computer-use`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-computer-use) | 在后台驱动用户桌面——点击、输入、滚动、拖拽——不抢占光标和键盘焦点，也不切换虚拟桌面/Space。跨平台：macOS、Windows、Linux。适用于任何支持工具调用的模型。 | `autonomous-ai-agents/computer-use` |
 | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit) | 配置、扩展或贡献 Digit。 | `autonomous-ai-agents/digit` |
 | [`opencode`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-opencode) | 将编码任务委托给 OpenCode CLI（功能开发、PR 审查）。 | `autonomous-ai-agents/opencode` |
 

@@ -21,7 +21,7 @@ description: "将用户的 OpenClaw 自定义配置迁移到 Digit"
 | 许可证 | MIT |
 | 平台 | linux, macos, windows |
 | 标签 | `Migration`, `OpenClaw`, `Digit`, `Memory`, `Persona`, `Import` |
-| 相关 skill | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit) |
+| 相关 skill | [`digit-runtime`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit-runtime) |
 
 ## 参考：完整 SKILL.md
 

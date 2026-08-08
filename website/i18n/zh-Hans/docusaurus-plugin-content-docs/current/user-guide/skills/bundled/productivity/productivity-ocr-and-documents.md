@@ -21,7 +21,7 @@ description: "从 PDF/扫描件中提取文本（pymupdf、marker-pdf）"
 | 许可证 | MIT |
 | 平台 | linux, macos, windows |
 | 标签 | `PDF`, `Documents`, `Research`, `Arxiv`, `Text-Extraction`, `OCR` |
-| 相关 skill | [`powerpoint`](/user-guide/skills/bundled/productivity/productivity-powerpoint) |
+| 相关 skill | [`pdf`](/user-guide/skills/bundled/productivity/productivity-pdf), [`docx`](/user-guide/skills/bundled/productivity/productivity-docx), [`powerpoint`](/user-guide/skills/bundled/productivity/productivity-powerpoint) |
 
 ## 参考：完整 SKILL.md
 

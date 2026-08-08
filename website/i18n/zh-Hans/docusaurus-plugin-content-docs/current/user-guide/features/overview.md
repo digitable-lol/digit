@@ -43,7 +43,7 @@ Digit 包含一套丰富的能力，远超基础聊天范畴。从持久化记�
 - **[记忆提供商](memory-providers.md)** — 接入外部记忆后端（Honcho、OpenViking、Mem0、Hindsight、Holographic、RetainDB、ByteRover、Supermemory），实现跨会话用户建模和超越内置记忆系统的个性化。
 - **[API 服务器](api-server.md)** — 将 Digit 作为兼容 OpenAI 的 HTTP 端点暴露。连接任何支持 OpenAI 格式的前端——Open WebUI、LobeChat、LibreChat 等。
 - **[IDE 集成（ACP）](acp.md)** — 在兼容 ACP 的编辑器（如 VS Code、Zed 和 JetBrains）中使用 Digit。聊天、工具活动、文件 diff 和终端命令均在编辑器内渲染。
-- **[强化学习训练](rl-training.md)** — 从 Agent 会话中生成轨迹数据，用于强化学习和模型微调。
+- **[批处理](batch-processing.md)** — 从命令行对大量 prompt 或任务并行运行 Agent，产出结构化输出，以及适用于评测或下游训练流水线的轨迹数据。
 
 ## 自定义
 

@@ -21,7 +21,7 @@ description: "配置、扩展或贡献 Digit"
 | 许可证 | MIT |
 | 平台 | linux, macos, windows |
 | 标签 | `digit`, `setup`, `configuration`, `multi-agent`, `spawning`, `cli`, `gateway`, `development` |
-| 相关 skill | [`claude-code`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-claude-code), [`codex`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-codex), [`opencode`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-opencode) |
+| 相关 skill | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit), [`digitable-portal`](/user-guide/skills/bundled/productivity/productivity-digitable-portal), [`digitable-courses`](/user-guide/skills/bundled/productivity/productivity-digitable-courses), [`digitable-tools`](/user-guide/skills/bundled/software-development/software-development-digitable-tools), [`digitable-workbench`](/user-guide/skills/bundled/software-development/software-development-digitable-workbench), [`fts`](/user-guide/skills/bundled/software-development/software-development-fts) |
 
 ## 参考：完整 SKILL.md
 

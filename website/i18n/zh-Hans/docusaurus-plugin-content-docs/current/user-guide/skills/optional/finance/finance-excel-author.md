@@ -21,7 +21,7 @@ description: "使用 openpyxl 无头构建可审计的 Excel 工作簿——蓝/
 | 许可证 | Apache-2.0 |
 | 平台 | linux, macos, windows |
 | 标签 | `excel`, `openpyxl`, `finance`, `spreadsheet`, `modeling` |
-| 相关 skill | [`pptx-author`](/user-guide/skills/optional/finance/finance-pptx-author)、[`dcf-model`](/user-guide/skills/optional/finance/finance-dcf-model)、[`comps-analysis`](/user-guide/skills/optional/finance/finance-comps-analysis)、[`lbo-model`](/user-guide/skills/optional/finance/finance-lbo-model)、[`3-statement-model`](/user-guide/skills/optional/finance/finance-3-statement-model) |
+| 相关 skill | [`xlsx`](/user-guide/skills/bundled/productivity/productivity-xlsx)、[`pptx-author`](/user-guide/skills/optional/finance/finance-pptx-author)、[`dcf-model`](/user-guide/skills/optional/finance/finance-dcf-model)、[`comps-analysis`](/user-guide/skills/optional/finance/finance-comps-analysis)、[`lbo-model`](/user-guide/skills/optional/finance/finance-lbo-model)、[`3-statement-model`](/user-guide/skills/optional/finance/finance-3-statement-model) |
 
 ## 参考：完整 SKILL.md
 
