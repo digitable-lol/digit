@@ -180,6 +180,57 @@ Bound labels are placed from their **container**, not from their own `x`/`y`,
 because the app recomputes those on load (as noted above) and the numbers in the
 file can be arbitrarily stale.
 
+### Turning a Map into Tasks
+
+A project schema is not decoration: what is on it gets carried into the tracker
+by hand, twice — once into Taskwarrior, and again when the drawing changes.
+`scripts/tasks.py` does that carrying, deterministically.
+
+```bash
+# Посмотреть, что получится, ничего не записывая
+python skills/creative/excalidraw/scripts/tasks.py from-map ~/diagrams/план.excalidraw --dry-run
+
+# Записать в базу задач
+python skills/creative/excalidraw/scripts/tasks.py from-map ~/diagrams/план.excalidraw
+```
+
+What translates into what:
+
+| На карте | В задаче |
+|---|---|
+| Фигура с подписью | задача; подпись — описание |
+| Стрелка A → B | B зависит от A (`depends`) |
+| Рамка (frame) | проект; имя рамки — имя проекта |
+| Группа | второй уровень проекта; имя — свободный текст в группе |
+| Заливка фигуры | приоритет (`#ffc9c9`→H, `#ffd8a8`→M, `#fff3bf`→L) |
+| `!H` / `!M` / `!L` в подписи | приоритет явной меткой; сильнее цвета |
+
+The colour table is a default, not a law: `--priority-colors table.json` replaces
+it. The explicit mark wins over the fill because the mark was typed on *that*
+shape, while a fill is usually inherited from whatever the shape was copied from.
+
+Three things worth knowing before running it against a database someone else
+uses:
+
+- **The key is the element id**, kept in the task's `excalidraw` UDA — not the
+  description (descriptions get edited) and never the positional number.
+  Task uuids are derived from the element id, so the same map produces the same
+  tasks on any machine.
+- **Writes are read-merge-import.** `task import` of an existing uuid *replaces*
+  the record: a record submitted without `annotations` leaves the task with none,
+  and nothing is printed about it. Never write a partial record.
+- **`task <uuid> modify excalidraw:box1` is not a shortcut for this.** With the
+  UDA undeclared in the rc file, Taskwarrior does not complain — it writes
+  `excalidraw:box1` into the *description*, and the description is gone. That is
+  why this utility only ever imports.
+
+Cycles are found in the map before anything is written. Taskwarrior also refuses
+a circular `depends`, but it refuses at the task it happens to reach, leaving
+half the dependencies applied.
+
+`--self-test` checks the reading rules and, when `task` is on PATH, a full write
+round-trip in a temporary database it creates and removes itself.
+
 ### Uploading for a Shareable Link
 
 Run the upload script (located in this skill's `scripts/` directory) via terminal:
