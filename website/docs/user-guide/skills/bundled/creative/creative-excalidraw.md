@@ -16,7 +16,7 @@ Hand-drawn Excalidraw JSON diagrams (arch, flow, seq).
 |---|---|
 | Source | Bundled (installed by default) |
 | Path | `skills/creative/excalidraw` |
-| Version | `1.0.1` |
+| Version | `1.1.0` |
 | Author | Digit |
 | License | MIT |
 | Platforms | linux, macos, windows |
@@ -34,7 +34,7 @@ Create diagrams by writing standard Excalidraw element JSON and saving as `.exca
 
 ## When to use
 
-Generate `.excalidraw` files for architecture diagrams, flowcharts, sequence diagrams, concept maps, and more. Files can be opened at excalidraw.com, opened locally on a canvas the owner shares with you (`scripts/canvas.py`), or uploaded for shareable links.
+Generate `.excalidraw` files for architecture diagrams, flowcharts, sequence diagrams, concept maps, and more. Files can be opened at excalidraw.com, opened locally on a canvas the owner shares with you (`scripts/canvas.py`), shown in the terminal while you explain them (`scripts/render.py`), or uploaded for shareable links.
 
 ## Workflow
 
@@ -132,6 +132,53 @@ Give the owner the printed URL. The loop then looks like this:
 Two things to know before promising anything: the token in the URL is required
 (the API refuses without it), and one server serves one file — start another
 for another diagram.
+
+### Showing the Diagram Where the Conversation Is
+
+`revise.py` and `canvas.py` are both about *editing*. Neither shows you what you
+drew, and a diagram you cannot see is a diagram you cannot check. `scripts/render.py`
+turns the same file into a picture — no network, no browser.
+
+```bash
+# Картинка в терминале (нужен chafa) плюс разбор словами
+python skills/creative/excalidraw/scripts/render.py show ~/diagrams/d.excalidraw
+python skills/creative/excalidraw/scripts/render.py show ~/diagrams/d.excalidraw --size 60x30
+
+# Только разбор словами — дёшево и читается в трубе, в логе и моделью
+python skills/creative/excalidraw/scripts/render.py legend ~/diagrams/d.excalidraw --json
+
+# Файлы: SVG всегда, растр — если есть rsvg-convert
+python skills/creative/excalidraw/scripts/render.py svg ~/diagrams/d.excalidraw --out d.svg
+python skills/creative/excalidraw/scripts/render.py png ~/diagrams/d.excalidraw --out d.png --scale 2
+```
+
+**Read the legend, not the pixels.** A terminal is ~80 columns wide, so a
+`fontSize: 16` label is physically a couple of pixels tall — it renders as a grey
+smudge. `show` therefore always prints, beside the picture, what the diagram
+*says* and what it *connects*: labels in reading order, and arrows as
+`«Клиент» → «Шлюз»` resolved through their bindings. That part survives a pipe, a
+log, and your own context window; the raster does not.
+
+Three things the legend reports that the picture cannot:
+
+- **Unbound arrows.** An arrow drawn next to two shapes but bound to neither
+  looks like a connection and is not one — move the shape and it stays behind.
+- **Element types with nothing to draw them with** (`embeddable`, and whatever a
+  future app version adds) get a dashed placeholder carrying the type name, plus
+  a line in the report. A picture missing something looks exactly like a complete
+  picture, which is why nothing is ever dropped in silence.
+- **Deleted elements** (`isDeleted`) are hidden, as the app hides them, but counted.
+
+What the picture is *not*: hand-drawn. Excalidraw draws through roughjs, jittering
+every line from the element's `seed`; here lines are straight, and curved
+(`roundness`) polylines are drawn as straight segments. On an 8×16 terminal cell
+that jitter is indistinguishable from raster noise, so it is not reproduced. The
+picture is faithful in *what*, *where*, *in front of what*, and *in what colour* —
+and not in handwriting.
+
+Bound labels are placed from their **container**, not from their own `x`/`y`,
+because the app recomputes those on load (as noted above) and the numbers in the
+file can be arbitrarily stale.
 
 ### Uploading for a Shareable Link
 

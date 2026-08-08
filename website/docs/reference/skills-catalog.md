@@ -104,6 +104,7 @@ If a skill is missing from this list but present in the repo, the catalog is reg
 | [`digitable-courses`](/user-guide/skills/bundled/productivity/productivity-digitable-courses) | Use when finding or planning Digitable courses. | `productivity/digitable-courses` |
 | [`digitable-portal`](/user-guide/skills/bundled/productivity/productivity-digitable-portal) | Use when navigating the Digitable portal ecosystem. | `productivity/digitable-portal` |
 | [`digitable-tasks`](/user-guide/skills/bundled/productivity/productivity-digitable-tasks) | Use for the shared Digitable backlog; close tasks by uuid. | `productivity/digitable-tasks` |
+| [`digital-portrait`](/user-guide/skills/bundled/productivity/productivity-digital-portrait) | Use when asked to answer in the owner's manner, recall what the owner decided before, or inspect/extend their digital portrait. Keeps three layers apart — measured style, cited past decisions, and clearly-labelled conjecture that never l... | `productivity/digital-portrait` |
 | [`docx`](/user-guide/skills/bundled/productivity/productivity-docx) | Create, read, edit Word .docx documents and templates. | `productivity/docx` |
 | [`google-workspace`](/user-guide/skills/bundled/productivity/productivity-google-workspace) | Gmail, Calendar, Drive, Docs, Sheets via gws CLI or Python. | `productivity/google-workspace` |
 | [`maps`](/user-guide/skills/bundled/productivity/productivity-maps) | Geocode, POIs, routes, timezones via OpenStreetMap/OSRM. | `productivity/maps` |
@@ -141,6 +142,7 @@ If a skill is missing from this list but present in the repo, the catalog is reg
 
 | Skill | Description | Path |
 |-------|-------------|------|
+| [`commit-convention`](/user-guide/skills/bundled/software-development/software-development-commit-convention) | Write commit messages in the house style: what and why. | `software-development/commit-convention` |
 | [`digit-skill-authoring`](/user-guide/skills/bundled/software-development/software-development-digit-skill-authoring) | Author in-repo SKILL.md files: frontmatter and structure. | `software-development/digit-skill-authoring` |
 | [`digit-tools-core`](/user-guide/skills/bundled/software-development/software-development-digit-tools-core) | Use when a task needs a deterministic local computation — hashes, HMAC, encodings, format converters, parsers, network address math, date arithmetic, generators. This is the local headless catalog behind Digit, exposed over MCP as three... | `software-development/digit-tools-core` |
 | [`digitable-engineering-docs`](/user-guide/skills/bundled/software-development/software-development-digitable-engineering-docs) | Use when writing an ADR, SDD, architecture review, postmortem or release checklist: produce the Digitable form with its real sections, not a generic one. Triggers on architecture decision record, design or spec document, design review, i... | `software-development/digitable-engineering-docs` |

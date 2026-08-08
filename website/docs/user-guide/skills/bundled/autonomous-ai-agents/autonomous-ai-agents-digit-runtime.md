@@ -55,7 +55,7 @@ Good verification targets:
 
 - CLI commands: `digit --help`, `digit <command> --help`, and `digit_cli/main.py`
 - User documentation: https://docs.digitable.life/
-- Source tree: https://github.com/digitable-lol/digit
+- Source tree: https://github.com/NousResearch/hermes-agent
 
 ## Quick Start
 

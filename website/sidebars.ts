@@ -262,6 +262,7 @@ const sidebars: SidebarsConfig = {
                     'user-guide/skills/bundled/productivity/productivity-digitable-courses',
                     'user-guide/skills/bundled/productivity/productivity-digitable-portal',
                     'user-guide/skills/bundled/productivity/productivity-digitable-tasks',
+                    'user-guide/skills/bundled/productivity/productivity-digital-portrait',
                     'user-guide/skills/bundled/productivity/productivity-docx',
                     'user-guide/skills/bundled/productivity/productivity-google-workspace',
                     'user-guide/skills/bundled/productivity/productivity-maps',
@@ -311,6 +312,7 @@ const sidebars: SidebarsConfig = {
                   key: 'skills-bundled-software-development',
                   collapsed: true,
                   items: [
+                    'user-guide/skills/bundled/software-development/software-development-commit-convention',
                     'user-guide/skills/bundled/software-development/software-development-digit-skill-authoring',
                     'user-guide/skills/bundled/software-development/software-development-digit-tools-core',
                     'user-guide/skills/bundled/software-development/software-development-digitable-engineering-docs',
