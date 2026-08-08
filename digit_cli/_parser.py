@@ -53,6 +53,7 @@ Examples:
     digit auth remove <p> <t>     Remove pooled credential by index, id, or label
     digit auth reset <provider>   Clear exhaustion status for a provider
     digit model                   Select default model
+    digit model --catalog         Digitable's own open models and datasets, with limits
     digit fallback [list]         Show fallback provider chain
     digit fallback add            Add a fallback provider (same picker as `digit model`)
     digit fallback remove         Remove a fallback provider from the chain

@@ -414,8 +414,13 @@ include = ["agent", "agent.*", "tools", "tools.*", "digit_cli", "digit_cli.*", "
 # там, где Digit уже объявляет такие, — optional-mcps/fts-gate/manifest.yaml,
 # `digit mcp install fts-gate`. claimcheck/NOTICE едет рядом по той же
 # причине, что и у ruleparse: авторство обязано быть в поставке.
+#
+# hf_catalog.toml — вход команды `digit model --catalog`, а не документация:
+# без файла команда печатает ошибку и выходит с кодом 1, потому что выдумывать
+# список моделей она не станет. Тот же файл побайтово копируется в портал
+# (courses/data/hf-catalog.toml), значит потеряться в поставке он не должен.
 digit_cli = ["observability/schemas/*.json", "ruleparse/tool_catalog.json", "ruleparse/NOTICE",
-             "claimcheck/verify.mjs", "claimcheck/NOTICE"]
+             "claimcheck/verify.mjs", "claimcheck/NOTICE", "hf_catalog.toml"]
 # gateway/assets/ ships status_phrases.yaml and the Telegram BotFather
 # screenshot. Without this, sealed venvs (uv2nix) silently lose both —
 # status phrases fall back to the tiny hardcoded set and the Telegram

@@ -3067,6 +3067,15 @@ def cmd_setup(args):
 
 def cmd_model(args):
     """Select default model — starts with provider selection, then model picker."""
+    # `--catalog` печатает наши собственные открытые модели и датасеты и выходит.
+    # Стоит ПЕРЕД _require_tty намеренно: это чтение справки, а не выбор, и оно
+    # обязано работать в конвейере (`digit model --catalog | less`) и в CI, где
+    # stdin не терминал. Требовать TTY у команды, которая ничего не спрашивает,
+    # значит сделать её недоступной ровно там, где её удобнее всего читать.
+    if getattr(args, "catalog", False):
+        from digit_cli.hf_catalog import print_catalog
+
+        return print_catalog()
     _require_tty("model")
     if getattr(args, "refresh", False):
         try:

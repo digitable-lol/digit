@@ -24,6 +24,18 @@ def build_model_parser(subparsers, *, cmd_model: Callable) -> None:
         action="store_true",
         help="Wipe the model picker disk cache and re-fetch every provider's live /v1/models list.",
     )
+    # Каталог наших собственных открытых моделей и датасетов. Это НЕ пикер: он
+    # ничего не выбирает и не спрашивает, поэтому и TTY ему не нужен — флаг
+    # обрабатывается до проверки на интерактивность в cmd_model.
+    #
+    # Флагом, а не подкомандой `digit model catalog`: у `model` подкоманд нет
+    # вовсе, и добавление первой позиционной сделало бы `digit model` без
+    # аргументов ошибкой разбора вместо привычного пикера.
+    model_parser.add_argument(
+        "--catalog",
+        action="store_true",
+        help="Print the open catalogue of Digitable's own models and datasets on Hugging Face and exit.",
+    )
     model_parser.add_argument(
         "--portal-url",
         help="Portal base URL for Nous login (default: production portal)",
