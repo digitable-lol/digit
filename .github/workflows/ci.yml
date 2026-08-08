@@ -13,6 +13,18 @@ name: CI
 # SECURITY: this workflow runs PR-controlled actions, workflows, and code.
 # Do not add ``secrets: inherit`` or GitHub App credentials here. Trusted
 # main-only automation uses protected environments in its own workflows.
+#
+# For the same reason, do not move any job here (or in a called sub-workflow)
+# to a self-hosted runner. ``pull_request`` above is unfiltered, so anyone can
+# open a fork PR; on a self-hosted runner that code would execute on our own
+# machine, next to the embedding server and other repositories' runner
+# credentials, and could leave a tampered tool behind for the next trusted job.
+# There is nothing to save by moving either: ``digit`` is a public repository,
+# and GitHub bills zero minutes for standard runners on public repositories --
+# measured, not assumed (566 jobs over 2026-08-05..08 report
+# ``billable.UBUNTU.total_ms = 0`` via ``actions/runs/<id>/timing``). The
+# billed minutes are spent by the private repositories; the self-hosted runner
+# belongs there.
 
 on:
   pull_request:
