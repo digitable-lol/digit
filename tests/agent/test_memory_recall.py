@@ -232,6 +232,131 @@ def test_tag_in_the_heading_does_not_break_the_link_step(digit_home):
     assert linked[0]["via"] == "# Прокси в CI"
 
 
+# ---------------------------------------------------------------------------
+# Синонимы
+# ---------------------------------------------------------------------------
+
+SYN_NOTES = [
+    "# Автомобиль\nSkoda Octavia 2019, ТО у дилера, страховка до ноября. #быт",
+    "# Резервные копии\nrestic в S3 каждую ночь, проверка раз в месяц. #инфраструктура",
+    "# Отпуск\nДве недели в сентябре, билеты пока не куплены. #планы",
+    "# Кофе\nЭспрессо без сахара, зёрна Tasty Coffee. #быт",
+]
+
+
+def test_synonym_finds_a_note_that_shares_no_word_with_the_query(digit_home):
+    """«Машина» находит «Автомобиль» — ровно та граница, что была объявлена."""
+    index = RecallIndex(digit_home / "memories" / "recall.db")
+    index.sync(SYN_NOTES, [])
+
+    hits = index.search("машина", top_k=3)
+    assert hits and hits[0]["title"] == "# Автомобиль"
+
+
+def test_synonyms_do_not_touch_a_query_the_words_already_answered(digit_home):
+    """Пока лексика справилась, синонимы не запускаются и выдачу не меняют.
+
+    Это не оптимизация, а условие: подмешивать синонимы в каждый запрос —
+    значит платить точностью там, где платить не за что.
+    """
+    index = RecallIndex(digit_home / "memories" / "recall.db")
+    index.sync(SYN_NOTES, [])
+
+    calls = []
+    original = index._by_synonym
+    index._by_synonym = lambda *a, **kw: calls.append(1) or original(*a, **kw)
+    hits = index.search("эспрессо", top_k=3)
+
+    assert hits[0]["title"] == "# Кофе"
+    assert not calls, "второй заход не имеет права случаться после удачного первого"
+
+
+def test_a_synonym_counts_only_when_it_names_the_note(digit_home):
+    """Синоним в теле заметки — совпадение слова, а не темы.
+
+    «Расписание автобусов» через синоним «расписание→план» цепляло тег
+    ``#планы`` и приводило заметку про отпуск. Заметка называется не так.
+    """
+    index = RecallIndex(digit_home / "memories" / "recall.db")
+    index.sync(SYN_NOTES, [])
+
+    assert index.search("расписание автобусов в Твери", top_k=5) == []
+
+
+def test_a_synonym_in_the_heading_is_not_outranked_by_bodies(digit_home):
+    """Заметку, НАЗВАННУЮ синонимом, нельзя искать через общий bm25.
+
+    Заметки, где синоним встретился в теле, набирают больше совпавших термов и
+    выдавливают её вниз: на этом корпусе она оказывалась 41-й из 41. Поэтому
+    запасной заход спрашивает FTS про колонку заголовка, а не отбирает уже
+    отранжированные строки.
+    """
+    notes = [
+        f"# Совещание {i}\nОбсудили план работ и график поставок, пункт {i}."
+        for i in range(40)
+    ]
+    notes.append("# План занятий\nПо средам музыкальная школа, по пятницам бассейн.")
+    index = RecallIndex(digit_home / "memories" / "recall.db")
+    index.sync(notes, [])
+
+    hits = index.search("расписание", top_k=6)
+    assert [h["title"] for h in hits] == ["# План занятий"]
+
+
+def test_an_index_from_the_previous_schema_is_rebuilt_silently(digit_home):
+    """Индекс производный: смена схемы стоит пересборки, а не поломки.
+
+    У людей на диске лежит recall.db прежней версии, и первый же запуск с новой
+    схемой обязан пройти незаметно — иначе поиск памяти отвалится молча.
+    """
+    import sqlite3
+
+    path = digit_home / "memories" / "recall.db"
+    conn = sqlite3.connect(str(path))
+    conn.executescript(
+        "CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+        "CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT NOT NULL,"
+        " ordinal INTEGER NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL,"
+        " text TEXT NOT NULL, tags TEXT NOT NULL DEFAULT '',"
+        " sector TEXT NOT NULL DEFAULT '', pinned INTEGER NOT NULL DEFAULT 0);"
+        "CREATE TABLE links(src INTEGER NOT NULL, dst INTEGER NOT NULL, PRIMARY KEY(src,dst));"
+        "CREATE VIRTUAL TABLE notes_fts USING fts5(text, content='notes',"
+        " content_rowid='id', tokenize='unicode61 remove_diacritics 2');"
+        "INSERT INTO meta VALUES('schema_version','1');"
+        "INSERT INTO meta VALUES('entries_digest','deadbeef');"
+    )
+    conn.commit()
+    conn.close()
+
+    index = RecallIndex(path)
+    assert index.sync(SYN_NOTES, []) is True
+    assert index.search("эспрессо", top_k=3)[0]["title"] == "# Кофе"
+
+
+def test_synonyms_do_not_invent_what_is_not_stored(digit_home):
+    """Словарь синонимов не отменяет права промолчать."""
+    index = RecallIndex(digit_home / "memories" / "recall.db")
+    index.sync(SYN_NOTES, [])
+
+    for query in ("рецепт борща", "как ухаживать за орхидеей", "курс биткоина"):
+        assert index.search(query, top_k=5) == [], query
+
+
+def test_synonym_search_stays_offline(digit_home, monkeypatch):
+    """Второй заход тоже не имеет права ходить в сеть."""
+    import socket
+
+    index = RecallIndex(digit_home / "memories" / "recall.db")
+    index.sync(SYN_NOTES, [])
+
+    def _no_network(*a, **kw):
+        raise AssertionError("память не имеет права ходить в сеть")
+
+    monkeypatch.setattr(socket, "socket", _no_network)
+    monkeypatch.setattr(socket, "create_connection", _no_network)
+    assert index.search("бэкапы", top_k=3)
+
+
 def test_pinned_notes_stay_in_the_prompt(digit_home):
     """#pinned действует всегда, а не когда о нём спросили."""
     notes = _fat(60) + ["# Красная кнопка\nПрод не трогать без релиз-менеджера. #pinned"]

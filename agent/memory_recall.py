@@ -38,10 +38,17 @@
 
 Границы честности
 -----------------
-Это лексический поиск. Он находит заметку по словам, а не по смыслу:
-«машина» не найдёт «автомобиль». Взамен он детерминирован, объясним
-(видно, какие термы совпали), не требует сети и стоит доли миллисекунды.
-Для памяти это правильный размен: промахнувшийся поиск агент чинит сам —
+Это лексический поиск. Он находит заметку по словам, а не по смыслу — и там,
+где слова разошлись, за него доигрывает словарь синонимов
+(:mod:`agent.memory_recall_synonyms`): «машина» находит «Автомобиль». Словарь
+включается ТОЛЬКО после того, как поиск по словам не нашёл ничего, и
+засчитывает синоним только в заголовке заметки — почему именно так и чего
+стоили другие варианты, замерено и записано в том модуле.
+
+Граница осталась, но переехала: словарь знает то, что в нём написано, и
+ничего сверх. Взамен поиск детерминирован, объясним (видно, какие термы
+совпали), не требует сети и стоит доли миллисекунды. Для памяти это
+правильный размен: промахнувшийся поиск агент чинит сам —
 ``memory(action="search", …)`` доступен ему как инструмент.
 """
 
@@ -64,7 +71,9 @@ logger = logging.getLogger(__name__)
 # принципиально не гарантирует, поэтому для них оставлена ручка.
 PINNED_TAG = "pinned"
 
-SCHEMA_VERSION = "1"
+# 2: у FTS появилась отдельная колонка ``title`` — по ней ищет запасной заход
+# по синонимам. Индекс производный, поэтому смена версии стоит одной пересборки.
+SCHEMA_VERSION = "2"
 
 # ``notes.text`` — индексируемая форма, она нужна только FTS5; тащить её в
 # каждую выдачу значит удваивать объём ответа ради колонки, которую никто не
@@ -108,7 +117,15 @@ CREATE INDEX IF NOT EXISTS idx_links_dst ON links(dst);
 -- его копия внутри FTS означала бы два места, которые обязаны совпадать, но
 -- ничем к этому не принуждены. ``rebuild`` перечитывает содержимое из notes,
 -- поэтому расхождение невозможно по построению.
+--
+-- ``title`` — отдельной колонкой, хотя заголовок и так входит в ``text``.
+-- Она нужна не для веса (вес даёт удвоение внутри ``text``), а для того, чтобы
+-- запасной заход по синонимам мог спросить «эта заметка НАЗЫВАЕТСЯ так?» —
+-- ``title:"план"*``. Через общий индекс такой вопрос не задать: bm25 ставит
+-- заметку, у которой синоним в заголовке, ниже десятка тех, у кого в теле
+-- совпало два слова из трёх (проверено: 41-е место из 41).
 CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+    title,
     text,
     content='notes',
     content_rowid='id',
@@ -398,6 +415,10 @@ class RecallIndex:
         ``[[вики-ссылкам]]`` от найденного. Связанные заметки идут ПОСЛЕ
         совпавших и с пометкой ``via``, потому что их привёл не запрос, а
         автор заметки — и читателю выдачи это должно быть видно.
+
+        Если по словам не нашлось ничего — пробуются синонимы
+        (:mod:`agent.memory_recall_synonyms`). Именно в таком порядке: пока
+        лексика справляется, выдача и время не меняются вообще.
         """
         from digit_cli.kb.lexical import build_fts_query, content_terms
 
@@ -411,24 +432,11 @@ class RecallIndex:
         conn = self.connect()
         names = [str(s) for s in sources] if sources else []
         where_source = ""
-        params: List[Any] = [expr]
         if names:
             where_source = f" AND n.source IN ({','.join('?' * len(names))})"
-            params.extend(names)
-        params.append(top_k)
-        try:
-            rows = conn.execute(
-                f"SELECT {_NOTE_COLS}, bm25(notes_fts) AS score "
-                "FROM notes_fts f JOIN notes n ON n.id = f.rowid "
-                f"WHERE notes_fts MATCH ?{where_source} "
-                "ORDER BY score LIMIT ?",
-                params,
-            ).fetchall()
-        except sqlite3.OperationalError as exc:
-            # Кривой FTS-запрос не должен ронять ход: без памяти агент
-            # работает хуже, без ответа — вообще никак.
-            logger.debug("recall FTS query failed (%s): %s", expr, exc)
-            return []
+        rows = self._match(conn, expr, where_source, names, top_k)
+        if not rows:
+            rows = self._by_synonym(conn, terms, where_source, names, top_k)
 
         hits: List[Dict[str, Any]] = []
         seen: set[int] = set()
@@ -442,6 +450,68 @@ class RecallIndex:
         if hops > 0 and hits:
             hits.extend(self._expand(conn, hits, seen, limit=top_k, sources=names))
         return hits
+
+    def _match(
+        self,
+        conn: sqlite3.Connection,
+        expr: str,
+        where_source: str,
+        names: Sequence[str],
+        top_k: int,
+    ) -> List[sqlite3.Row]:
+        """Один запрос к FTS5. Кривое выражение — пустая выдача, не исключение."""
+        params: List[Any] = [expr, *names, top_k]
+        try:
+            return conn.execute(
+                f"SELECT {_NOTE_COLS}, bm25(notes_fts) AS score "
+                "FROM notes_fts f JOIN notes n ON n.id = f.rowid "
+                f"WHERE notes_fts MATCH ?{where_source} "
+                "ORDER BY score LIMIT ?",
+                params,
+            ).fetchall()
+        except sqlite3.OperationalError as exc:
+            # Кривой FTS-запрос не должен ронять ход: без памяти агент
+            # работает хуже, без ответа — вообще никак.
+            logger.debug("recall FTS query failed (%s): %s", expr, exc)
+            return []
+
+    def _by_synonym(
+        self,
+        conn: sqlite3.Connection,
+        terms: Sequence[str],
+        where_source: str,
+        names: Sequence[str],
+        top_k: int,
+    ) -> List[sqlite3.Row]:
+        """Второй заход — по синонимам, и только по заголовкам заметок.
+
+        Почему вообще второй заход, а не расширение первого: подмешивать
+        синонимы в каждый запрос значит платить точностью там, где лексика и
+        так справилась. Замер: молчание на запросах «этого в памяти нет»
+        падало с 9/10 до 7/10, а «расписание автобусов» через синоним
+        «расписание→план» приводило заметку про отпуск по тегу ``#планы``.
+
+        Почему только по заголовку: заголовок — это то, чем заметка
+        называется. Синоним в заголовке значит «заметка про это», синоним
+        где-то в теле — что слово случайно встретилось рядом. С этим фильтром
+        молчание вернулось к 9/10, а синонимы дают 8 из 8.
+
+        Ограничение задаётся FTS (``title:``), а не отбором прочитанных строк,
+        и это не стилистика. Отбирать после ``ORDER BY bm25 LIMIT`` бесполезно:
+        заметка, у которой синоним стоит в заголовке, проигрывает по bm25
+        заметкам, где в теле совпало больше термов, — на проверке она оказалась
+        41-й из 41 и не попадала ни в какой разумный пул.
+        """
+        from agent.memory_recall_synonyms import synonyms
+        from digit_cli.kb.lexical import build_fts_query
+
+        alts = synonyms(terms)
+        if not alts:
+            return []
+        expr = build_fts_query(alts)
+        if not expr:
+            return []
+        return self._match(conn, f"title:({expr})", where_source, names, top_k)
 
     def _expand(
         self,
