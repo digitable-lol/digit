@@ -41,6 +41,13 @@ _TAG_RE = re.compile(r"(?<![^\s(\[])#([^\W\d_][\w/-]{0,63})", re.UNICODE)
 
 _WS_RE = re.compile(r"\s+")
 
+# Теги, дописанные в конец строки заголовка: ``Сборка образов #сеть #devops``.
+# Требование пробела перед решёткой — то же, что и в ``_TAG_RE``: оно отличает
+# тег от «C#» и от якоря в ссылке, у которых слева стоит буква.
+_TRAILING_TAGS_RE = re.compile(
+    r"(?:\s+#[^\W\d_][\w/-]{0,63})+\s*$", re.UNICODE
+)
+
 
 def normalize_key(text: str) -> str:
     """The comparison form of a note title / link target.
@@ -49,10 +56,23 @@ def normalize_key(text: str) -> str:
     on the note (``# Vector search``) and none in the link, a stray trailing
     colon, ``Ё`` against ``ё``, double spaces. Case folding plus whitespace
     collapse handles all of it without a fuzzy matcher nobody could predict.
+
+    Теги в строке заголовка снимаются, и это не косметика. Заметку принято
+    подписывать прямо в первой строке — ``# Сборка образов #сеть``, — а
+    ссылаются на неё названием: ``[[Сборка образов]]``. Пока тег входил в
+    ключ, такая ссылка числилась битой: человек написал её правильно, граф
+    терял ребро, а поиск — шаг по связи. Снимается только хвост строки:
+    ``#`` внутри названия (``C#``, якорь в URL) тегом не считается, ровно по
+    тому же правилу, что и в ``extract_tags``. Если после снятия тегов не
+    остаётся ничего (заголовок — сам тег), ключ остаётся прежним: пустой ключ
+    не резолвится ни во что.
     """
     stripped = text.strip().lstrip("#").strip()
     stripped = stripped.strip("*_`").strip()
     stripped = stripped.rstrip(":.,;!?").strip()
+    untagged = _TRAILING_TAGS_RE.sub("", stripped).rstrip(":.,;!?—–-").strip()
+    if untagged:
+        stripped = untagged
     return _WS_RE.sub(" ", stripped).casefold()
 
 

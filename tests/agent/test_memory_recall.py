@@ -212,6 +212,26 @@ def test_absent_topic_returns_nothing(digit_home):
     assert index.search("рецепт борща", top_k=5) == []
 
 
+def test_tag_in_the_heading_does_not_break_the_link_step(digit_home):
+    """Тег в первой строке — не часть названия заметки.
+
+    Заметку подписывают тегом там же, где называют, а ссылаются на неё именем.
+    Пока тег входил в ключ, шаг по ``[[вики-ссылке]]`` терялся именно на таких
+    заметках — то есть на самых аккуратно размеченных.
+    """
+    notes = [
+        "# Прокси в CI\nHTTPS_PROXY=http://proxy.local:3128.\nСвязано: [[Сборка образов]].",
+        "# Сборка образов #сеть\nDocker buildx собирает multi-arch.",
+    ]
+    index = RecallIndex(digit_home / "memories" / "recall.db")
+    index.sync(notes, [])
+
+    hits = index.search("прокси", top_k=3, hops=1)
+    linked = [h for h in hits if h["title"] == "# Сборка образов #сеть"]
+    assert linked, "связанная заметка обязана подтянуться, тег на заголовке ей не мешает"
+    assert linked[0]["via"] == "# Прокси в CI"
+
+
 def test_pinned_notes_stay_in_the_prompt(digit_home):
     """#pinned действует всегда, а не когда о нём спросили."""
     notes = _fat(60) + ["# Красная кнопка\nПрод не трогать без релиз-менеджера. #pinned"]

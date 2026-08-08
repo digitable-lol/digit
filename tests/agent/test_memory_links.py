@@ -59,6 +59,37 @@ def test_normalize_key_bridges_heading_markers_and_case():
     assert ml.normalize_key("# Vector  Search:") == ml.normalize_key("vector search")
 
 
+def test_a_tag_in_the_heading_does_not_rename_the_note():
+    # Заметку подписывают тегом прямо в первой строке, а ссылаются на неё
+    # названием. Пока тег входил в ключ, правильно написанная ссылка числилась
+    # битой.
+    assert ml.normalize_key("# Сборка образов #сеть") == ml.normalize_key("Сборка образов")
+    assert ml.normalize_key("Сборка образов #сеть #devops") == ml.normalize_key("Сборка образов")
+
+
+def test_a_hash_inside_the_heading_is_part_of_the_name():
+    # То же правило, что и у тегов: решётка без пробела слева — не тег.
+    assert ml.normalize_key("Язык C#") == "язык c#"
+    assert ml.normalize_key("Задача #42") == "задача #42"
+    assert ml.normalize_key("см https://x.dev/g#install") == "см https://x.dev/g#install"
+
+
+def test_a_heading_that_is_only_a_tag_keeps_its_name():
+    # Снять тег значило бы получить пустой ключ, а он не резолвится ни во что.
+    assert ml.normalize_key("#сеть") == "сеть"
+
+
+def test_link_resolves_to_a_note_tagged_in_its_heading():
+    cards = [
+        _card("Прокси в CI", "см [[Сборка образов]]"),
+        _card("Сборка образов #сеть", "docker buildx"),
+    ]
+    result = ml.annotate(cards)
+
+    assert result["edges"] == [(0, 1)]
+    assert result["unresolved"] == {}
+
+
 # ── linking ─────────────────────────────────────────────────────────────────
 
 
