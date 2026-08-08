@@ -327,6 +327,15 @@ class RuleParser:
                              margin=margin, kind="refuse", evidence=why,
                              reason="это вопрос, а не команда, и ни один аргумент не "
                                     "опознан как литерал известной формы")
+        # Приказ, показывающий на операнд пальцем, а не называющий его.
+        pointer = slots.command_pointer(toks)
+        if self.use_rules and pointer is not None and not self._pointer_resolved(
+                pointer, query, toks, ents, args):
+            return Parse(False, tool_id=top_id, args=args, score=top_score,
+                         margin=margin, kind="refuse", evidence=why,
+                         reason=f"инструмент определён ({top_id}), но приказ ссылается "
+                                "на значение указательным словом, а самого значения "
+                                "в запросе нет")
         groups = REQUIRED_GROUPS.get(top_id, [[]])
         missing = None
         for group in groups:
@@ -350,6 +359,67 @@ class RuleParser:
         return Parse(True, tool_id=top_id, args=args, score=top_score, margin=margin,
                      evidence=why, runners_up=[(t, s) for t, (s, _) in ranked[1:3]],
                      kind="tool")
+
+    def _pointer_resolved(self, pointer: str, query: str, toks, ents, args: dict) -> bool:
+        """Есть ли в САМОМ запросе то, на что показывает приказ.
+
+        Слой правил читает одно предложение и копирует из него подстроки.
+        Разрешать ссылки ему нечем: ни предыдущего хода, ни корпуса, ни модели
+        дискурса у него нет. Поэтому «переведи ЭТО ЧИСЛО в двоичную» и
+        «сделай из НЕГО slug» — это запросы не к нему: число и slug-исходник
+        лежат там, куда запрос только показывает. Раньше такой вызов доезжал
+        до исполнения и возвращал перевод слов «Базы данных» в двоичный код с
+        видом проверенного ответа.
+
+        Ссылка считается разрешённой ровно тогда, когда указанное лежит тут же:
+
+          «переведи ЭТОТ yaml в json: name: api»  — распознан yaml;
+          «сожми ЭТУ строку»                      — маркер «строка» дал литерал,
+                                                    и он попал в аргументы;
+          «посчитай для НЕГО»                     — хоть один аргумент взят из
+                                                    распознанной формы или из
+                                                    маркера, то есть местоимению
+                                                    есть на что указывать.
+
+        Голому местоимению достаточно любой такой опоры: разбирать, к какому
+        именно слову оно относится, нечем, а требовать большего значило бы
+        рубить «как сокращают слово internationalization ..., посчитай для
+        него», где операнд назван прямо.
+
+        Число, взятое из запроса дословно, — опора наравне с распознанной
+        формой. У числа не бывает второго прочтения: «трактовать как 400 ...
+        покажи его официальное название» ссылается на 400, и 400 тут есть.
+        Латинское слово так не годится — «Какой SKU оферта фиксирует» тоже
+        содержит латиницу, но не значение, а вопрос о нём.
+        """
+        hard = [str(v) for k, v in args.items()
+                if k not in CLOSED_VOCAB_ARGS and v not in (None, "")]
+        spans = [e.value for e in ents if str(e.value).strip()] + \
+            list(slots.all_marker_literals(query, toks))
+        anchored = [v for v in hard
+                    if any(v in s or s in v for s in spans)
+                    or (re.fullmatch(r"\d+", v) and v in query)]
+        if pointer == "":
+            return bool(anchored)
+        # Указательное с существительным: названа КАТЕГОРИЯ того, на что
+        # показывают, и она обязана совпасть с тем, что разбор действительно
+        # взял. «назови ЭТОТ ХЭШ» не совпадает ни с чем: хэша в запросе нет,
+        # есть только строка, от которой его хотят.
+        kinds = {e.kind for e in ents}
+        slot = slots.MARKERS.get(pointer)
+        if pointer in kinds or (slot and slot in kinds):
+            return True
+        if slot:
+            # Существительное при указательном — слот-маркер, то есть родовое
+            # слово («строка», «текст», «ключ»). Оно называет РОЛЬ значения, а
+            # не адрес, поэтому годится любая опора: «сожми эту строку» при
+            # разобранном литерале указывает на этот литерал.
+            lit = slots.literal_after(query, toks, slot)
+            if lit and any(lit in v or v in lit for v in hard):
+                return True
+            if anchored:
+                return True
+        return False
 
     @staticmethod
     def _entity_backed(value: str, spans: list[str]) -> bool:

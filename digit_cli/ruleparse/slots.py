@@ -38,10 +38,11 @@ MARKERS: dict[str, str] = {
     "выражение": "expr", "запрос": "query", "регулярка": "regex",
 }
 # A literal stops when one of these lemmas is reached: it opens the next slot.
-BOUNDARY = set(MARKERS) | {
+NOTIONS = {
     "система", "счисление", "вид", "кодировка", "стандарт", "бит", "символ",
     "штука", "абзац", "раз", "формате", "через", "плз",
 }
+BOUNDARY = set(MARKERS) | NOTIONS
 
 RE_IDENT = re.compile(r"[A-Za-z][A-Za-z0-9_.\-+@!#$%^&*]{2,}")
 RE_TITLECASE_RUN = re.compile(r"(?:\b[А-ЯЁ][а-яё]+\b[ \t]+){1,}\b[А-ЯЁ][а-яё]+\b")
@@ -77,12 +78,20 @@ def valid_literal(s: str | None) -> str | None:
       «совпадает ли пароль с этим хэшем» -> pure function words became the payload
     A literal must contain at least one word that is not a stopword, not a slot
     marker and not the name of a format, algorithm or tool.
+
+    И четвёртый, найденный позже: «пароль корпоративного сервисного аккаунта
+    И СКАЖИ, СКОЛЬКО раз он засветился» — маркер открыл значение, а закрыть
+    его было нечем, и в аргумент уехала вторая половина просьбы. Значение не
+    приказывает: повелительное наклонение внутри «литерала» означает, что
+    граница потеряна и найденное — кусок инструкции.
     """
     if not s:
         return None
     from .morph import STOPWORDS, tokenize as _tok
     flat = re.sub(r"[^a-z0-9а-я]", "", normalize(s))
     if flat in SKIP_IDENTS or flat in HASH_ALGOS or flat in BASE_WORDS:
+        return None
+    if _is_instruction(s):
         return None
     content = [t for t in _tok(s)
                if t.norm not in STOPWORDS and t.lemma not in MARKERS
@@ -102,6 +111,83 @@ def _strip(s: str) -> str:
     return s.strip(" \t\n\r,;:—–«»\"'()")
 
 
+# ---------------------------------------------------------------------------
+# «Назван» против «описан»
+#
+# Весь этот блок отвечает на один вопрос: запрос ПРИНЁС операнд или только
+# СКАЗАЛ, где тот лежит? Разница невидима для поиска подстрок и решает всё.
+# «посчитай хеш строки digitable» — принёс. «в треке «Базы данных» назван
+# порог, переведи это число в двоичную» — сказал: в запросе есть имя трека и
+# указание на число, но самого числа нет. Пока извлечение отвечало «в тексте
+# есть похожая на литерал подстрока», второе неотличимо от первого, и слой
+# правил считал хеш от заголовка главы, показывая его как проверенный ответ.
+#
+# Отказ здесь ничего не стоит: неразобранный запрос уходит модели. Ложный
+# ответ стоит всего, потому что после него модель уже не спросят.
+# ---------------------------------------------------------------------------
+def _is_instruction(text: str) -> bool:
+    """Есть ли в куске повелительное наклонение.
+
+    Приказ — это не данные. «...есть режим распознавания: загрузи мой
+    скриншот с QR» ставит после двоеточия не полезную нагрузку, а вторую
+    половину просьбы; хвост после двоеточия годится в аргументы, только пока
+    в нём никого ни о чём не просят.
+
+    Проверяется не список глаголов, а разбор: pymorphy помечает наклонение
+    сам. Форма обязана быть глаголом ПЕРВЫМ разбором — иначе «мой» (которое
+    разбирается ещё и как повелительное от «мыть») зарубало бы любой хвост с
+    притяжательным местоимением.
+    """
+    from .morph import analyzer, tokenize as _tok
+    for tok in _tok(text):
+        if tok.pos != "VERB":
+            continue
+        if any(p.tag.mood == "impr" for p in analyzer().parse(tok.norm)):
+            return True
+    return False
+
+
+def _token_before(tokens: list[Token], pos: int) -> Token | None:
+    """Последний токен, кончающийся не позже `pos`."""
+    best = None
+    for tok in tokens:
+        if tok.end <= pos:
+            best = tok
+        else:
+            break
+    return best
+
+
+def payload_quotes(query: str, tokens: list[Token]) -> list[E.Ent]:
+    """Кавычки, которые ЦИТИРУЮТ значение, а не НАЗЫВАЮТ источник.
+
+    По-русски кавычки делают две несовместимые работы:
+
+        переведи «Привет, мир!» в base64      — цитата, внутри сам операнд
+        в треке «Базы данных» назван порог    — имя, внутри адрес операнда
+
+    Различает их приложение. Имя стоит при родовом существительном («трек»,
+    «глава», «курс», «статья»), которое и есть та вещь, что так называется;
+    цитата не стоит ни при чём — либо стоит при слот-маркере («строка»,
+    «текст», «заголовок»), который объявляет РОЛЬ значения, а не его адрес.
+    Поэтому список родовых слов не нужен: достаточно уже имеющейся таблицы
+    маркеров, а всякое иное существительное вплотную к кавычкам — источник.
+
+    Вплотную: между существительным и кавычкой допустимы только пробелы.
+    «покажи base64 результата: «Привет»» — двоеточие рвёт приложение, там
+    кавычки снова цитируют.
+    """
+    out: list[E.Ent] = []
+    for span in E.quoted_spans(query):
+        head = _token_before(tokens, span.start)
+        gap = query[head.end:span.start] if head else ""
+        if (head is not None and head.pos == "NOUN" and gap.strip() == ""
+                and head.lemma not in MARKERS):
+            continue
+        out.append(span)
+    return out
+
+
 def literal_after(query: str, tokens: list[Token], slot: str) -> str | None:
     """Text introduced by a marker of `slot`, ending at the next slot boundary.
 
@@ -114,6 +200,12 @@ def literal_after(query: str, tokens: list[Token], slot: str) -> str | None:
       2. a script change, when the literal started in Latin and Cyrillic prose
          resumes («SMIRNOV, помоги с рацией» -> «SMIRNOV»);
       3. end of query.
+
+    А перед всем этим — вопрос, открывает ли маркер значение вообще. Маркер,
+    за которым идёт предлог или родительный падеж, ОПИСЫВАЕТ своё значение
+    («пароль корпоративного аккаунта», «пароль с этим хэшем») и потому не
+    вводит ничего: там, где нет литерала, лучше не найти ни одного, чем
+    выдать за него кусок инструкции.
     """
     best: str | None = None
     for i, tok in enumerate(tokens):
@@ -125,6 +217,22 @@ def literal_after(query: str, tokens: list[Token], slot: str) -> str | None:
             continue
         rest = tokens[i + 1:]
         if not rest:
+            continue
+        # ПОЧЕМУ предлог сразу после маркера закрывает слот, а не открывает.
+        # «мой пароль С ЭТИМ хэшем» — предложная группа ОПИСЫВАЕТ пароль
+        # («тот, что совпадает с хэшем»), а не называет его. Раньше отсюда
+        # выходил «литерал» «с этим хэшем», и bcrypt считал хеш от служебных
+        # слов. Настоящее значение идёт за маркером без предлога:
+        # «строку digitable», «с ключом my secret key» (предлог там ПЕРЕД
+        # маркером, а не после).
+        if rest[0].is_prep:
+            continue
+        # ПОЧЕМУ родительный падеж сразу после маркера — тоже описание.
+        # «пароль КОРПОРАТИВНОГО сервисного аккаунта» отвечает на вопрос
+        # «чей пароль», то есть говорит, ГДЕ значение, а не какое оно.
+        # Литерал так себя не ведёт: он либо не русский вовсе, либо стоит в
+        # именительном («в тексте Мы отправили заказ», «строку Привет, мир!»).
+        if rest[0].case == "gent" and not rest[0].is_latin and not rest[0].is_digit:
             continue
         # A marker directly followed by another marker introduces nothing:
         # «сколько символов и слов в тексте ...» - «слов» opens no literal.
@@ -176,6 +284,16 @@ def main_literal(query: str, tokens: list[Token], ents: list[E.Ent]) -> str | No
     Structured blobs are consulted BEFORE quoted spans: the `"name"` inside a
     pasted JSON object is a key, not a quotation, and picking it would send the
     key alone to the converter.
+
+    Ниже по списку идут ветки, у которых нет за спиной ни одного детектора:
+    хвост после двоеточия, латинская подстрока, цепочка слов с большой буквы.
+    Они отвечают на вопрос «есть ли в тексте что-нибудь похожее на литерал»,
+    а нужен ответ на вопрос «принёс ли запрос операнд». В любом русском
+    вопросе, где упомянуты продукт, аббревиатура или заголовок главы, первое
+    есть, а второго нет — отсюда «SKU» из «Какой SKU оферта фиксирует» и
+    «Прикладная криптография» из «В главе «Прикладная криптография» сказано».
+    Поэтому у каждой такой ветки стоит своя проверка на то, что найденное не
+    несёт в предложении собственной работы.
     """
     for kind in ("json", "yaml", "toml", "xml", "markdown", "sql", "docker_run",
                  "user_agent", "jwt", "base64", "binary", "entity_named",
@@ -183,7 +301,7 @@ def main_literal(query: str, tokens: list[Token], ents: list[E.Ent]) -> str | No
         hit = [e for e in ents if e.kind == kind]
         if hit:
             return hit[0].value
-    q = E.quoted_spans(query)
+    q = payload_quotes(query, tokens)
     if q:
         return q[0].value
     for kind in ("url",):
@@ -192,10 +310,11 @@ def main_literal(query: str, tokens: list[Token], ents: list[E.Ent]) -> str | No
             return hit[0].value
     # after a trailing colon: «переведи этот yaml в json:\nname: api»
     m = re.search(r":\s*\n(.+)$", query, re.S)
-    if m and len(m.group(1).strip()) > 2:
+    if m and len(m.group(1).strip()) > 2 and not _is_instruction(m.group(1)):
         return m.group(1).strip()
     m = re.search(r":\s+(\S.*)$", query, re.S)
-    if m and len(m.group(1).strip()) > 2 and not re.match(r"//", m.group(1)):
+    if (m and len(m.group(1).strip()) > 2 and not re.match(r"//", m.group(1))
+            and not _is_instruction(m.group(1))):
         return _strip(m.group(1))
     for m in RE_IDENT.finditer(query):
         cand = m.group(0)
@@ -206,10 +325,67 @@ def main_literal(query: str, tokens: list[Token], ents: list[E.Ent]) -> str | No
         # a literal the user pasted.
         if CYRILLIC.match(query[m.end():m.end() + 1] or " "):
             continue
+        # Латиница сразу после слова-понятия ИМЕНУЕТ это понятие, а не
+        # приносит данные: «в кодировке windows-1251», «по стандарту ICAO»,
+        # «закодируй в base64 кодировку UTF-8». Раньше отсюда выходил
+        # операнд, и text-statistics считал статистику слова «windows-1251».
+        before = _token_before(tokens, m.start())
+        if before is not None and before.lemma in NOTIONS:
+            continue
         return cand
     m = RE_TITLECASE_RUN.search(query)
     if m:
         return valid_literal(_strip(m.group(0)))
+    return None
+
+
+# Указатели наружу. Личные местоимения третьего лица заменяют то, что уже
+# названо ГДЕ-ТО, указательные — то, на что показывают.
+POINTER_PRONOUNS = {"он", "она", "оно", "они"}
+DEMONSTRATIVES = {"этот", "тот", "такой", "это"}
+# Служебные части речи между приказом и его объектом: «сделай ИЗ него slug»,
+# «прогони ЧЕРЕЗ него пароль».
+_SKIP_POS = {"PREP", "CONJ", "PRCL"}
+
+
+def command_pointer(tokens: list[Token]) -> str | None:
+    """На что показывает приказ, если он показывает, а не называет.
+
+    Возвращает:
+      * лемму существительного при указательном («переведи это ЧИСЛО» ->
+        «число», «назови этот ХЭШ» -> «хэш»);
+      * пустую строку, если местоимение голое («возьми ЕЁ», «сделай из НЕГО»);
+      * None, если объект приказа назван прямо («переведи строку Привет»).
+
+    Смотрится только ПЕРВОЕ дополнение каждого повелительного глагола: это и
+    есть то, над чем велено работать. «закодируй строку a+b/c=d в base64,
+    ... она пойдёт в query-параметр» — «она» здесь подлежащее другого
+    предложения и объекта приказа не касается.
+    """
+    from .morph import analyzer
+    for i, tok in enumerate(tokens):
+        if tok.pos != "VERB":
+            continue
+        if not any(p.tag.mood == "impr" for p in analyzer().parse(tok.norm)):
+            continue
+        for j in range(i + 1, min(i + 5, len(tokens))):
+            nxt = tokens[j]
+            if nxt.pos in _SKIP_POS and nxt.lemma not in DEMONSTRATIVES:
+                continue
+            if nxt.lemma in DEMONSTRATIVES:
+                for k in range(j + 1, min(j + 4, len(tokens))):
+                    head = tokens[k]
+                    # «переведи это 400 в двоичную» — «это» тут связка, а не
+                    # определение к числу; категории оно не называет, значит
+                    # указатель голый, и решать будет наличие опоры.
+                    if head.is_digit:
+                        return ""
+                    if head.pos == "NOUN" or head.pos is None:
+                        return head.lemma
+                return ""
+            if nxt.pos == "NPRO" and nxt.lemma in POINTER_PRONOUNS:
+                return ""
+            break
     return None
 
 
