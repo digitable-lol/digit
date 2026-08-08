@@ -28,28 +28,35 @@ def build_local_parser(subparsers, *, cmd_local: Callable) -> None:
         "start",
         help="Download what is missing and start the local model server",
     )
-    _start.add_argument(
-        "--model",
-        default="chat",
-        help=(
-            "Which weights to serve: 'chat' (default agent model) or 'router' "
-            "(Digitable's own routing model — auxiliary use only)"
-        ),
+    # Одно и то же описание весов у всех трёх подкоманд. Порт по умолчанию у
+    # вспомогательной модели свой, поэтому `stop` и `status` без --model
+    # остановили бы и показали не ту модель, которую человек запускал.
+    _model_help = (
+        "Which weights: 'chat' (default agent model), 'router' (Digitable's "
+        "routing model) or 'specgen' (FTS specification generator). Everything "
+        "except 'chat' is auxiliary and listens on its own port."
     )
+
+    _start.add_argument("--model", default="chat", help=_model_help)
     _start.add_argument(
-        "--port", type=int, default=None, help="Port to listen on (default: 8127)"
+        "--port", type=int, default=None,
+        help="Port to listen on (default: the port that model is served on)",
     )
 
     _stop = local_sub.add_parser("stop", help="Stop the local model server")
+    _stop.add_argument("--model", default="chat", help=_model_help)
     _stop.add_argument(
-        "--port", type=int, default=None, help="Port to stop (default: 8127)"
+        "--port", type=int, default=None,
+        help="Port to stop (default: the port that model is served on)",
     )
 
     _status = local_sub.add_parser(
         "status", help="Show whether the server runs and what is downloaded"
     )
+    _status.add_argument("--model", default="chat", help=_model_help)
     _status.add_argument(
-        "--port", type=int, default=None, help="Port to inspect (default: 8127)"
+        "--port", type=int, default=None,
+        help="Port to inspect (default: the port that model is served on)",
     )
 
     local_parser.set_defaults(func=cmd_local)

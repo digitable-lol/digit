@@ -467,6 +467,7 @@ from digit_cli.subcommands.gui import build_gui_parser
 from digit_cli.subcommands.logs import build_logs_parser
 from digit_cli.subcommands.prompt_size import build_prompt_size_parser
 from digit_cli.subcommands.rule_check import build_rule_check_parser
+from digit_cli.subcommands.spec import build_spec_parser
 from digit_cli.subcommands.memory import build_memory_parser
 from digit_cli.subcommands.acp import build_acp_parser
 from digit_cli.subcommands.tools import build_tools_parser
@@ -10581,6 +10582,13 @@ def cmd_rule_check(args):
     return _impl(args)
 
 
+def cmd_spec(args):
+    """Write an FTS specification from a request and verify it before printing."""
+    from digit_cli.specgen.cli import cmd_spec as _impl
+
+    return _impl(args)
+
+
 def cmd_logs(args):
     """View and filter Digit log files."""
     from digit_cli.logs import tail_log, list_logs
@@ -12522,6 +12530,11 @@ def main():
     # rule-check command  (parser built in digit_cli/subcommands/rule_check.py)
     # =========================================================================
     build_rule_check_parser(subparsers, cmd_rule_check=cmd_rule_check)
+
+    # =========================================================================
+    # spec command  (parser built in digit_cli/subcommands/spec.py)
+    # =========================================================================
+    build_spec_parser(subparsers, cmd_spec=cmd_spec)
 
     # =========================================================================
     # Parse and execute

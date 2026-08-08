@@ -66,6 +66,12 @@ _DIGIT_CORE_TOOLS = [
     "session_search",
     # Clarifying questions
     "clarify",
+    # Спецификации FTS: обученный генератор за настоящим компилятором.
+    # В общем списке, а не в отдельном профиле, потому что альтернатива у
+    # агента не «не написать спецификацию», а «написать её самому» — и его
+    # собственный FTS выглядит ровно так же, как проверенный компилятором.
+    # Без компилятора инструмент прячется сам (check_fn в tools/spec_tool.py).
+    "write_spec",
     # Code execution + delegation
     "execute_code", "delegate_task",
     # Cronjob management
@@ -248,6 +254,12 @@ TOOLSETS = {
     "session_search": {
         "description": "Search and recall past conversations with summarization",
         "tools": ["session_search"],
+        "includes": []
+    },
+
+    "spec": {
+        "description": "Write FTS specifications with Digitable's trained generator, verified by the real compiler",
+        "tools": ["write_spec"],
         "includes": []
     },
 

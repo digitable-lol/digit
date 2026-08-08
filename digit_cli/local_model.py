@@ -293,6 +293,16 @@ def _extract_archive(archive: Path, dest: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+# Порты. Основная модель агента и вспомогательные — на разных: раньше порт был
+# один на всё («одновременно две такие модели держать незачем»), и для роутера
+# это было верно — он подменял основную модель, а не работал рядом с ней.
+# Генератор спецификаций работает именно рядом: агент во время разговора просит
+# у него документ и продолжает разговор основной моделью. Один порт означал бы,
+# что за спецификацию платят выгрузкой собеседника.
+DEFAULT_PORT = 8127
+SPECGEN_PORT = 8128
+
+
 @dataclass(frozen=True)
 class LocalWeights:
     """Одни веса в формате GGUF: откуда взять и что от них ждать."""
@@ -308,6 +318,14 @@ class LocalWeights:
     context_length: int
     role: str  # "chat" — основная модель агента, "router" — вспомогательная
     note: str = ""
+    # На каком порту подаётся. У вспомогательной модели он свой — см. выше.
+    port: int = DEFAULT_PORT
+    # Сколько окна выделять НА САМОМ ДЕЛЕ, если задачи модели заведомо короче
+    # её обучающего окна. Не то же, что context_length: там — что модель умеет,
+    # здесь — за что мы платим памятью. KV-кэш линеен по окну, и у Qwen3-1.7B
+    # полные 40 960 токенов стоят гигабайты ради задачи, которая укладывается в
+    # три тысячи. None — «сколько нужно Digit, но не больше, чем модель умеет».
+    serve_context: int | None = None
 
     @property
     def url(self) -> str:
@@ -348,9 +366,47 @@ ROUTER_WEIGHTS = LocalWeights(
     ),
 )
 
+# Генератор спецификаций FTS. Обучен писать документы на языке грамматики
+# fts-gate/grammars/fts.gbnf и больше ничего не умеет — на 1 500 проверочных
+# заданий 99,4 % его вывода принял настоящий компилятор, а все девять неудач
+# оказались синтаксическими. Для сравнения на одних и тех же 150 заданиях: та
+# же модель без обучения — 0 из 150, она же со справочником по языку — 15 из
+# 150, модель в восемь раз крупнее со справочником — 79 из 150.
+#
+# Основной моделью агента быть не может по той же причине, что и роутер:
+# Qwen3-1.7B обучена на 40 960 (max_position_embeddings в карточке базовой
+# модели), а agent/agent_init.py требует не меньше 64 000. Проверено живым
+# запуском, и заодно выяснилось, что на обрезку сервером полагаться нельзя:
+#   * b10295 (наш закреплённый) на `--ctx-size 64000` действительно урезает,
+#     /props отдаёт n_ctx = 40 960;
+#   * сборка 0.18.0 то же самое окно НЕ режет — пишет «n_ctx_seq (65536) >
+#     n_ctx_train (40960) -- possible training context overflow» и честно идёт
+#     выделять KV-кэш на 65 536 (у нас — до отказа по памяти).
+# То есть «сервер сам обрежет» — свойство конкретной сборки, а не гарантия, и
+# порог обязан держать сам Digit.
+SPECGEN_WEIGHTS = LocalWeights(
+    key="specgen-qwen3-1.7b",
+    repo="digitable-lol/specgen-qwen3-1.7b",
+    filename="gguf/specgen-1.7b-v1-Q5_K_M.gguf",
+    size_bytes=1_257_879_232,
+    context_length=40_960,
+    role="specgen",
+    note=(
+        "Генератор спецификаций FTS: пишет документ по просьбе человека. "
+        "Основной моделью Digit работать не может — окно 40 960 меньше "
+        "требуемых 64 000. Вывод показывается только после компилятора."
+    ),
+    port=SPECGEN_PORT,
+    # Самое длинное обучающее задание — 747 токенов промпта и 1 200 ответа.
+    # 8 192 даёт запас вчетверо; полные 40 960 стоили бы гигабайты KV-кэша за
+    # окно, в которое этой модели нечего положить.
+    serve_context=8_192,
+)
+
 WEIGHTS: dict[str, LocalWeights] = {
     CHAT_WEIGHTS.key: CHAT_WEIGHTS,
     ROUTER_WEIGHTS.key: ROUTER_WEIGHTS,
+    SPECGEN_WEIGHTS.key: SPECGEN_WEIGHTS,
 }
 
 
@@ -389,10 +445,8 @@ def ensure_weights(spec: LocalWeights, *, on_progress=None) -> Path:
 # Сервер
 # ---------------------------------------------------------------------------
 
-# Один порт на все локальные веса: одновременно на одной машине держать две
-# такие модели незачем, а разные порты у alias-ов и у скрипта запуска — верный
-# способ получить конфиг, указывающий в пустоту.
-DEFAULT_PORT = 8127
+# DEFAULT_PORT и SPECGEN_PORT объявлены выше, рядом с описанием весов: порт —
+# свойство роли модели, а не этой секции, и LocalWeights.port на него ссылается.
 
 
 def _pid_file(port: int) -> Path:
@@ -442,7 +496,9 @@ def build_server_command(
     # Просить больше n_ctx_train бессмысленно — сервер всё равно обрежет и
     # напишет об этом в лог, зато KV-кэш успеет выделиться под запрошенный
     # размер. Берём столько, сколько нужно Digit, но не больше, чем модель умеет.
-    ctx = min(_minimum_context(), spec.context_length)
+    # serve_context перекрывает это там, где задача заведомо короче окна: за
+    # неиспользуемое окно платят памятью каждую секунду работы сервера.
+    ctx = min(spec.serve_context or _minimum_context(), spec.context_length)
     cmd = [
         str(binary),
         "--model", str(model_path),
@@ -491,11 +547,17 @@ def _minimum_context() -> int:
 def start_server(
     spec: LocalWeights,
     *,
-    port: int = DEFAULT_PORT,
+    port: int | None = None,
     wait_seconds: float = 180.0,
     on_progress=None,
 ) -> int:
-    """Поднять llama-server на этих весах и дождаться готовности. Вернуть PID."""
+    """Поднять llama-server на этих весах и дождаться готовности. Вернуть PID.
+
+    Порт по умолчанию берётся у самих весов, а не из общей константы: иначе
+    вспомогательная модель поднялась бы поверх основной, и «поставил генератор»
+    означало бы «потерял собеседника».
+    """
+    port = spec.port if port is None else port
     if server_healthy(port):
         existing = server_pid(port)
         if existing:
@@ -605,7 +667,10 @@ def configured_local_spec(config: dict) -> Optional[LocalWeights]:
         return None
     name = str(model_cfg.get("default") or "")
     for spec in WEIGHTS.values():
-        if name == Path(spec.filename).name:
+        # Порт обязан совпасть тоже. Вспомогательная модель подаётся на своём;
+        # опознать её по одному имени файла значило бы поднять сервер не там,
+        # куда смотрит конфиг, и autostart закончился бы отказом соединения.
+        if name == Path(spec.filename).name and spec.port == DEFAULT_PORT:
             return spec
     return None
 
@@ -633,10 +698,28 @@ def autostart_if_configured(config: dict, *, on_progress=None) -> bool:
     return True
 
 
+def resolve_weights(which: str | None) -> LocalWeights:
+    """Какие веса имел в виду человек в `--model`.
+
+    Короткое имя роли («router», «specgen») и полный ключ означают одно и то
+    же: первое человек напечатает по памяти, второе увидит в `digit local
+    status`, и промах между ними не должен молча приводить к запуску не той
+    модели.
+    """
+    name = (which or "chat").strip().lower()
+    for spec in WEIGHTS.values():
+        if name in (spec.role, spec.key):
+            return spec
+    return CHAT_WEIGHTS
+
+
 def local_command(args) -> int:
     """Обработчик `digit local start|stop|status`."""
     action = getattr(args, "local_action", None) or "status"
-    port = getattr(args, "port", None) or DEFAULT_PORT
+    # Порт по умолчанию — тот, на котором живёт названная модель. Без этого
+    # `digit local stop --model specgen` останавливал бы основную модель.
+    default_port = resolve_weights(getattr(args, "model", None)).port
+    port = getattr(args, "port", None) or default_port
 
     if action == "stop":
         if stop_server(port):
@@ -661,13 +744,13 @@ def local_command(args) -> int:
             ready = path.is_file() and path.stat().st_size == spec.size_bytes
             print(
                 f"веса {spec.key}: {'на месте' if ready else 'не скачаны'} "
-                f"({spec.size_bytes / 2**30:.1f} ГиБ, окно {spec.context_length})"
+                f"({spec.size_bytes / 2**30:.1f} ГиБ, окно {spec.context_length}, "
+                f"порт {spec.port})"
             )
         return 0
 
     if action == "start":
-        which = (getattr(args, "model", None) or "chat").strip().lower()
-        spec = ROUTER_WEIGHTS if which in ("router", ROUTER_WEIGHTS.key) else CHAT_WEIGHTS
+        spec = resolve_weights(getattr(args, "model", None))
         if spec.role != "chat":
             # Молчать нельзя: человек, попросивший роутер, скорее всего хочет
             # сделать его основной моделью — а Digit её отвергнет на старте.
@@ -689,14 +772,18 @@ def local_command(args) -> int:
     return 2
 
 
-def local_model_config(spec: LocalWeights, port: int = DEFAULT_PORT) -> dict:
+def local_model_config(spec: LocalWeights, port: int | None = None) -> dict:
     """Секция model: для config.yaml, указывающая на поднятый сервер."""
     return {
         "provider": "custom",
         "default": Path(spec.filename).name,
-        "base_url": f"http://127.0.0.1:{port}/v1",
+        "base_url": f"http://127.0.0.1:{spec.port if port is None else port}/v1",
         "api_mode": "chat_completions",
         # Окно записывается явно: /props у llama.cpp отдаёт фактическое, но при
         # выключенном сервере автоопределение упадёт, и Digit решит, что окна нет.
-        "context_length": min(_minimum_context(), spec.context_length),
+        # Обещать больше, чем реально выделено под слот, нельзя: Digit набьёт
+        # запрос под объявленное окно и получит отказ уже на сервере.
+        "context_length": min(
+            spec.serve_context or _minimum_context(), spec.context_length
+        ),
     }
