@@ -62,29 +62,24 @@ def _wrap_ascii_art_code_blocks(code_segment: str) -> str:
     )
 
 
-def mdx_escape_body(body: str) -> str:
-    """Escape MDX-dangerous characters in markdown body, leaving fenced code blocks alone.
+def split_fenced_segments(body: str) -> list[tuple[str, str]]:
+    """Split a markdown body into alternating ("text", ...) / ("code", ...) segments.
 
-    Outside fenced code blocks:
-      * `{` -> `&#123;`  (prevents MDX from parsing JSX expressions)
-      * `}` -> `&#125;`
-      * `<tag>` for bare tags that aren't whitelisted HTML get HTML-entity-escaped
-      * inline `` `code` `` content is preserved (backticks handled naturally)
-    Inside fenced code blocks: untouched.
+    A line like ``` or ~~~ opens a fence; a marker of at least the same length
+    and the same character closes it. The fence lines stay inside the "code"
+    segment, so joining the segments back with newlines round-trips the body
+    exactly.
 
-    We also preserve `<br>`, `<br/>`, `<img ...>`, `<a ...>`, and a handful of
-    other markup-safe tags because Docusaurus/MDX accepts them as HTML.
+    Both the MDX escaper and the link rewriter need this split: what is inside a
+    fence is shown to the reader verbatim, so neither escaping nor rewriting is
+    allowed to touch it.
     """
-    # Split the body into segments by fenced code blocks, alternating
-    # (text, code, text, code, ...). A line like ``` or ~~~ opens a fence;
-    # a matching marker closes it.
-    lines = body.split("\n")
-    segments: list[tuple[str, str]] = []  # ("text"|"code", content)
+    segments: list[tuple[str, str]] = []
     buf: list[str] = []
     mode = "text"
     fence_char: str | None = None
     fence_len = 0
-    for line in lines:
+    for line in body.split("\n"):
         stripped = line.lstrip()
         if mode == "text":
             if stripped.startswith("```") or stripped.startswith("~~~"):
@@ -112,6 +107,49 @@ def mdx_escape_body(body: str) -> str:
                 fence_len = 0
     if buf:
         segments.append((mode, "\n".join(buf)))
+    return segments
+
+
+def inline_code_spans(text: str) -> list[tuple[int, int]]:
+    """Return (start, end) offsets of every inline `` `code` `` run in `text`.
+
+    A run of N backticks opens a span that the next run of exactly N backticks
+    closes — the CommonMark rule, and the same walk `escape_text` below does.
+    An unclosed run is not a span.
+    """
+    spans: list[tuple[int, int]] = []
+    i = 0
+    while i < len(text):
+        if text[i] != "`":
+            i += 1
+            continue
+        j = i
+        while j < len(text) and text[j] == "`":
+            j += 1
+        run = text[i:j]
+        end = text.find(run, j)
+        if end == -1:
+            i = j
+            continue
+        spans.append((i, end + len(run)))
+        i = end + len(run)
+    return spans
+
+
+def mdx_escape_body(body: str) -> str:
+    """Escape MDX-dangerous characters in markdown body, leaving fenced code blocks alone.
+
+    Outside fenced code blocks:
+      * `{` -> `&#123;`  (prevents MDX from parsing JSX expressions)
+      * `}` -> `&#125;`
+      * `<tag>` for bare tags that aren't whitelisted HTML get HTML-entity-escaped
+      * inline `` `code` `` content is preserved (backticks handled naturally)
+    Inside fenced code blocks: untouched.
+
+    We also preserve `<br>`, `<br/>`, `<img ...>`, `<a ...>`, and a handful of
+    other markup-safe tags because Docusaurus/MDX accepts them as HTML.
+    """
+    segments = split_fenced_segments(body)
 
     def escape_text(text: str) -> str:
         # Walk inline-code runs (backticks) and leave them alone.
@@ -230,6 +268,20 @@ def rewrite_relative_links(body: str, meta: dict[str, Any]) -> str:
     with paths like `references/foo.md` or `./templates/bar.md`. Those files
     are NOT copied into docs/, so we rewrite these to absolute GitHub URLs
     pointing to the file in the repo.
+
+    Code — fenced blocks and inline `` `code` `` spans alike — is left alone.
+    Inside code, markdown is not a link: it is literal text the reader is meant
+    to copy. A template the skill tells the agent to write
+    (`[architecture.md](architecture.md)` — a file in the wiki being generated,
+    not in this repo), a placeholder (`` `![alt](url)` ``), or Python that
+    merely looks like a link to the regex
+    (`sam_model_registry["vit_h"](checkpoint="...")`). Rewriting those produced
+    long https://github.com/... URLs pointing at paths that never existed, and
+    corrupted the very examples the skill was showing.
+
+    A link whose *text* is code — [`references/foo.md`](references/foo.md) —
+    is still a real link and still gets rewritten; only links that sit wholly
+    inside a code span are skipped.
     """
     source_dir = "skills" if meta["source_kind"] == "bundled" else "optional-skills"
     # Репозиторий Digit: файлы, на которые ссылается SKILL.md, лежат здесь,
@@ -252,7 +304,23 @@ def rewrite_relative_links(body: str, meta: dict[str, Any]) -> str:
         full = f"{base}/{url_clean}"
         return f"[{text}]({full})"
 
-    return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", sub_link, body)
+    link_re = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+
+    def rewrite_text(text: str) -> str:
+        spans = inline_code_spans(text)
+        return link_re.sub(
+            lambda m: (
+                m.group(0)
+                if any(s <= m.start() and m.end() <= e for s, e in spans)
+                else sub_link(m)
+            ),
+            text,
+        )
+
+    return "\n".join(
+        content if kind == "code" else rewrite_text(content)
+        for kind, content in split_fenced_segments(body)
+    )
 
 
 def parse_skill_md(path: Path) -> dict[str, Any]:
