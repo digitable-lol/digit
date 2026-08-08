@@ -171,23 +171,52 @@ def test_the_tool_hands_the_caveats_to_the_agent(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_a_missing_theorem_next_to_a_calculation_is_named_not_normalised():
-    """127 обучающих заданий из 1 491 просили и расчёт, и теорему сразу.
+def test_a_calculation_without_a_theorem_is_no_longer_flagged():
+    """Прежняя оговорка про теорему снята, и снята не молча.
 
-    Ни один обучающий документ не содержал обе конструкции, поэтому модель
-    рядом с расчётом теорему не пишет. Компилятор её не требует — значит
-    документ пройдёт ворота, и молчание здесь выдало бы пробел за норму.
+    У весов v1 теорема отсутствовала на всех 129 holdout-заданиях, просивших
+    расчёт и теорему сразу; отсюда и была оговорка. Адаптер переобучен на
+    ревизии 2 корпуса, теорема стоит в 129 из 129 и в 453 из 453 по всему
+    holdout. Предупреждать о поведении, которого больше нет, — это тратить
+    внимание человека на ложную тревогу, а рядом стоят настоящие.
     """
     verdict = _verdict(True, examples_ran=True, examples_total=1, examples_passed=1,
                        shape={"utilities": 1, "proposition": False})
-    notes = " ".join(pipeline.caveats_for(verdict, {"grammar": True}))
-    assert "еорем" in notes
-    assert "слабость" in notes
+    notes = " ".join(pipeline.caveats_for(verdict, {"grammar": True}, "задание"))
+    assert "еорем" not in notes
 
 
-def test_a_theorem_next_to_a_calculation_produces_no_such_note():
+def test_a_missing_optional_mark_is_named_not_normalised():
+    """Задание просит два необязательных поля — документ помечает одно.
+
+    Измеренная слабость: 2 верных из 108 на проверочных заданиях, потому что в
+    обучающих данных нет документов с двумя необязательными полями. Компилятор
+    её поймать не может — обязательное поле вместо необязательного даёт
+    валидный документ, — и молчание выдало бы пробел за норму.
+    """
     verdict = _verdict(True, examples_ran=True, examples_total=1, examples_passed=1,
-                       shape={"utilities": 1, "proposition": True})
+                       shape={"utilities": 1, "proposition": True, "optionalFields": 1})
+    request = ("объект «Кампания»:\n"
+               "* «дата старта» — дата, необязательное\n"
+               "* «клики» — число, необязательное\n")
+    notes = " ".join(pipeline.caveats_for(verdict, {"grammar": True}, request))
+    assert "слабость" in notes
+    assert "иногда является" in notes
+
+
+def test_optional_marks_all_present_produce_no_such_note():
+    verdict = _verdict(True, examples_ran=True, examples_total=1, examples_passed=1,
+                       shape={"utilities": 1, "proposition": True, "optionalFields": 2})
+    request = "«дата старта» — дата, необязательное\n«клики» — число, необязательное\n"
+    notes = " ".join(pipeline.caveats_for(verdict, {"grammar": True}, request))
+    assert "слабость" not in notes
+
+
+def test_without_the_request_the_optional_caveat_stays_silent():
+    """Оговорка сравнивает документ с заданием. Нет задания — нет утверждения:
+    гадать «наверное, просили» она не имеет права."""
+    verdict = _verdict(True, examples_ran=True, examples_total=1, examples_passed=1,
+                       shape={"utilities": 1, "proposition": True, "optionalFields": 0})
     notes = " ".join(pipeline.caveats_for(verdict, {"grammar": True}))
     assert "слабость" not in notes
 
@@ -237,7 +266,7 @@ def test_the_brief_shape_is_carried_to_both_doors():
 
 
 def test_the_first_attempt_is_the_one_the_number_was_measured_at(monkeypatch):
-    """99,4 % измерены на жадном декодировании — первая попытка обязана быть им.
+    """99,9 % измерены на жадном декодировании — первая попытка обязана быть им.
 
     Повторы идут с температурой и разным зерном: жадное декодирование
     детерминировано, и второй такой заход вернул бы тот же текст и ту же ошибку.
