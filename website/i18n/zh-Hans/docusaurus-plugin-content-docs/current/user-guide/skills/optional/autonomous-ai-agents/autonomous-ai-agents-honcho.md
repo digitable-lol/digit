@@ -21,7 +21,7 @@ description: "配置并使用 Honcho 记忆功能与 Digit -- 跨会话用户建
 | 许可证 | MIT |
 | 平台 | linux, macos, windows |
 | 标签 | `Honcho`, `Memory`, `Profiles`, `Observation`, `Dialectic`, `User-Modeling`, `Session-Summary` |
-| 相关 skills | [`digit`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit) |
+| 相关 skills | [`digit-runtime`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit-runtime) |
 
 ## 参考：完整 SKILL.md
 

@@ -164,4 +164,4 @@ For more diagnostics, run `digit doctor` — it will tell you exactly what's mis
 
 ## Install method auto-detection
 
-Digit auto-detects whether it was installed via the git installer, Docker, or NixOS, and `digit update` prints the matching update command for that path. There's no env var to set — the detection is based on the install layout (`~/.digit/hermes-agent/` checkout, Docker image stamp, or Nix store path). `digit doctor` also surfaces the detected method under its environment summary.
+Digit auto-detects whether it was installed via the git installer, Docker, or NixOS, and `digit update` prints the matching update command for that path. There's no env var to set — the detection is based on the install layout (`~/.digit/digit/` checkout, Docker image stamp, or Nix store path). `digit doctor` also surfaces the detected method under its environment summary.

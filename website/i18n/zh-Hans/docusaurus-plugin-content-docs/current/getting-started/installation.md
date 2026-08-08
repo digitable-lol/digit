@@ -201,4 +201,4 @@ digit setup --portal
 
 ## 安装方式自动检测
 
-Digit 会自动检测安装方式（git 安装程序、Docker 或 NixOS），`digit update` 会打印对应路径的更新命令。无需设置任何环境变量——检测基于安装目录结构（`~/.digit/hermes-agent/` 检出、Docker 镜像标记或 Nix store 路径）。`digit doctor` 也会在其环境摘要中显示检测到的安装方式。
+Digit 会自动检测安装方式（git 安装程序、Docker 或 NixOS），`digit update` 会打印对应路径的更新命令。无需设置任何环境变量——检测基于安装目录结构（`~/.digit/digit/` 检出、Docker 镜像标记或 Nix store 路径）。`digit doctor` 也会在其环境摘要中显示检测到的安装方式。

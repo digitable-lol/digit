@@ -81,7 +81,7 @@ python $DIGIT_HOME/skills/devops/watchers/scripts/watch_rss.py \
 
 ```bash
 python $DIGIT_HOME/skills/devops/watchers/scripts/watch_github.py \
-  --name digit-issues --repo NousResearch/hermes-agent --scope issues
+  --name digit-issues --repo digitable-lol/digit --scope issues
 ```
 
 轮询任意 JSON API：
