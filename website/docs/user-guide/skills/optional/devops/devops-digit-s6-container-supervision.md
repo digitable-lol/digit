@@ -21,7 +21,7 @@ Modify or debug s6 services in the Digit Docker image.
 | License | MIT |
 | Platforms | linux |
 | Tags | `docker`, `s6`, `supervision`, `gateway`, `profiles` |
-| Related skills | `hermes-agent` |
+| Related skills | [`digit-runtime`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit-runtime) |
 
 ## Reference: full SKILL.md
 

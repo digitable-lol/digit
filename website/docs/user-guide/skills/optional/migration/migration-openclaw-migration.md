@@ -21,7 +21,7 @@ Import an OpenClaw setup (memories, skills) into Digit.
 | License | MIT |
 | Platforms | linux, macos, windows |
 | Tags | `Migration`, `OpenClaw`, `Digit`, `Memory`, `Persona`, `Import` |
-| Related skills | `hermes-agent` |
+| Related skills | [`digit-runtime`](/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-digit-runtime) |
 
 ## Reference: full SKILL.md
 

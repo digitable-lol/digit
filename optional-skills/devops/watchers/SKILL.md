@@ -66,7 +66,7 @@ Watch a GitHub repo (set `GITHUB_TOKEN` in `${DIGIT_HOME:-~/.digit}/.env` to avo
 
 ```bash
 python $DIGIT_HOME/skills/devops/watchers/scripts/watch_github.py \
-  --name digit-issues --repo NousResearch/hermes-agent --scope issues
+  --name digit-issues --repo digitable-lol/digit --scope issues
 ```
 
 Poll an arbitrary JSON API:

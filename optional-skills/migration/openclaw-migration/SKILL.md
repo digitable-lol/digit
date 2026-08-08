@@ -8,7 +8,7 @@ platforms: [linux, macos, windows]
 metadata:
   digit:
     tags: [Migration, OpenClaw, Digit, Memory, Persona, Import]
-    related_skills: [hermes-agent]
+    related_skills: [digit-runtime]
 ---
 
 # OpenClaw -> Digit Migration

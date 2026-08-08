@@ -9,7 +9,7 @@ environments: [s6]
 metadata:
   digit:
     tags: [docker, s6, supervision, gateway, profiles]
-    related_skills: [hermes-agent]
+    related_skills: [digit-runtime]
 ---
 
 # Digit s6-overlay Container Supervision
