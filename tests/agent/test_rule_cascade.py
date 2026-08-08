@@ -278,25 +278,33 @@ def test_an_ordinary_turn_is_not_labelled_as_a_rule_answer():
 # Поэтому «не знаю, кто вторая ступень» обязано читаться как «не включать».
 
 
-def test_cascade_stays_off_behind_a_remote_gateway(monkeypatch):
+def test_cascade_is_on_behind_a_remote_gateway_too(monkeypatch):
+    """Позади сильной модели каскад тоже включён — с тех пор как починено извлечение.
+
+    Раньше здесь стояло `is False`: замер показывал, что каскад складывает свои
+    ошибки с ошибками модели и ложные ответы растут 1,5 % → 3,5 %. Тот проигрыш
+    оказался не свойством каскада, а дефектом извлечения аргументов
+    (DGT-DIGIT-10): правила брали операнд из самой инструкции. После починки —
+    1,0 % против 1,5 % до моста, то есть каскад лучше обеих ног.
+    """
     monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
     monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
     agent = FakeAgent(provider="openrouter", base_url="https://openrouter.ai/api/v1")
-    assert _REAL_IS_ENABLED(agent) is False
+    assert _REAL_IS_ENABLED(agent) is True
 
 
 def test_cascade_turns_itself_on_for_a_local_provider(monkeypatch):
     monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
     monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
     for provider in ("custom", "llamacpp", "ollama", "vllm", "lmstudio"):
-        assert _REAL_IS_ENABLED(FakeAgent(provider=provider)) is True, provider
+        assert rule_cascade._second_stage_is_local(FakeAgent(provider=provider)) is True, provider
 
 
 def test_a_local_address_counts_even_when_the_provider_is_unnamed(monkeypatch):
     monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
     monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
     agent = FakeAgent(provider="", base_url="http://127.0.0.1:8127/v1")
-    assert _REAL_IS_ENABLED(agent) is True
+    assert rule_cascade._second_stage_is_local(agent) is True
 
 
 def test_a_hostname_that_merely_contains_localhost_is_not_local(monkeypatch):
@@ -308,7 +316,7 @@ def test_a_hostname_that_merely_contains_localhost_is_not_local(monkeypatch):
     monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
     monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
     agent = FakeAgent(provider="", base_url="https://localhost.attacker.example/v1")
-    assert _REAL_IS_ENABLED(agent) is False
+    assert rule_cascade._second_stage_is_local(agent) is False
 
 
 def test_an_explicit_setting_beats_the_default_in_both_directions(monkeypatch):
@@ -326,5 +334,5 @@ def test_an_explicit_setting_beats_the_default_in_both_directions(monkeypatch):
 def test_an_unknown_second_stage_reads_as_not_local(monkeypatch):
     monkeypatch.delenv("DIGIT_RULE_CASCADE", raising=False)
     monkeypatch.setattr("digit_cli.config.load_config", lambda: {})
-    assert _REAL_IS_ENABLED(None) is False
-    assert _REAL_IS_ENABLED(FakeAgent(provider="", base_url="")) is False
+    assert rule_cascade._second_stage_is_local(None) is False
+    assert rule_cascade._second_stage_is_local(FakeAgent(provider="", base_url="")) is False
