@@ -1,0 +1,84 @@
+{
+  "schema": "digitmorf-living-morphspace/v1",
+  "status": "work-in-progress",
+  "forms": [
+    "Core",
+    "Cursor",
+    "Trace",
+    "Archivist",
+    "Weaver",
+    "Forge",
+    "Sentinel",
+    "Lantern"
+  ],
+  "transition": "seal-collapse-crossfade/v1",
+  "holdFrames": 24,
+  "transitionFrames": 36,
+  "fps": 24,
+  "frameEnd": 481,
+  "sequence": [
+    {
+      "from": "Core",
+      "to": "Cursor",
+      "start": 1,
+      "hold_end": 25,
+      "transition_end": 61
+    },
+    {
+      "from": "Cursor",
+      "to": "Trace",
+      "start": 61,
+      "hold_end": 85,
+      "transition_end": 121
+    },
+    {
+      "from": "Trace",
+      "to": "Archivist",
+      "start": 121,
+      "hold_end": 145,
+      "transition_end": 181
+    },
+    {
+      "from": "Archivist",
+      "to": "Weaver",
+      "start": 181,
+      "hold_end": 205,
+      "transition_end": 241
+    },
+    {
+      "from": "Weaver",
+      "to": "Forge",
+      "start": 241,
+      "hold_end": 265,
+      "transition_end": 301
+    },
+    {
+      "from": "Forge",
+      "to": "Sentinel",
+      "start": 301,
+      "hold_end": 325,
+      "transition_end": 361
+    },
+    {
+      "from": "Sentinel",
+      "to": "Lantern",
+      "start": 361,
+      "hold_end": 385,
+      "transition_end": 421
+    },
+    {
+      "from": "Lantern",
+      "to": "Core",
+      "start": 421,
+      "hold_end": 445,
+      "transition_end": 481
+    }
+  ],
+  "identity": {
+    "sharedEvidenceSeals": 1,
+    "perFormEvidenceSeals": 0
+  },
+  "source": "digitmorf-living-morphspace-v1.blend",
+  "runtime": "digitmorf-living-morphspace-v1.glb",
+  "preview": "digitmorf-living-morphspace-v1.mp4"
+}

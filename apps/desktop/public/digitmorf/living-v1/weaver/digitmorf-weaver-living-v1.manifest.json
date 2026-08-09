@@ -1,0 +1,46 @@
+{
+  "schema": "digitmorf-living-form/v1",
+  "status": "work-in-progress",
+  "form": "Weaver",
+  "role": "synthesis and connection",
+  "family": "spider-moth-cat",
+  "body_plan": "six-limbed-anthropomorphic",
+  "identity_anchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "rig": "transform-node/v1",
+  "clips": {
+    "idle": [
+      1,
+      48
+    ],
+    "attention": [
+      61,
+      100
+    ],
+    "active": [
+      121,
+      180
+    ],
+    "morph_out": [
+      201,
+      240
+    ],
+    "morph_in": [
+      241,
+      280
+    ]
+  },
+  "transition": "seal-collapse-crossfade/v1",
+  "objects": 92,
+  "mesh_objects": 81,
+  "vertices": 3672,
+  "triangles": 6916,
+  "source": "digitmorf-weaver-living-v1.blend",
+  "runtime": "digitmorf-weaver-living-v1.glb"
+}

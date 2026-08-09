@@ -1,0 +1,46 @@
+{
+  "schema": "digitmorf-living-form/v1",
+  "status": "work-in-progress",
+  "form": "Archivist",
+  "role": "structured knowledge",
+  "family": "owl-lynx",
+  "body_plan": "anthropomorphic",
+  "identity_anchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "rig": "transform-node/v1",
+  "clips": {
+    "idle": [
+      1,
+      48
+    ],
+    "attention": [
+      61,
+      100
+    ],
+    "active": [
+      121,
+      180
+    ],
+    "morph_out": [
+      201,
+      240
+    ],
+    "morph_in": [
+      241,
+      280
+    ]
+  },
+  "transition": "seal-collapse-crossfade/v1",
+  "objects": 75,
+  "mesh_objects": 66,
+  "vertices": 2944,
+  "triangles": 5588,
+  "source": "digitmorf-archivist-living-v1.blend",
+  "runtime": "digitmorf-archivist-living-v1.glb"
+}

@@ -1,0 +1,78 @@
+{
+  "schema": "digitmorf-living-pack/v1",
+  "status": "work-in-progress",
+  "productionDefault": false,
+  "forms": [
+    {
+      "id": "core",
+      "role": "present attentive self",
+      "family": "pangolin-manta",
+      "bodyPlan": "compact-quadruped"
+    },
+    {
+      "id": "cursor",
+      "role": "intent and direction",
+      "family": "fox-hare-heron",
+      "bodyPlan": "digitigrade"
+    },
+    {
+      "id": "trace",
+      "role": "memory and movement",
+      "family": "otter-salamander-sighthound",
+      "bodyPlan": "long-quadruped"
+    },
+    {
+      "id": "archivist",
+      "role": "structured knowledge",
+      "family": "owl-lynx",
+      "bodyPlan": "anthropomorphic"
+    },
+    {
+      "id": "weaver",
+      "role": "synthesis and connection",
+      "family": "spider-moth-cat",
+      "bodyPlan": "six-limbed-anthropomorphic"
+    },
+    {
+      "id": "forge",
+      "role": "concentrated making",
+      "family": "badger-ram",
+      "bodyPlan": "anthropomorphic"
+    },
+    {
+      "id": "sentinel",
+      "role": "checking and protection",
+      "family": "wolf-owl-stag",
+      "bodyPlan": "tall-quadruped"
+    },
+    {
+      "id": "lantern",
+      "role": "calm explanation",
+      "family": "deer-moth-axolotl",
+      "bodyPlan": "slim-quadruped"
+    }
+  ],
+  "identityAnchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "clips": {
+    "idle": [1, 48],
+    "attention": [61, 100],
+    "active": [121, 180],
+    "morph_out": [201, 240],
+    "morph_in": [241, 280]
+  },
+  "transition": "seal-collapse-crossfade/v1",
+  "morphspace": {
+    "runtime": "morphspace/digitmorf-living-morphspace-v1.glb",
+    "manifest": "morphspace/digitmorf-living-morphspace-v1.manifest.json",
+    "frames": 481,
+    "fps": 24
+  },
+  "notes": "Experimental Blender blockouts. The approved 2D living-form atlas remains the visual target; digitmorf-morphrig-v1.glb remains the production default."
+}

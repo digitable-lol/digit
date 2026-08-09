@@ -1,0 +1,46 @@
+{
+  "schema": "digitmorf-living-form/v1",
+  "status": "work-in-progress",
+  "form": "Lantern",
+  "role": "calm explanation",
+  "family": "deer-moth-axolotl",
+  "body_plan": "slim-quadruped",
+  "identity_anchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "rig": "transform-node/v1",
+  "clips": {
+    "idle": [
+      1,
+      48
+    ],
+    "attention": [
+      61,
+      100
+    ],
+    "active": [
+      121,
+      180
+    ],
+    "morph_out": [
+      201,
+      240
+    ],
+    "morph_in": [
+      241,
+      280
+    ]
+  },
+  "transition": "seal-collapse-crossfade/v1",
+  "objects": 68,
+  "mesh_objects": 60,
+  "vertices": 3208,
+  "triangles": 6024,
+  "source": "digitmorf-lantern-living-v1.blend",
+  "runtime": "digitmorf-lantern-living-v1.glb"
+}
