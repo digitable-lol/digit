@@ -505,3 +505,7 @@ See `references/colors.md` for full color tables. Quick reference:
 - Do NOT use emoji in text -- they don't render in Excalidraw's font
 - For dark mode diagrams, see `references/dark-mode.md`
 - For larger examples, see `references/examples.md`
+- Asked whether Euler circles translate into the project language, read
+  `references/euler-fts.md` before answering — two of the three relations do,
+  one is deliberately absent, and "nothing corresponds to it" is seven different
+  cases, each already named. Do not invent an eighth.
