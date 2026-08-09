@@ -11573,6 +11573,12 @@ def main():
     _add_tasks_parser(subparsers)
 
     # =========================================================================
+    # excalidraw command — Workbench diagram widgets from the command line
+    # =========================================================================
+    from digit_cli.excalidraw_cli import add_parser as _add_excalidraw_parser
+    _add_excalidraw_parser(subparsers)
+
+    # =========================================================================
     # workbench command — the Digitable Workbench integration catalog
     # =========================================================================
     from digit_cli.workbench_cli import add_parser as _add_workbench_parser

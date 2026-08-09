@@ -180,6 +180,182 @@ Bound labels are placed from their **container**, not from their own `x`/`y`,
 because the app recomputes those on load (as noted above) and the numbers in the
 file can be arbitrarily stale.
 
+### Turning a Map into Tasks
+
+A project schema is not decoration: what is on it gets carried into the tracker
+by hand, twice — once into Taskwarrior, and again when the drawing changes.
+`scripts/tasks.py` does that carrying, deterministically.
+
+```bash
+# Посмотреть, что получится, ничего не записывая
+python skills/creative/excalidraw/scripts/tasks.py from-map ~/diagrams/план.excalidraw --dry-run
+
+# Записать в базу задач
+python skills/creative/excalidraw/scripts/tasks.py from-map ~/diagrams/план.excalidraw
+```
+
+What translates into what:
+
+| На карте | В задаче |
+|---|---|
+| Фигура с подписью | задача; подпись — описание |
+| Стрелка A → B | B зависит от A (`depends`) |
+| Рамка (frame) | проект; имя рамки — имя проекта |
+| Группа | второй уровень проекта; имя — свободный текст в группе |
+| Заливка фигуры | приоритет (`#ffc9c9`→H, `#ffd8a8`→M, `#fff3bf`→L) |
+| `!H` / `!M` / `!L` в подписи | приоритет явной меткой; сильнее цвета |
+
+The colour table is a default, not a law: `--priority-colors table.json` replaces
+it. The explicit mark wins over the fill because the mark was typed on *that*
+shape, while a fill is usually inherited from whatever the shape was copied from.
+
+Three things worth knowing before running it against a database someone else
+uses:
+
+- **The key is the element id**, kept in the task's `excalidraw` UDA — not the
+  description (descriptions get edited) and never the positional number.
+  Task uuids are derived from the element id, so the same map produces the same
+  tasks on any machine.
+- **Writes are read-merge-import.** `task import` of an existing uuid *replaces*
+  the record: a record submitted without `annotations` leaves the task with none,
+  and nothing is printed about it. Never write a partial record.
+- **`task <uuid> modify excalidraw:box1` is not a shortcut for this.** With the
+  UDA undeclared in the rc file, Taskwarrior does not complain — it writes
+  `excalidraw:box1` into the *description*, and the description is gone. That is
+  why this utility only ever imports.
+
+Cycles are found in the map before anything is written. Taskwarrior also refuses
+a circular `depends`, but it refuses at the task it happens to reach, leaving
+half the dependencies applied.
+
+`--self-test` checks the reading rules and, when `task` is on PATH, a full write
+round-trip in a temporary database it creates and removes itself.
+
+### Drawing the Backlog
+
+The other direction draws the tasks, using **the Workbench's own library sets**
+rather than shapes invented here — so the map looks like one a person drew by
+dragging «Карточка задачи» out of the kanban set, because it is made of exactly
+that.
+
+```bash
+python skills/creative/excalidraw/scripts/tasks.py to-map ~/diagrams/бэклог.excalidraw \
+    --project digit --palette carbon
+```
+
+The library lives in the courses checkout (`static/workbench/excalidraw/`), where
+it is generated and checked by `npm run test:excalidraw`; this utility walks up
+from itself to find it, and `--library` points at it directly. A copy vendored
+here would be a second truth that drifts from the first in silence.
+
+- The first level of the project becomes a **frame**, the second a **group** with
+  a caption — the same two things `from-map` reads back, so a drawn map parses
+  into the tasks it came from. That round trip is what the self-test checks.
+- Priority is written as the `!H` mark in the title, not as a fill: the fills in
+  those sets carry the palette, and repainting a card pastel would break the
+  look the library was taken for.
+- Dependencies become arrows **bound at both ends**. An arrow bound at neither
+  looks like a dependency and is not one — `from-map` says so rather than
+  inventing the link.
+- A card grows downward when the description does not fit, and everything below
+  the title moves with it. Nothing is truncated.
+
+`to-map` refuses to overwrite an existing map: redrawing throws away every
+position the owner moved by hand.
+
+### Keeping the Two in Step
+
+`sync` is the run you make again and again. One rule decides everything it does:
+
+> **Structure comes from the map, state comes from the tracker.**
+
+What exists, what waits for what, whose project it is and what matters more — is
+drawn, and the map is right about it. Whether it is finished — the map cannot
+say, and the tracker can.
+
+```bash
+python skills/creative/excalidraw/scripts/tasks.py sync ~/diagrams/бэклог.excalidraw --dry-run
+python skills/creative/excalidraw/scripts/tasks.py sync ~/diagrams/бэклог.excalidraw
+```
+
+**Nothing is ever moved.** Not `x`, not `y`, not sizes, not `groupIds`, not
+`frameId`, not arrow points. Edits go through `revise.py`, element by element, so
+Excalidraw's own change tracking is advanced and nothing the utility does not
+understand is dropped. A status becomes a word in the card's pill («в работе»,
+«сделано», «ждёт срока», «снята») and a closed card is dimmed, not deleted —
+deleting an element an arrow points at makes Excalidraw drop the arrow in
+silence.
+
+**The description is the one field both sides may write.** When it has diverged,
+the utility does not choose: it prints both, leaves the field alone, and waits
+for `--prefer map` or `--prefer tracker`.
+
+**The key is the UDA, and `to-map` writes it as it draws.** Without that, a map
+drawn from tasks would not recognise its own tasks on the next run — the element
+id was derived from the task uuid, and the uuid derived back from the element id
+is a different one — and every sync would double the backlog.
+
+Running it twice in a row produces no second set of edits.
+
+### Widgets from the Command Line
+
+The Workbench's six sets each carry their own vocabulary — theme and branches for
+a mindmap, participant and call for a sequence, persona and container for C4,
+lane and milestone for a roadmap. Until now the only way to reach them was to
+open a canvas and drag shapes with a mouse.
+
+```bash
+digit excalidraw list
+digit excalidraw mindmap --text outline.txt --out карта.excalidraw
+digit excalidraw c4 --text система.txt --out c4.excalidraw --palette paper
+```
+
+One input shape serves all six, because a router model must not be offered a
+choice of argument form:
+
+```
+Тема                       # уровень 0 — фигура верхнего уровня набора
+  Ветвь                    # отступ — уровень ниже
+    Лист
+Ветвь -> Лист: подпись     # связь между двумя подписями
+```
+
+Indentation width does not matter, only that it increases. On tree widgets
+(mindmap, C4, flowchart) the indentation itself is drawn as a line — otherwise a
+mindmap is three columns of rectangles and the reader guesses the kinship. On
+lane widgets (roadmap, sequence, kanban) the top level becomes a column.
+
+Rows are spaced by the shapes actually drawn, not by a constant: «Система в
+фокусе» from C4 is taller than «Лист» from the mindmap, and one step either
+overlaps in some sets or leaves holes in others. The self-test checks that no
+two top-level shapes overlap, in every set.
+
+### Why the Schemas Are Flat
+
+Digit hands its utility catalog to a small router model one category at a time,
+and the schemas in it are deliberately flat — *«без вложенности глубже двух
+уровней и без альтернатив в описании входа»*, as the Workbench write-up puts it
+(`content/workbench/digit-integrations.md` in the courses repo). These four
+entries obey that, and the obedience is checked rather than asserted:
+
+```bash
+python skills/creative/excalidraw/scripts/tasks.py schema   # + глубина и альтернативы
+digit excalidraw schema
+```
+
+Level 1 is the argument object, level 2 is one argument's own description. An
+argument that is itself an object, or an array of objects, is level 3 — so every
+argument here is a scalar. `oneOf` / `anyOf` / `allOf` are refused outright.
+
+The requirement is about *input*, but it can be broken by output just as easily:
+a parse that hands back a nested structure forces the next utility to accept one.
+So the tests check the parse too — every field of a parsed node is a scalar, and
+a project never reaches a third level even when a frame is called «этап 2.1» and
+its group «разбор.первый» (dots inside a name become hyphens).
+
+One more place the same rule shows: all six widgets take **one** input form, not
+a grammar each. A router picks the utility, not the shape of its argument.
+
 ### Uploading for a Shareable Link
 
 Run the upload script (located in this skill's `scripts/` directory) via terminal:
@@ -329,3 +505,7 @@ See `references/colors.md` for full color tables. Quick reference:
 - Do NOT use emoji in text -- they don't render in Excalidraw's font
 - For dark mode diagrams, see `references/dark-mode.md`
 - For larger examples, see `references/examples.md`
+- Asked whether Euler circles translate into the project language, read
+  `references/euler-fts.md` before answering — two of the three relations do,
+  one is deliberately absent, and "nothing corresponds to it" is seven different
+  cases, each already named. Do not invent an eighth.

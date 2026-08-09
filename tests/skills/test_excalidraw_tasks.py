@@ -1,0 +1,402 @@
+"""Contracts for «карта Excalidraw → задачи Taskwarrior».
+
+Two things are being protected here, and they are not the same thing.
+
+The first is the *reading*: a drawing is not a schema, so every rule that turns
+a shape into a task has to be pinned down — otherwise the same picture produces
+a different backlog next month. These tests are pure and always run.
+
+The second is the *writing*, and it is the dangerous half. The owner and several
+agents share one Taskwarrior database. Every test that writes does so into a
+temporary directory created by pytest, never into a resolved tracker: a test
+that "just checks" against the real database is one bad path away from editing
+the owner's backlog.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parent.parent.parent
+SCRIPT = REPO / "skills/creative/excalidraw/scripts/tasks.py"
+
+
+def _load_module():
+    spec = importlib.util.spec_from_file_location("excalidraw_tasks", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+tasks = _load_module()
+
+requires_task = pytest.mark.skipif(
+    shutil.which("task") is None, reason="taskwarrior не установлен")
+
+
+@pytest.fixture()
+def sandbox(tmp_path: Path):
+    """A Taskwarrior database that exists only for this test."""
+    data = tmp_path / "data"
+    data.mkdir()
+    (tmp_path / "taskrc").write_text(f"data.location={data}\n", encoding="utf-8")
+    module = tasks._tracker_module()
+    return module.Tracker(data)
+
+
+# -- reading ---------------------------------------------------------------
+
+
+def test_labelled_shapes_become_tasks():
+    plan = tasks.parse_map(tasks._sample_map())
+    assert set(plan["nodes"]) == {"box1", "box2"}
+    assert plan["nodes"]["box1"]["description"] == "Собрать основу"
+
+
+def test_arrow_becomes_a_dependency_in_the_direction_it_points():
+    """An arrow from A to B means B waits for A, not the other way round."""
+    plan = tasks.parse_map(tasks._sample_map())
+    assert plan["links"] == [{"from": "box1", "to": "box2"}]
+
+
+def test_frame_and_group_make_a_two_level_project():
+    plan = tasks.parse_map(tasks._sample_map())
+    assert plan["nodes"]["box1"]["project"] == "Этап 1-второй.Разбор"
+
+
+def test_dot_inside_a_frame_name_does_not_add_a_level():
+    """A frame called «этап 2.1» must not silently become a third level."""
+    document = tasks._sample_map()
+    for element in document["elements"]:
+        if element["id"] == "frame1":
+            element["name"] = "этап 2.1"
+    plan = tasks.parse_map(document)
+    assert plan["nodes"]["box1"]["project"].count(".") == 1
+
+
+def test_explicit_mark_beats_the_fill_colour():
+    """The mark was typed on this shape; the fill may have been copied in."""
+    plan = tasks.parse_map(tasks._sample_map())
+    assert plan["nodes"]["box1"]["priority"] == "H"   # from #ffc9c9
+    assert plan["nodes"]["box2"]["priority"] == "M"   # from «!M», fill is blue
+    assert "!M" not in plan["nodes"]["box2"]["description"]
+
+
+def test_colour_table_can_be_replaced():
+    plan = tasks.parse_map(tasks._sample_map(), colors={"#a5d8ff": "L"})
+    assert plan["nodes"]["box1"]["priority"] is None
+    assert plan["nodes"]["box2"]["priority"] == "M"   # mark still wins
+
+
+def test_nothing_is_dropped_in_silence():
+    """An unbound arrow looks like a connection and is not one."""
+    plan = tasks.parse_map(tasks._sample_map())
+    assert any("loose" in note for note in plan["notes"])
+    assert any("mute" in note for note in plan["notes"])
+
+
+def test_deleted_elements_are_not_tasks():
+    plan = tasks.parse_map(tasks._sample_map())
+    assert "gone" not in plan["nodes"]
+
+
+def test_uuid_comes_from_the_element_id_not_from_position():
+    first = tasks.parse_map(tasks._sample_map())
+    shuffled = tasks._sample_map()
+    shuffled["elements"].reverse()
+    second = tasks.parse_map(shuffled)
+    assert first["nodes"]["box1"]["uuid"] == second["nodes"]["box1"]["uuid"]
+
+
+def test_a_cycle_is_found_before_anything_is_written():
+    plan = tasks.parse_map(tasks._sample_map())
+    plan["links"].append({"from": "box2", "to": "box1"})
+    assert tasks.find_cycle(plan["nodes"], plan["links"])
+
+
+# -- the flatness requirement ---------------------------------------------
+
+
+def test_schemas_are_flat_and_offer_no_alternatives():
+    """Digit's router model requires it, and «digit-integrations.md» says so."""
+    for name, schema in tasks.SCHEMAS.items():
+        assert tasks.schema_depth(schema) <= 2, name
+        assert tasks.schema_alternatives(schema) == [], name
+
+
+def test_schema_depth_actually_notices_a_third_level():
+    """A check that cannot fail proves nothing."""
+    nested = {"type": "object", "properties": {
+        "where": {"type": "object", "properties": {"x": {"type": "number"}}}}}
+    assert tasks.schema_depth(nested) == 3
+
+
+# -- writing ---------------------------------------------------------------
+
+
+@requires_task
+def test_the_uda_carries_the_element_id(sandbox):
+    tasks.apply_plan(sandbox, tasks.parse_map(tasks._sample_map()))
+    written = {t["description"]: t for t in sandbox.export([])}
+    assert written["Собрать основу"][tasks.UDA] == "box1"
+
+
+@requires_task
+def test_a_second_run_updates_and_does_not_duplicate(sandbox):
+    tasks.apply_plan(sandbox, tasks.parse_map(tasks._sample_map()))
+    tasks.apply_plan(sandbox, tasks.parse_map(tasks._sample_map()))
+    assert len(sandbox.export([])) == 2
+
+
+@requires_task
+def test_a_second_run_keeps_what_the_utility_did_not_write(sandbox):
+    """``task import`` of an existing uuid replaces the record wholesale.
+
+    So the annotation an agent left, and the task's own history, would vanish
+    on the next sync — silently. Read-merge-import is the reason it does not.
+    """
+    tasks.apply_plan(sandbox, tasks.parse_map(tasks._sample_map()))
+    box1 = tasks.task_uuid_for("box1")
+    sandbox.annotate(box1, "проверено вручную")
+
+    tasks.apply_plan(sandbox, tasks.parse_map(tasks._sample_map()))
+
+    after = sandbox.require(box1)
+    assert len(after.get("annotations") or []) == 1
+
+
+@requires_task
+def test_a_cycle_stops_the_write_before_the_first_task(sandbox):
+    """Taskwarrior refuses a circular ``depends`` — but only when it reaches it,
+    leaving half the dependencies applied. The check has to happen first."""
+    plan = tasks.parse_map(tasks._sample_map())
+    plan["links"].append({"from": "box2", "to": "box1"})
+    plan["cycle"] = tasks.find_cycle(plan["nodes"], plan["links"])
+    with pytest.raises(tasks.Refused):
+        tasks.apply_plan(sandbox, plan)
+    assert sandbox.export([]) == []
+
+
+# -- drawing: tasks → map --------------------------------------------------
+
+
+@pytest.fixture()
+def library():
+    """The Workbench set when it is next door, a stand-in otherwise."""
+    items, _source = tasks._library_for_test()
+    return items
+
+
+def test_a_drawn_map_reads_back_as_the_same_tasks(library):
+    """The two directions are one contract. If a map this utility drew does not
+    parse back into the tasks it came from, one of the halves is lying."""
+    drawn = tasks.draw(tasks._sample_tasks(), library)
+    back = tasks.parse_map(drawn)
+    seen = {n["description"]: n for n in back["nodes"].values()}
+
+    assert set(seen) == {"Собрать основу", "Проверить основу"}
+    assert seen["Собрать основу"]["priority"] == "H"
+    assert seen["Собрать основу"]["project"] == "Этап.Разбор"
+    assert len(back["links"]) == 1
+    assert back["notes"] == []
+
+
+def test_drawing_is_repeatable(library):
+    """Random ids would make the second run a different file, and a manual edit
+    inside it impossible to find again."""
+    first = tasks.draw(tasks._sample_tasks(), library)
+    second = tasks.draw(tasks._sample_tasks(), library)
+    assert json.dumps(first, sort_keys=True) == json.dumps(second, sort_keys=True)
+
+
+def test_a_shape_inside_a_shape_is_not_a_second_task(library):
+    """The Workbench card carries a status pill — itself a labelled rectangle."""
+    drawn = tasks.draw(tasks._sample_tasks(), library)
+    assert len(tasks.parse_map(drawn)["nodes"]) == 2
+
+
+def test_a_long_description_is_not_truncated_and_does_not_overlap(library):
+    """Card geometry comes from a library built for short labels."""
+    long_text = "Очень длинное описание задачи, " * 6
+    task = dict(tasks._sample_tasks()[0], description=long_text.strip())
+    drawn = tasks.draw([task], library)
+
+    titles = [e for e in drawn["elements"]
+              if e.get("type") == "text" and not e.get("containerId")]
+    joined = " ".join(" ".join(t["text"].split()) for t in titles)
+    assert long_text.strip() in joined
+
+    card = tasks.primary_of([e for e in drawn["elements"]
+                             if e.get("type") in tasks.TASK_SHAPES])
+    title = next(t for t in titles if tasks._starts_inside(t, card))
+    assert tasks.box_of(title)[3] <= tasks.box_of(card)[3]
+
+
+def test_arrows_are_bound_to_both_ends(library):
+    """An unbound arrow looks like a dependency and is not one."""
+    drawn = tasks.draw(tasks._sample_tasks(), library)
+    arrows = [e for e in drawn["elements"] if e.get("type") == "arrow"]
+    assert arrows
+    for arrow in arrows:
+        assert arrow["startBinding"]["elementId"]
+        assert arrow["endBinding"]["elementId"]
+
+
+@requires_task
+def test_to_map_refuses_to_overwrite_a_map(tmp_path: Path, sandbox):
+    """Redrawing a map the owner has moved things around in throws that away."""
+    tasks.apply_plan(sandbox, tasks.parse_map(tasks._sample_map()))
+    target = tmp_path / "карта.excalidraw"
+    target.write_text("{}", encoding="utf-8")
+
+    result = subprocess.run(
+        ["python3", str(SCRIPT), "to-map", str(target),
+         "--data-dir", str(sandbox.data_dir)],
+        capture_output=True, text=True, encoding="utf-8", check=False)
+    assert result.returncode == 1
+    assert "sync" in result.stderr
+    assert target.read_text(encoding="utf-8") == "{}"
+
+
+# -- sync: the half that must not destroy anything -------------------------
+
+
+@pytest.fixture()
+def moved_map(library, sandbox):
+    """A map that has been drawn, registered, and then moved around by hand."""
+    drawn = tasks.draw(tasks._sample_tasks(), library)
+    for record in tasks._sample_tasks():
+        tasks.upsert(sandbox, dict(record))
+    tasks.record_placement(
+        sandbox, {"digitPlacement": dict(drawn.get("digitPlacement") or {})})
+    drawn.pop("digitPlacement", None)
+
+    for element in drawn["elements"]:
+        element["x"] = float(element.get("x") or 0.0) + 777
+        element["y"] = float(element.get("y") or 0.0) - 321
+    drawn["elements"][0]["customData"] = {"ownerNote": "не трогать"}
+    return drawn
+
+
+def _geometry(document):
+    return {e["id"]: (e.get("x"), e.get("y"), e.get("width"), e.get("height"),
+                      tuple(e.get("groupIds") or ()), e.get("frameId"),
+                      json.dumps(e.get("points")))
+            for e in document["elements"]}
+
+
+@requires_task
+def test_sync_never_moves_anything(moved_map, sandbox, library):
+    """The whole point. The owner dragged these shapes; a re-run that "just
+    redraws" throws that away, and throws it away silently."""
+    revise = tasks._revise_module()
+    before = _geometry(moved_map)
+
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+    sandbox.done(tasks._sample_tasks()[0]["uuid"])
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+
+    assert _geometry(moved_map) == before
+
+
+@requires_task
+def test_sync_keeps_fields_it_does_not_understand(moved_map, sandbox, library):
+    revise = tasks._revise_module()
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+    assert moved_map["elements"][0]["customData"] == {"ownerNote": "не трогать"}
+
+
+@requires_task
+def test_status_reaches_the_map(moved_map, sandbox, library):
+    revise = tasks._revise_module()
+    done_uuid = tasks._sample_tasks()[0]["uuid"]
+    sandbox.done(done_uuid)
+
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+
+    words = {e.get("text") for e in moved_map["elements"]}
+    assert "сделано" in words
+
+
+@requires_task
+def test_only_the_closed_card_is_dimmed(moved_map, sandbox, library):
+    """Cards share the project's group id. Dimming by any shared group takes
+    the whole map down with one closed task — which is what it first did."""
+    revise = tasks._revise_module()
+    sandbox.done(tasks._sample_tasks()[0]["uuid"])
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+
+    faded = [e for e in moved_map["elements"]
+             if e.get("opacity") == tasks.DONE_OPACITY]
+    assert 0 < len(faded) < len(moved_map["elements"]) / 2
+
+
+@requires_task
+def test_sync_is_idempotent(moved_map, sandbox, library):
+    revise = tasks._revise_module()
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+    again, _report = tasks.sync(moved_map, sandbox, items=library)
+    assert again == []
+
+
+@requires_task
+def test_sync_does_not_create_a_second_task_for_a_drawn_one(moved_map, sandbox,
+                                                            library):
+    """A map drawn from tasks has element ids derived from task uuids, so the
+    uuid derived back from the element id is a different one. Without the UDA
+    lookup every sync would double the backlog."""
+    tasks.sync(moved_map, sandbox, items=library)
+    tasks.sync(moved_map, sandbox, items=library)
+    assert len(sandbox.export([])) == 2
+
+
+@requires_task
+def test_a_divergent_description_is_reported_not_decided(moved_map, sandbox,
+                                                         library):
+    """Both sides may write the description. Picking one silently loses the
+    other's edit, so the utility says so and leaves it to the owner."""
+    task_uuid = tasks._sample_tasks()[0]["uuid"]
+    tasks.sync(moved_map, sandbox, items=library)
+    tasks.upsert(sandbox, {"uuid": task_uuid, "description": "правка в трекере"})
+
+    _edits, report = tasks.sync(moved_map, sandbox, items=library)
+    assert any("разошлось" in line for line in report)
+    assert sandbox.require(task_uuid)["description"] == "правка в трекере"
+
+    _edits, _report = tasks.sync(moved_map, sandbox, items=library, prefer="map")
+    assert sandbox.require(task_uuid)["description"] == "Собрать основу"
+
+
+# -- the utility as a command ---------------------------------------------
+
+
+def test_self_test_passes():
+    """Every utility in this skill answers ``--self-test``; this one must too."""
+    result = subprocess.run(
+        ["python3", str(SCRIPT), "--self-test"],
+        capture_output=True, text=True, encoding="utf-8", check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_dry_run_writes_nothing_and_needs_no_database(tmp_path: Path):
+    map_path = tmp_path / "карта.excalidraw"
+    map_path.write_text(json.dumps(tasks._sample_map(), ensure_ascii=False),
+                        encoding="utf-8")
+    result = subprocess.run(
+        ["python3", str(SCRIPT), "from-map", str(map_path), "--dry-run"],
+        capture_output=True, text=True, encoding="utf-8", check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Собрать основу" in result.stdout
+    assert "ничего не записано" in result.stdout
