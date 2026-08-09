@@ -57,7 +57,10 @@ count of violations, not a markdown list of good intentions.
 - `ftsc` — compiler (module linking, functors) — and `ftspec` — corpus checker
   (applies invariants to specs) — both on `PATH`. Install from the FTS
   language repository (`github.com/the-homeless-god/fts`).
-- Optionally Digit's MCP tools `fts_check` / `fts_test` for a single model.
+- Optionally Digit's `fts-gate` MCP server, which exposes exactly two tools:
+  `fts_gate_check` (compile, type-check and discharge one FTS source, passed as
+  text) and `fts_morphisms_list`. There is no `fts_check` and no `fts_test`;
+  earlier versions of this page named them and they never existed.
 - The corpus root layout, because roles are decided by path:
 
 ```

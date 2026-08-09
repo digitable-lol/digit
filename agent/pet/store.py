@@ -43,6 +43,8 @@ class InstalledPet:
     directory: Path
     spritesheet: Path
     created_by: str = ""  # "generator" for pets hatched locally; "" for petdex installs
+    render_kind: str = "sprite"
+    bundled: bool = False
 
     @property
     def exists(self) -> bool:
@@ -69,6 +71,25 @@ def _read_pet_json(directory: Path) -> dict:
     except (OSError, ValueError) as exc:
         logger.debug("unreadable pet.json in %s: %s", directory, exc)
         return {}
+
+
+def _bundled_pets_dir() -> Path:
+    """Assets distributed with Digit rather than copied into a profile."""
+    return Path(__file__).resolve().parent / "builtin"
+
+
+def _pet_from_directory(slug: str, directory: Path, *, bundled: bool = False) -> InstalledPet:
+    meta = _read_pet_json(directory)
+    return InstalledPet(
+        slug=slug,
+        display_name=str(meta.get("displayName", "") or slug),
+        description=str(meta.get("description", "") or ""),
+        directory=directory,
+        spritesheet=_resolve_spritesheet(directory, meta),
+        created_by=str(meta.get("createdBy", "") or ""),
+        render_kind=str(meta.get("renderKind", "") or "sprite"),
+        bundled=bundled,
+    )
 
 
 def _resolve_spritesheet(directory: Path, meta: dict) -> Path:
@@ -109,18 +130,35 @@ def load_pet(slug: str) -> InstalledPet | None:
     slug = _safe_slug(slug)
     if not slug:
         return None
+
+    bundled_directory = _bundled_pets_dir() / slug
+    if bundled_directory.is_dir():
+        return _pet_from_directory(slug, bundled_directory, bundled=True)
+
     directory = pets_dir() / slug
     if not directory.is_dir():
         return None
-    meta = _read_pet_json(directory)
-    return InstalledPet(
-        slug=slug,
-        display_name=str(meta.get("displayName", "") or slug),
-        description=str(meta.get("description", "") or ""),
-        directory=directory,
-        spritesheet=_resolve_spritesheet(directory, meta),
-        created_by=str(meta.get("createdBy", "") or ""),
-    )
+    return _pet_from_directory(slug, directory)
+
+
+def bundled_pets() -> list[InstalledPet]:
+    """Return immutable pets that ship with Digit.
+
+    They are intentionally separate from :func:`installed_pets`: a profile
+    with no adopted pets must still count as empty, while an explicit
+    ``/pet digitmorf`` can resolve the bundled mascot without a download.
+    """
+    root = _bundled_pets_dir()
+    if not root.is_dir():
+        return []
+    out: list[InstalledPet] = []
+    for child in sorted(root.iterdir()):
+        if not child.is_dir():
+            continue
+        pet = _pet_from_directory(child.name, child, bundled=True)
+        if pet.exists:
+            out.append(pet)
+    return out
 
 
 def installed_pets() -> list[InstalledPet]:
@@ -403,6 +441,8 @@ def remove_pet(slug: str) -> bool:
     slug = _safe_slug(slug)
     if not slug:
         return False
+    if (_bundled_pets_dir() / slug).is_dir():
+        return False
 
     # The cached thumbnail lives in pets/.thumbs/<slug>.png — OUTSIDE the pet
     # dir, so rmtree won't catch it. Drop it too, or a later pet that reuses this
@@ -432,6 +472,8 @@ def rename_pet(slug: str, display_name: str) -> str | None:
     slug = _safe_slug(slug)
     display_name = (display_name or "").strip()
     if not slug or not display_name:
+        return None
+    if (_bundled_pets_dir() / slug).is_dir():
         return None
     directory = pets_dir() / slug
     pet_json = directory / "pet.json"

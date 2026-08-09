@@ -45,6 +45,7 @@ interface PetInfoMeta {
   displayName?: string
   scale?: number
   spritesheetRevision?: string
+  renderKind?: 'digitmorf-3d' | 'sprite'
 }
 
 function samePetRevision(info: PetInfo, meta: PetInfoMeta): boolean {
@@ -54,7 +55,8 @@ function samePetRevision(info: PetInfo, meta: PetInfoMeta): boolean {
     info.slug === meta.slug &&
     info.displayName === meta.displayName &&
     info.scale === meta.scale &&
-    info.spritesheetRevision === meta.spritesheetRevision
+    info.spritesheetRevision === meta.spritesheetRevision &&
+    info.renderKind === meta.renderKind
   )
 }
 
@@ -110,6 +112,8 @@ function loadPosition(): Point {
  */
 const PET_POLL_MS = 3000
 const PET_ACTIVE_REFRESH_MS = 15000
+const PET_EVENT_INACTIVE_BACKSTOP_MS = 5000
+const PET_EVENT_ACTIVE_BACKSTOP_MS = 60000
 
 export function FloatingPet() {
   const { requestGateway } = useGatewayRequest()
@@ -219,19 +223,25 @@ export function FloatingPet() {
     void pull()
     window.addEventListener('focus', pull)
 
-    // Event-capable backend: pet.changed re-runs this effect (petChange dep),
-    // so no timer. Legacy backend: the historical poll.
-    const timer = changeEventsAvailable
-      ? null
-      : window.setInterval(() => void pull(), active ? PET_ACTIVE_REFRESH_MS : PET_POLL_MS)
+    // Event-capable backends normally refresh through pet.changed, but retain a
+    // slow backstop: gatewayState can become open a beat before the request
+    // object is usable, and an unlucky first pull must not leave a configured
+    // pet invisible until the next unrelated change event.
+    const interval = changeEventsAvailable
+      ? active
+        ? PET_EVENT_ACTIVE_BACKSTOP_MS
+        : PET_EVENT_INACTIVE_BACKSTOP_MS
+      : active
+        ? PET_ACTIVE_REFRESH_MS
+        : PET_POLL_MS
+
+    const timer = window.setInterval(() => void pull(), interval)
 
     return () => {
       cancelled = true
       window.removeEventListener('focus', pull)
 
-      if (timer !== null) {
-        window.clearInterval(timer)
-      }
+      window.clearInterval(timer)
     }
   }, [gatewayState, active, changeEventsAvailable, petChange, requestGateway])
 

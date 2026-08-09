@@ -1267,6 +1267,7 @@ def _(rid, params: dict) -> dict:
                 "displayName": pet.display_name,
                 "scale": scale,
                 "spritesheetRevision": _pet_sheet_revision(pet.spritesheet),
+                "renderKind": pet.render_kind,
             },
         )
     except Exception as exc:  # noqa: BLE001 - cosmetic, never break the surface
@@ -1407,9 +1408,26 @@ def _(rid, params: dict) -> dict:
             pet_cfg = {}
 
         installed = {p.slug: p for p in store.installed_pets()}
+        bundled = {p.slug: p for p in store.bundled_pets()}
 
         gallery: list[dict] = []
         seen: set[str] = set()
+
+        # First-party mascots are offline and immutable. They stay separate
+        # from profile-installed pets so an empty profile remains genuinely
+        # empty until the user explicitly adopts one.
+        for slug, pet in bundled.items():
+            seen.add(slug)
+            gallery.append(
+                {
+                    "slug": slug,
+                    "displayName": pet.display_name,
+                    "installed": True,
+                    "bundled": True,
+                    "spritesheetUrl": "",
+                    "generated": False,
+                }
+            )
         try:
             from agent.pet.manifest import fetch_manifest, prefetch
 

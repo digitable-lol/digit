@@ -3,6 +3,8 @@ import { memo, useEffect, useMemo, useRef } from 'react'
 import { createRendererLoopPauseController } from '@/lib/renderer-loop-pause'
 import { $petState, type PetInfo, type PetState } from '@/store/pet'
 
+import { DigitmorfPet } from './digitmorf-pet'
+
 const DEFAULT_FRAME_W = 192
 const DEFAULT_FRAME_H = 208
 const DEFAULT_FRAMES = 6
@@ -354,6 +356,19 @@ function PetSpriteImpl({ info, zoom = 1, stateOverride, rowOverride, pauseWhenUn
       unsubState()
     }
   }, [image, frameW, frameH, frames, framesByState, framesByRow, loopMs, drawW, drawH, rows, pauseWhenUnfocused])
+
+  if (info.renderKind === 'digitmorf-3d') {
+    return (
+      <DigitmorfPet
+        drawH={drawH}
+        drawW={drawW}
+        info={info}
+        pauseWhenUnfocused={pauseWhenUnfocused}
+        rowOverride={rowOverride}
+        stateOverride={stateOverride}
+      />
+    )
+  }
 
   return (
     <canvas
