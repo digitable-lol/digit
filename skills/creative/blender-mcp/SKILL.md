@@ -80,6 +80,13 @@ telemetry off, `user_prompt` is inert — pass it or don't.
 
 ## Workflow
 
+For a hero character or any asset with three or more semantic assemblies, load
+and follow `$blender-modular-assembly` before creating geometry. Its FormGraph
+protocol makes every hood panel, hand segment, tail section, prop component, and
+rig interface independently rebuildable and validated. Keep this skill as the
+transport and Blender API reference; keep the modular skill as the construction
+contract.
+
 ### Step 0: Orient before building
 
 ```
@@ -246,3 +253,4 @@ Before a GLB replaces procedural geometry in a running game:
 | `references/recipes.md` | Complete working scenes: low-poly terrain, glass sphere, HDRI lighting, turntable |
 | `references/pitfalls.md` | Connection, namespace and API-version traps, with the checks that catch them |
 | `scripts/setup.sh` | Checks the host, starts Blender, verifies the port |
+| `$blender-modular-assembly` | FormGraph decomposition, module transactions, visual checkpoints |
