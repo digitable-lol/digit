@@ -263,6 +263,40 @@ here would be a second truth that drifts from the first in silence.
 `to-map` refuses to overwrite an existing map: redrawing throws away every
 position the owner moved by hand.
 
+### Keeping the Two in Step
+
+`sync` is the run you make again and again. One rule decides everything it does:
+
+> **Structure comes from the map, state comes from the tracker.**
+
+What exists, what waits for what, whose project it is and what matters more — is
+drawn, and the map is right about it. Whether it is finished — the map cannot
+say, and the tracker can.
+
+```bash
+python skills/creative/excalidraw/scripts/tasks.py sync ~/diagrams/бэклог.excalidraw --dry-run
+python skills/creative/excalidraw/scripts/tasks.py sync ~/diagrams/бэклог.excalidraw
+```
+
+**Nothing is ever moved.** Not `x`, not `y`, not sizes, not `groupIds`, not
+`frameId`, not arrow points. Edits go through `revise.py`, element by element, so
+Excalidraw's own change tracking is advanced and nothing the utility does not
+understand is dropped. A status becomes a word in the card's pill («в работе»,
+«сделано», «ждёт срока», «снята») and a closed card is dimmed, not deleted —
+deleting an element an arrow points at makes Excalidraw drop the arrow in
+silence.
+
+**The description is the one field both sides may write.** When it has diverged,
+the utility does not choose: it prints both, leaves the field alone, and waits
+for `--prefer map` or `--prefer tracker`.
+
+**The key is the UDA, and `to-map` writes it as it draws.** Without that, a map
+drawn from tasks would not recognise its own tasks on the next run — the element
+id was derived from the task uuid, and the uuid derived back from the element id
+is a different one — and every sync would double the backlog.
+
+Running it twice in a row produces no second set of edits.
+
 ### Uploading for a Shareable Link
 
 Run the upload script (located in this skill's `scripts/` directory) via terminal:

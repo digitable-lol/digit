@@ -264,6 +264,121 @@ def test_to_map_refuses_to_overwrite_a_map(tmp_path: Path, sandbox):
     assert target.read_text(encoding="utf-8") == "{}"
 
 
+# -- sync: the half that must not destroy anything -------------------------
+
+
+@pytest.fixture()
+def moved_map(library, sandbox):
+    """A map that has been drawn, registered, and then moved around by hand."""
+    drawn = tasks.draw(tasks._sample_tasks(), library)
+    for record in tasks._sample_tasks():
+        tasks.upsert(sandbox, dict(record))
+    tasks.record_placement(
+        sandbox, {"digitPlacement": dict(drawn.get("digitPlacement") or {})})
+    drawn.pop("digitPlacement", None)
+
+    for element in drawn["elements"]:
+        element["x"] = float(element.get("x") or 0.0) + 777
+        element["y"] = float(element.get("y") or 0.0) - 321
+    drawn["elements"][0]["customData"] = {"ownerNote": "не трогать"}
+    return drawn
+
+
+def _geometry(document):
+    return {e["id"]: (e.get("x"), e.get("y"), e.get("width"), e.get("height"),
+                      tuple(e.get("groupIds") or ()), e.get("frameId"),
+                      json.dumps(e.get("points")))
+            for e in document["elements"]}
+
+
+@requires_task
+def test_sync_never_moves_anything(moved_map, sandbox, library):
+    """The whole point. The owner dragged these shapes; a re-run that "just
+    redraws" throws that away, and throws it away silently."""
+    revise = tasks._revise_module()
+    before = _geometry(moved_map)
+
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+    sandbox.done(tasks._sample_tasks()[0]["uuid"])
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+
+    assert _geometry(moved_map) == before
+
+
+@requires_task
+def test_sync_keeps_fields_it_does_not_understand(moved_map, sandbox, library):
+    revise = tasks._revise_module()
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+    assert moved_map["elements"][0]["customData"] == {"ownerNote": "не трогать"}
+
+
+@requires_task
+def test_status_reaches_the_map(moved_map, sandbox, library):
+    revise = tasks._revise_module()
+    done_uuid = tasks._sample_tasks()[0]["uuid"]
+    sandbox.done(done_uuid)
+
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+
+    words = {e.get("text") for e in moved_map["elements"]}
+    assert "сделано" in words
+
+
+@requires_task
+def test_only_the_closed_card_is_dimmed(moved_map, sandbox, library):
+    """Cards share the project's group id. Dimming by any shared group takes
+    the whole map down with one closed task — which is what it first did."""
+    revise = tasks._revise_module()
+    sandbox.done(tasks._sample_tasks()[0]["uuid"])
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+
+    faded = [e for e in moved_map["elements"]
+             if e.get("opacity") == tasks.DONE_OPACITY]
+    assert 0 < len(faded) < len(moved_map["elements"]) / 2
+
+
+@requires_task
+def test_sync_is_idempotent(moved_map, sandbox, library):
+    revise = tasks._revise_module()
+    edits, _report = tasks.sync(moved_map, sandbox, items=library)
+    revise.apply_edits(moved_map, edits)
+    again, _report = tasks.sync(moved_map, sandbox, items=library)
+    assert again == []
+
+
+@requires_task
+def test_sync_does_not_create_a_second_task_for_a_drawn_one(moved_map, sandbox,
+                                                            library):
+    """A map drawn from tasks has element ids derived from task uuids, so the
+    uuid derived back from the element id is a different one. Without the UDA
+    lookup every sync would double the backlog."""
+    tasks.sync(moved_map, sandbox, items=library)
+    tasks.sync(moved_map, sandbox, items=library)
+    assert len(sandbox.export([])) == 2
+
+
+@requires_task
+def test_a_divergent_description_is_reported_not_decided(moved_map, sandbox,
+                                                         library):
+    """Both sides may write the description. Picking one silently loses the
+    other's edit, so the utility says so and leaves it to the owner."""
+    task_uuid = tasks._sample_tasks()[0]["uuid"]
+    tasks.sync(moved_map, sandbox, items=library)
+    tasks.upsert(sandbox, {"uuid": task_uuid, "description": "правка в трекере"})
+
+    _edits, report = tasks.sync(moved_map, sandbox, items=library)
+    assert any("разошлось" in line for line in report)
+    assert sandbox.require(task_uuid)["description"] == "правка в трекере"
+
+    _edits, _report = tasks.sync(moved_map, sandbox, items=library, prefer="map")
+    assert sandbox.require(task_uuid)["description"] == "Собрать основу"
+
+
 # -- the utility as a command ---------------------------------------------
 
 

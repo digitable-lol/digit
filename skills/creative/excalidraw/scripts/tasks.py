@@ -534,22 +534,70 @@ def open_tracker(data_dir: Optional[str] = None):
     return module.Tracker(resolved), resolved
 
 
-def upsert(tracker, record: Dict[str, Any]) -> str:
+def resolve_uuids(tracker, plan: Dict[str, Any]) -> Tuple[List[str],
+                                                          Dict[str, Dict[str, Any]]]:
+    """Привязать узлы карты к уже существующим задачам по UDA.
+
+    Без этого шага ключом фактически было бы не соответствие, а совпадение:
+    uuid выводится из ``id`` элемента, и задача, для которой карту **нарисовали**
+    (её ``id`` выведен из uuid, а не наоборот), никогда бы себя на этой карте не
+    узнала. Второй прогон завёл бы её копию — с тем же описанием и другим uuid.
+
+    Поэтому сначала спрашивают базу: есть ли задача, у которой в UDA записан
+    этот элемент. Выведенный uuid остаётся запасным вариантом — для карты,
+    которую нарисовал человек и о которой база ещё не знает.
+    """
+    everything = tracker.export([])
+    by_uuid = {task["uuid"]: task for task in everything}
+    known: Dict[str, str] = {}
+    for task in everything:
+        marker = task.get(UDA)
+        if isinstance(marker, str) and marker:
+            known[marker] = task["uuid"]
+
+    rebound: List[str] = []
+    for node in plan["nodes"].values():
+        found = known.get(node["element"])
+        if found and found != node["uuid"]:
+            node["uuid"] = found
+            rebound.append(node["element"])
+    return rebound, by_uuid
+
+
+#: Поля, которые Taskwarrior считает сам. Обратно их не подают и в сравнении
+#: «изменилось ли что-нибудь» не учитывают.
+_COMPUTED = ("id", "urgency", "modified")
+
+
+def upsert(tracker, record: Dict[str, Any], *,
+           existing: Optional[Dict[str, Any]] = None,
+           known: bool = False) -> str:
     """Создать или обновить задачу, не потеряв того, чего не писали.
 
     ``task import`` существующего uuid заменяет запись целиком: поданная без
     ``annotations`` запись оставляет задачу без аннотаций, и ни одна строка
     вывода об этом не говорит. Поэтому здесь read-merge-import.
+
+    Запись, ничего не меняющая, не делается вовсе. Это не оптимизация ради
+    скорости: база общая, в ней одновременно работают владелец и другие агенты,
+    и каждый лишний ``import`` — это и лишняя блокировка, и лишняя строка в
+    ``undo.data``, и лишний шанс перезаписать чью-то правку, случившуюся между
+    чтением и записью.
     """
     task_uuid = record["uuid"]
-    existing = tracker.get(task_uuid)
+    if not known:
+        existing = tracker.get(task_uuid)
     merged: Dict[str, Any] = dict(existing or {})
     merged.update(record)
-    # ``id`` и ``urgency`` — вычисляемые поля вывода, обратно их не подают.
-    for computed in ("id", "urgency"):
+    for computed in _COMPUTED:
         merged.pop(computed, None)
     merged.setdefault("status", "pending")
     merged.setdefault("entry", module_now())
+
+    if existing is not None:
+        before = {k: v for k, v in existing.items() if k not in _COMPUTED}
+        if before == merged:
+            return "без изменений"
 
     code, out, err = tracker._run(["import", "-"],
                                   stdin=json.dumps([merged], ensure_ascii=False))
@@ -582,6 +630,9 @@ def apply_plan(tracker, plan: Dict[str, Any]) -> List[str]:
         )
 
     report: List[str] = []
+    rebound, stored = resolve_uuids(tracker, plan)
+    for element_id in rebound:
+        report.append(f"{element_id}: узнан по UDA, задача уже была")
     for node in plan["nodes"].values():
         record: Dict[str, Any] = {
             "uuid": node["uuid"],
@@ -592,7 +643,9 @@ def apply_plan(tracker, plan: Dict[str, Any]) -> List[str]:
             record["project"] = node["project"]
         if node["priority"]:
             record["priority"] = node["priority"]
-        report.append(f"{upsert(tracker, record)}: {node['description']}")
+        report.append(
+            f"{upsert(tracker, record, existing=stored.get(node['uuid']), known=True)}"
+            f": {node['description']}")
 
     depends: Dict[str, List[str]] = {}
     for link in plan["links"]:
@@ -601,7 +654,8 @@ def apply_plan(tracker, plan: Dict[str, Any]) -> List[str]:
     for task_uuid, prerequisites in depends.items():
         current = tracker.require(task_uuid)
         merged = sorted(set(current.get("depends") or []) | set(prerequisites))
-        upsert(tracker, {"uuid": task_uuid, "depends": merged})
+        upsert(tracker, {"uuid": task_uuid, "depends": merged},
+               existing=current, known=True)
         report.append(f"зависимостей у {task_uuid}: {len(merged)}")
     return report
 
@@ -1006,7 +1060,27 @@ def draw(tasks_list: Sequence[Dict[str, Any]], items: Dict[str, List[Dict[str, A
         "elements": [*frame_elements, *elements, *arrows],
         "appState": {"viewBackgroundColor": "#ffffff", "gridSize": None},
         "files": {},
+        # Не часть формата: куда встала какая задача. Нужен вызывающему, чтобы
+        # записать это в UDA, — иначе нарисованная карта не узнаёт своих задач.
+        "digitPlacement": {uuid: element["id"] for uuid, element in placed.items()},
     }
+
+
+def record_placement(tracker, document: Dict[str, Any]) -> int:
+    """Записать в задачи, каким элементом карты они нарисованы.
+
+    Это и есть ключ соответствия. Без него карта, нарисованная из задач, при
+    следующем прогоне читается как набор незнакомых фигур, и на каждую заводится
+    вторая задача с тем же описанием.
+    """
+    written = 0
+    for task_uuid, element_id in (document.pop("digitPlacement", None) or {}).items():
+        task = tracker.get(task_uuid)
+        if task is None or task.get(UDA) == element_id:
+            continue
+        upsert(tracker, {"uuid": task_uuid, UDA: element_id})
+        written += 1
+    return written
 
 
 def _by_project(order: Sequence[Dict[str, Any]], parts) -> List[Tuple[Tuple[str, str],
@@ -1062,6 +1136,231 @@ def arrow_between(source: Dict[str, Any], target: Dict[str, Any], *,
 
 
 # --------------------------------------------------------------------------
+# Синхронизация
+# --------------------------------------------------------------------------
+
+#: Слово в плашке статуса. Больше карта о состоянии сказать не может, и
+#: выдумывать ей нечего: это ровно то, что стоит в задаче.
+STATUS_WORDS = {
+    "pending": "в работе",
+    "waiting": "ждёт срока",
+    "completed": "сделано",
+    "deleted": "снята",
+}
+
+#: Насколько гасится карточка закрытой задачи. Не удаляется: удаление элемента,
+#: на который смотрит стрелка, Excalidraw переживает молчаливой потерей стрелки.
+DONE_OPACITY = 55
+
+
+def _revise_module():
+    """``revise.py`` — правка карты поэлементно.
+
+    Своей такой правки здесь нет намеренно: соседний скрипт уже умеет двигать
+    ``version``/``versionNonce``/``updated`` (без чего правка проигрывает
+    открытой вкладке владельца) и отказываться удалять то, на что ссылаются.
+    Вторая реализация означала бы второй набор тех же ошибок.
+    """
+    path = Path(__file__).resolve().parent / "revise.py"
+    if not path.is_file():
+        raise Refused(f"рядом нет {path}")
+    spec = importlib.util.spec_from_file_location("excalidraw_revise", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def card_of(document: Dict[str, Any], element_id: str) -> Dict[str, Any]:
+    """Части карточки задачи на карте: сама фигура, заголовок и плашка.
+
+    Ищется по тому же правилу, по которому карта разбиралась, — иначе
+    синхронизация красила бы не то, что читает разбор.
+    """
+    by_id = index(document)
+    primary = by_id.get(element_id)
+    if not isinstance(primary, dict):
+        return {}
+    free = free_texts_of(document)
+    title = next((t for t in sorted(
+        (t for t in free if _starts_inside(t, primary)),
+        key=lambda t: (float(t.get("y") or 0), float(t.get("x") or 0)))), None)
+
+    shapes = [e for e in visible(document) if e.get("type") in TASK_SHAPES]
+    area = float(primary.get("width") or 0) * float(primary.get("height") or 0)
+    pill = None
+    for shape in shapes:
+        if shape is primary:
+            continue
+        if _inside(shape, primary) and (
+                float(shape.get("width") or 0) * float(shape.get("height") or 0)) < area:
+            pill = shape
+            break
+    pill_text = None
+    if pill is not None:
+        for entry in pill.get("boundElements") or ():
+            if isinstance(entry, dict) and entry.get("type") == "text":
+                pill_text = by_id.get(entry.get("id"))
+                break
+
+    members = [primary, *(e for e in (title, pill, pill_text) if e is not None)]
+    own = (primary.get("groupIds") or [None])[0]
+    if own is not None:
+        # Только своя, внутренняя группа. ``groupIds`` идёт от внутренней к
+        # внешней, и внешняя здесь — группа проекта, общая у всех карточек:
+        # взяв её, погасили бы вместе с одной закрытой задачей всю карту. Так
+        # оно и вышло на первой же проверке.
+        together = [e for e in visible(document)
+                    if (e.get("groupIds") or [None])[0] == own]
+        if together:
+            members = together
+    return {"primary": primary, "title": title, "pill": pill,
+            "pill_text": pill_text, "members": members}
+
+
+def sync(document: Dict[str, Any], tracker, *,
+         items: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+         prefer: Optional[str] = None,
+         colors: Optional[Dict[str, str]] = None) -> Tuple[List[Dict[str, Any]],
+                                                           List[str]]:
+    """Правки к карте и отчёт. Ничего не пишет — только считает.
+
+    Правило одно, и оно делит поля пополам: **устройство идёт с карты,
+    состояние — из трекера**. Что существует, что от чего зависит, где чей
+    проект и что важнее — нарисовано, и карта тут главная. Выполнено оно или
+    нет — карта сказать не может, это знает трекер.
+
+    Расстановка не трогается вообще: ни ``x``, ни ``y``, ни размеры, ни
+    ``groupIds``, ни ``frameId``, ни точки стрелок. Человек двигал фигуры
+    руками, и повторный прогон, который «просто перерисует», — это ровно та
+    молчаливая потеря, ради предотвращения которой написан ``revise.py``.
+
+    Описание — единственное поле, где обе стороны имеют право писать. Если оно
+    разошлось, здесь не выбирают за владельца: расхождение печатается, поле не
+    трогается, а ``--prefer`` разрешает его явно.
+    """
+    plan = parse_map(document, colors=colors)
+    if plan["cycle"]:
+        raise Refused("круг в зависимостях: " + " → ".join(plan["cycle"]))
+
+    report: List[str] = list(plan["notes"])
+    rebound, stored = resolve_uuids(tracker, plan)
+    for element_id in rebound:
+        report.append(f"{element_id}: узнан по UDA, задача уже была")
+    edits: List[Dict[str, Any]] = []
+
+    # -- устройство: карта → трекер ---------------------------------------
+    for node in plan["nodes"].values():
+        existing = stored.get(node["uuid"])
+        record: Dict[str, Any] = {"uuid": node["uuid"], UDA: node["element"]}
+        if node["project"]:
+            record["project"] = node["project"]
+        if node["priority"]:
+            record["priority"] = node["priority"]
+
+        drawn = node["description"]
+        in_tracker = (existing or {}).get("description")
+        if existing is None or drawn == in_tracker:
+            record["description"] = drawn
+        elif prefer == "map":
+            record["description"] = drawn
+            report.append(f"описание взято с карты: {drawn!r} (было {in_tracker!r})")
+        elif prefer == "tracker":
+            report.append(f"описание оставлено из трекера: {in_tracker!r}")
+        else:
+            report.append(
+                f"описание разошлось и не тронуто: на карте {drawn!r}, в "
+                f"трекере {in_tracker!r}. --prefer map или --prefer tracker решает, "
+                f"кто прав; выбирать за владельца эта утилита не будет.")
+        if upsert(tracker, record, existing=existing, known=True) != "без изменений":
+            stored[node["uuid"]] = tracker.get(node["uuid"]) or {}
+
+    depends: Dict[str, List[str]] = {}
+    for link in plan["links"]:
+        depends.setdefault(plan["nodes"][link["to"]]["uuid"], []).append(
+            plan["nodes"][link["from"]]["uuid"])
+    for task_uuid, prerequisites in depends.items():
+        current = stored.get(task_uuid) or tracker.require(task_uuid)
+        merged = sorted(set(current.get("depends") or []) | set(prerequisites))
+        if merged != sorted(current.get("depends") or []):
+            upsert(tracker, {"uuid": task_uuid, "depends": merged},
+                   existing=current, known=True)
+            stored[task_uuid] = tracker.get(task_uuid) or current
+
+    # -- состояние: трекер → карта ----------------------------------------
+    for node in plan["nodes"].values():
+        task = stored.get(node["uuid"]) or tracker.get(node["uuid"])
+        if task is None:
+            report.append(
+                f"на карте есть {node['description']!r}, в трекере такой задачи "
+                f"нет — карточка оставлена как есть")
+            continue
+        status = str(task.get("status") or "pending")
+        parts = card_of(document, node["element"])
+        if not parts:
+            continue
+
+        word = STATUS_WORDS.get(status, status)
+        if parts["pill_text"] is not None and parts["pill_text"].get("text") != word:
+            edits.append({"id": parts["pill_text"]["id"],
+                          "set": {"text": word, "originalText": word}})
+            report.append(f"{node['description']}: {word}")
+
+        opacity = DONE_OPACITY if status in ("completed", "deleted") else 100
+        for element in parts["members"]:
+            if element.get("opacity") != opacity:
+                edits.append({"id": element["id"], "set": {"opacity": opacity}})
+
+        if prefer == "tracker":
+            text = describe_task(task)
+            title = parts["title"]
+            if title is not None and " ".join(str(title.get("text") or "").split()) \
+                    != text:
+                wrapped = wrap(text, wrap_width(parts["primary"], title))
+                edits.append({"id": title["id"],
+                              "set": {"text": wrapped, "originalText": wrapped}})
+
+    # -- задачи, которых на карте ещё нет ---------------------------------
+    drawn_uuids = {n["uuid"] for n in plan["nodes"].values()}
+    fresh = [t for t in stored.values()
+             if t.get("status") == "pending"
+             and t["uuid"] not in drawn_uuids and t.get(UDA) is None]
+    if fresh and items:
+        bottom = max((box_of(e)[3] for e in visible(document)), default=0.0)
+        for offset, task in enumerate(sorted(
+                fresh, key=lambda t: t.get("description") or "")):
+            addition = _new_card(task, items, at=(FRAME_PAD,
+                                                  bottom + 80 + offset * 200))
+            edits.extend({"add": element} for element in addition)
+            report.append(f"добавлена карточка: {task.get('description')}")
+    elif fresh:
+        report.append(
+            f"{len(fresh)} задач(и) в трекере нет на карте; набор Мастерской не "
+            f"найден, дорисовать нечем — укажите --library")
+
+    return edits, report
+
+
+def _new_card(task: Dict[str, Any], items: Dict[str, List[Dict[str, Any]]],
+              *, at: Tuple[float, float]) -> List[Dict[str, Any]]:
+    """Карточка для задачи, которой на карте ещё нет.
+
+    Ставится под всем нарисованным, а не туда, где «есть место»: угадывать
+    свободное место значит рано или поздно положить новую карточку поверх той,
+    что владелец только что подвинул.
+    """
+    stamped = stamp(items[CARD_ITEM], at=at, key=task["uuid"])
+    primary = primary_of(stamped)
+    title = title_of(stamped, primary)
+    if title is None:
+        raise Refused(f"у фигуры «{CARD_ITEM}» нет надписи внутри")
+    below = box_of(title)[3]
+    was = float(title.get("height") or 0.0)
+    set_text(title, wrap(describe_task(task), wrap_width(primary, title)))
+    fit(stamped, primary, title, grew=float(title["height"]) - was, below=below)
+    return stamped
+
+
+# --------------------------------------------------------------------------
 # Схема входа
 # --------------------------------------------------------------------------
 
@@ -1097,6 +1396,22 @@ SCHEMAS: Dict[str, Dict[str, Any]] = {
             "palette": {"type": "string", "description": "carbon, paper или signal"},
             "force": {"type": "boolean",
                       "description": "перезаписать существующую карту"},
+        },
+        "required": ["map"],
+    },
+    "excalidraw.sync": {
+        "description": "Свести карту и задачи, не трогая ручную расстановку",
+        "type": "object",
+        "properties": {
+            "map": {"type": "string", "description": "путь к .excalidraw"},
+            "data_dir": {"type": "string",
+                         "description": "каталог базы Taskwarrior"},
+            "library": {"type": "string",
+                        "description": "набор Мастерской для новых карточек"},
+            "prefer": {"type": "string",
+                       "description": "чьё описание сильнее: map или tracker"},
+            "dry_run": {"type": "boolean",
+                        "description": "только показать, ничего не менять"},
         },
         "required": ["map"],
     },
@@ -1341,6 +1656,63 @@ def self_test() -> int:
             check("повторный прогон не стёр аннотацию",
                   len(kept.get("annotations") or []) == 1,
                   str(kept.get("annotations")))
+
+            # -- главное требование: ручная расстановка переживает прогон --
+            revise = _revise_module()
+            card_map = draw(_sample_tasks(), items)
+            moved = json.loads(json.dumps(card_map))
+            hand = {}
+            for element in moved["elements"]:
+                element["x"] = float(element.get("x") or 0.0) + 777
+                element["y"] = float(element.get("y") or 0.0) - 321
+                hand[element["id"]] = (element["x"], element["y"],
+                                       element.get("width"),
+                                       element.get("height"),
+                                       tuple(element.get("groupIds") or ()),
+                                       element.get("frameId"))
+            moved["elements"][0]["customData"] = {"ownerNote": "не трогать"}
+
+            fresh_dir = Path(tempfile.mkdtemp(prefix="excalidraw-sync-"))
+            try:
+                fresh_data = fresh_dir / "data"
+                fresh_data.mkdir()
+                (fresh_dir / "taskrc").write_text(
+                    f"data.location={fresh_data}\n", encoding="utf-8")
+                second = module.Tracker(fresh_data)
+                for record in _sample_tasks():
+                    upsert(second, dict(record))
+                record_placement(second, {"digitPlacement": dict(
+                    card_map.get("digitPlacement") or {})})
+
+                edits, _report = sync(moved, second, items=items)
+                revise.apply_edits(moved, edits)
+
+                second.done(task_uuid_for("box1"))
+                edits, _report = sync(moved, second, items=items)
+                revise.apply_edits(moved, edits)
+
+                after = {e["id"]: (e.get("x"), e.get("y"), e.get("width"),
+                                   e.get("height"),
+                                   tuple(e.get("groupIds") or ()),
+                                   e.get("frameId"))
+                         for e in moved["elements"]}
+                check("ручная расстановка пережила две синхронизации",
+                      all(after.get(k) == v for k, v in hand.items()),
+                      str([k for k, v in hand.items() if after.get(k) != v][:3]))
+                check("чужие поля не потерялись",
+                      moved["elements"][0].get("customData") ==
+                      {"ownerNote": "не трогать"})
+                words = [e.get("text") for e in moved["elements"]
+                         if e.get("type") == "text"]
+                check("статус доехал до карты", "сделано" in words,
+                      str([w for w in words if w in STATUS_WORDS.values()]))
+                check("карта осталась читаемой разбором",
+                      len(parse_map(moved)["nodes"]) == 2)
+                check("синхронизация не завела вторых задач",
+                      len(second.export([])) == 2,
+                      f"задач {len(second.export([]))}")
+            finally:
+                shutil.rmtree(fresh_dir, ignore_errors=True)
         finally:
             shutil.rmtree(sandbox, ignore_errors=True)
     else:
@@ -1399,13 +1771,47 @@ def cmd_to_map(args) -> int:
             f"(status:{args.status}" +
             (f", project:{args.project}" if args.project else "") + ")")
     document = draw(found, items)
+    marked = record_placement(tracker, document)
     Path(target).write_text(
         json.dumps(document, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8")
     print(f"  база задач: {resolved}")
     print(f"  библиотека: {library}")
-    print(f"  задач: {len(found)}, элементов: {len(document['elements'])}")
+    print(f"  задач: {len(found)}, элементов: {len(document['elements'])}, "
+          f"отмечено в UDA: {marked}")
     print(f"  записана {target}")
+    return 0
+
+
+def cmd_sync(args) -> int:
+    target = Path(args.map)
+    document = load_map(target)
+    tracker, resolved = open_tracker(args.data_dir)
+    try:
+        items = load_library(find_library(args.library, palette=args.palette))
+    except Refused as exc:
+        items, why = None, str(exc)
+    else:
+        why = None
+
+    edits, report = sync(document, tracker, items=items, prefer=args.prefer,
+                         colors=_load_colors(args.priority_colors))
+    print(f"  база задач: {resolved}")
+    if why:
+        print(f"  библиотека: не найдена ({why})")
+    for line in report:
+        print(f"    {line}")
+    if not edits:
+        print("  карта уже отражает состояние задач — править нечего")
+        return 0
+    if args.dry_run:
+        print(f"  (--dry-run: {len(edits)} правк(и) не применены)")
+        return 0
+
+    revise = _revise_module()
+    revise.apply_edits(document, edits)
+    revise.save(document, target)
+    print(f"  правок в карте: {len(edits)}; записана {target}")
     return 0
 
 
@@ -1459,6 +1865,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     p_to.add_argument("--force", action="store_true",
                       help="перезаписать карту (ручная раскладка пропадёт)")
 
+    p_sync = sub.add_parser(
+        "sync", help="Свести карту и задачи, не трогая ручную расстановку")
+    p_sync.add_argument("map", type=Path)
+    p_sync.add_argument("--data-dir", default=None)
+    p_sync.add_argument("--library", default=None)
+    p_sync.add_argument("--palette", default="carbon",
+                        choices=("carbon", "paper", "signal"))
+    p_sync.add_argument("--prefer", default=None, choices=("map", "tracker"),
+                        help="чьё описание сильнее при расхождении")
+    p_sync.add_argument("--priority-colors", default=None)
+    p_sync.add_argument("--dry-run", action="store_true")
+
     p_schema = sub.add_parser("schema", help="Схемы входа утилит")
     p_schema.add_argument("--json", action="store_true")
 
@@ -1475,6 +1893,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return cmd_from_map(args)
         if args.command == "to-map":
             return cmd_to_map(args)
+        if args.command == "sync":
+            return cmd_sync(args)
         if args.command == "schema":
             if args.json:
                 print(json.dumps(SCHEMAS, ensure_ascii=False, indent=2))
