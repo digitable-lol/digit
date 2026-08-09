@@ -330,6 +330,32 @@ Rows are spaced by the shapes actually drawn, not by a constant: «Систем�
 overlaps in some sets or leaves holes in others. The self-test checks that no
 two top-level shapes overlap, in every set.
 
+### Why the Schemas Are Flat
+
+Digit hands its utility catalog to a small router model one category at a time,
+and the schemas in it are deliberately flat — *«без вложенности глубже двух
+уровней и без альтернатив в описании входа»*, as the Workbench write-up puts it
+(`content/workbench/digit-integrations.md` in the courses repo). These four
+entries obey that, and the obedience is checked rather than asserted:
+
+```bash
+python skills/creative/excalidraw/scripts/tasks.py schema   # + глубина и альтернативы
+digit excalidraw schema
+```
+
+Level 1 is the argument object, level 2 is one argument's own description. An
+argument that is itself an object, or an array of objects, is level 3 — so every
+argument here is a scalar. `oneOf` / `anyOf` / `allOf` are refused outright.
+
+The requirement is about *input*, but it can be broken by output just as easily:
+a parse that hands back a nested structure forces the next utility to accept one.
+So the tests check the parse too — every field of a parsed node is a scalar, and
+a project never reaches a third level even when a frame is called «этап 2.1» and
+its group «разбор.первый» (dots inside a name become hyphens).
+
+One more place the same rule shows: all six widgets take **one** input form, not
+a grammar each. A router picks the utility, not the shape of its argument.
+
 ### Uploading for a Shareable Link
 
 Run the upload script (located in this skill's `scripts/` directory) via terminal:

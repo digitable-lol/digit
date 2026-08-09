@@ -501,6 +501,16 @@ def excalidraw_command(args) -> int:
         return self_test()
 
     command = getattr(args, "excalidraw_command", None)
+    if command == "schema":
+        skill = _skill()
+        for name, schema in SCHEMAS.items():
+            print(f"  {name}: {schema['description']}")
+            for field, spec in schema["properties"].items():
+                need = " (обязательно)" if field in schema.get("required", ()) else ""
+                print(f"    {field}: {spec['type']}{need} — {spec['description']}")
+            print(f"    глубина {skill.schema_depth(schema)}, "
+                  f"альтернатив {len(skill.schema_alternatives(schema))}")
+        return 0
     if command == "list":
         for name, spec in WIDGETS.items():
             print(f"  {name:10} {spec['about']}")
@@ -544,6 +554,7 @@ def add_parser(subparsers) -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="excalidraw_command")
 
     sub.add_parser("list", help="Какие виджеты есть и из чего собраны")
+    sub.add_parser("schema", help="Схема входа и её глубина")
 
     for name, spec in WIDGETS.items():
         one = sub.add_parser(name, help=spec["about"])
