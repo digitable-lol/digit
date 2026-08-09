@@ -1,0 +1,8 @@
+{
+  "id": "digitmorf",
+  "displayName": "Digitmorf",
+  "description": "Digit's spatial glass-and-energy mascot: eight semantic forms, one continuous topology.",
+  "spritesheetPath": "spritesheet.webp",
+  "renderKind": "digitmorf-3d",
+  "createdBy": "digitable"
+}

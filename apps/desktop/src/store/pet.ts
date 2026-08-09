@@ -19,6 +19,8 @@ export interface PetInfo {
   enabled: boolean
   slug?: string
   displayName?: string
+  /** Optional richer desktop renderer; spritesheet remains the universal fallback. */
+  renderKind?: 'digitmorf-3d' | 'sprite'
   mime?: string
   spritesheetBase64?: string
   // Stable sheet revision (`mtime_ns:size`) from the gateway; lets the desktop
@@ -210,3 +212,41 @@ export const $petState = computed([$petActivity, $busy, $petMotion], (activity, 
 
   return base === 'idle' && motion ? motion : base
 })
+
+export type DigitmorfForm = 'core' | 'cursor' | 'trace' | 'archivist' | 'weaver' | 'forge' | 'sentinel' | 'lantern'
+
+/**
+ * Map public, coarse agent status to all eight semantic Digitmorf forms.
+ * This deliberately consumes no model chain-of-thought or hidden text.
+ */
+export function deriveDigitmorfForm(activity: PetActivity, busy: boolean): DigitmorfForm {
+  if (activity.error) {
+    return 'sentinel'
+  }
+
+  if (activity.celebrate) {
+    return 'weaver'
+  }
+
+  if (activity.justCompleted) {
+    return 'trace'
+  }
+
+  if (activity.awaitingInput) {
+    return 'lantern'
+  }
+
+  if (activity.toolRunning) {
+    return 'forge'
+  }
+
+  if (activity.reasoning) {
+    return 'archivist'
+  }
+
+  if (activity.busy ?? busy) {
+    return 'cursor'
+  }
+
+  return 'core'
+}

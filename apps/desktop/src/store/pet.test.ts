@@ -5,6 +5,7 @@ import {
   $petAtRest,
   $petMotion,
   $petState,
+  deriveDigitmorfForm,
   derivePetState,
   flashPetActivity,
   setPetActivity
@@ -37,6 +38,19 @@ describe('derivePetState', () => {
     expect(derivePetState({ error: true, celebrate: true, busy: true })).toBe('failed')
     expect(derivePetState({ celebrate: true, justCompleted: true, toolRunning: true })).toBe('jump')
     expect(derivePetState({ justCompleted: true, toolRunning: true })).toBe('wave')
+  })
+})
+
+describe('deriveDigitmorfForm', () => {
+  it('covers all eight forms from public status signals', () => {
+    expect(deriveDigitmorfForm({}, false)).toBe('core')
+    expect(deriveDigitmorfForm({ busy: true }, false)).toBe('cursor')
+    expect(deriveDigitmorfForm({ justCompleted: true }, false)).toBe('trace')
+    expect(deriveDigitmorfForm({ reasoning: true }, true)).toBe('archivist')
+    expect(deriveDigitmorfForm({ celebrate: true }, true)).toBe('weaver')
+    expect(deriveDigitmorfForm({ toolRunning: true }, true)).toBe('forge')
+    expect(deriveDigitmorfForm({ error: true }, true)).toBe('sentinel')
+    expect(deriveDigitmorfForm({ awaitingInput: true }, true)).toBe('lantern')
   })
 })
 

@@ -3144,6 +3144,7 @@ def _pet_changed_payload() -> dict:
             "displayName": pet.display_name,
             "scale": scale,
             "spritesheetRevision": _pet_sheet_revision(pet.spritesheet),
+            "renderKind": pet.render_kind,
         }
     except Exception:  # noqa: BLE001 - cosmetic, never break the watcher
         return {"enabled": False}
@@ -7956,8 +7957,11 @@ def _pet_sprite_payload(pet, *, scale: float) -> dict:
         "mime": mime,
         "spritesheetBase64": base64.standard_b64encode(raw).decode("ascii"),
         "spritesheetRevision": _pet_sheet_revision(pet.spritesheet),
-        "frameW": constants.FRAME_W,
-        "frameH": constants.FRAME_H,
+        "renderKind": pet.render_kind,
+        # Spatial Digitmorf uses a square interaction box. Sprite fallbacks
+        # retain Petdex's native 192x208 geometry.
+        "frameW": 256 if pet.render_kind == "digitmorf-3d" else constants.FRAME_W,
+        "frameH": 256 if pet.render_kind == "digitmorf-3d" else constants.FRAME_H,
         "framesPerState": constants.FRAMES_PER_STATE,
         "framesByState": _pet_frame_counts(pet.spritesheet),
         "framesByRow": _pet_row_frame_counts(pet.spritesheet),

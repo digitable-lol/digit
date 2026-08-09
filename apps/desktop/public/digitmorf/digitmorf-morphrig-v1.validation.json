@@ -1,0 +1,136 @@
+{
+  "schema": "digitmorf-glb-validation/v1",
+  "path": "work/digitmorf-3d/gpu-results/digitmorf-morphrig-v1-production/digitmorf-morphrig-v1.glb",
+  "size_bytes": 1690804,
+  "scenes": 1,
+  "nodes": 19,
+  "meshes": 18,
+  "morph_meshes": [
+    {
+      "name": "continuous_lowercase_d_current_mesh",
+      "target_names": [
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "primitive_target_counts": [
+        7
+      ]
+    },
+    {
+      "name": "glass_ribbon_1_mesh",
+      "target_names": [
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "primitive_target_counts": [
+        7
+      ]
+    },
+    {
+      "name": "glass_ribbon_2_mesh",
+      "target_names": [
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "primitive_target_counts": [
+        7
+      ]
+    },
+    {
+      "name": "glass_ribbon_3_mesh",
+      "target_names": [
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "primitive_target_counts": [
+        7
+      ]
+    },
+    {
+      "name": "glass_ribbon_4_mesh",
+      "target_names": [
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "primitive_target_counts": [
+        7
+      ]
+    },
+    {
+      "name": "spatial_orbit_1_mesh",
+      "target_names": [
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "primitive_target_counts": [
+        7
+      ]
+    },
+    {
+      "name": "spatial_orbit_2_mesh",
+      "target_names": [
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "primitive_target_counts": [
+        7
+      ]
+    },
+    {
+      "name": "spatial_orbit_3_mesh",
+      "target_names": [
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "primitive_target_counts": [
+        7
+      ]
+    }
+  ],
+  "materials": 6,
+  "animations": 8,
+  "animation_channels": 8,
+  "external_uris": [],
+  "failures": [],
+  "passed": true
+}
