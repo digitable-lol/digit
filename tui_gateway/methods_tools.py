@@ -1666,6 +1666,48 @@ def _(rid, params: dict) -> dict:
         return _err(rid, 5000, f"learning.frames failed: {exc}")
 
 
+@method("learning.sectors")
+def _(rid, params: dict) -> dict:
+    """The same graph read by area instead of by date, for the ``/journey`` overlay.
+
+    The timeline answers "when did this arrive?" and cannot answer "what areas
+    do I know about, and what holds them together?" — chronology scatters one
+    subject across every date row. ``build_learning_graph`` has carried
+    ``sector``/``links``/``backlinks`` on every node since 424f171fe, and the
+    CLI has drawn them since; the TUI could not, because ``learning.frames``
+    renders the timeline and never forwarded those fields.
+
+    Rendering happens HERE, not in Ink, and shares ``render_sectors`` with
+    ``digit journey sectors``. A second bucketing in TypeScript would be a
+    second opinion about degree, orphans and ranking — and the two surfaces
+    would answer the same question with different numbers, which is worse than
+    one surface staying silent.
+    """
+    try:
+        cols = int(params.get("cols", 80) or 80)
+        limit = int(params.get("limit", 6) or 6)
+    except (TypeError, ValueError):
+        cols, limit = 80, 6
+    try:
+        from agent.learning_graph import build_learning_graph
+        from agent.learning_graph_render import build_sector_summary, render_sectors
+
+        payload = build_learning_graph()
+        frame = render_sectors(payload, cols=max(24, cols), per_sector=max(1, limit))
+        return _ok(
+            rid,
+            {
+                "grid": frame["grid"],
+                "groups": frame["groups"],
+                "summary": build_sector_summary(payload),
+                "count": len(payload.get("nodes", []) or []),
+                "cols": cols,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _err(rid, 5000, f"learning.sectors failed: {exc}")
+
+
 @method("learning.detail")
 def _(rid, params: dict) -> dict:
     """Current content of a journey node, for an edit prefill."""

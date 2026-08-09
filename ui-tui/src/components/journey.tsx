@@ -61,6 +61,23 @@ interface FramesResponse {
   summary: string[]
 }
 
+// learning.sectors — the other axis of the same graph. Every number in it is
+// rendered by learning_graph_render.render_sectors, the same function behind
+// `digit journey sectors`; nothing here re-derives a count, so the terminal
+// and the CLI cannot drift into two answers.
+interface SectorGroup {
+  count: number
+  hidden: number
+  sector: string
+}
+
+interface SectorsResponse {
+  count: number
+  grid: Run[][]
+  groups: SectorGroup[]
+  summary: string[]
+}
+
 interface JourneyProps {
   gw: GatewayClient
   onClose: () => void
@@ -146,6 +163,12 @@ export function Journey({ gw, onClose, t }: JourneyProps) {
   const [err, setErr] = useState('')
   const [cursor, setCursor] = useState(0)
   const [mode, setMode] = useState<'item' | 'timeline'>('timeline')
+  // The sector axis is fetched only when asked for: it rebuilds the graph
+  // server-side, and most /journey opens never leave the timeline.
+  const [axis, setAxis] = useState<'sectors' | 'timeline'>('timeline')
+  const [sectors, setSectors] = useState<SectorsResponse | null>(null)
+  const [sectorErr, setSectorErr] = useState('')
+  const [sectorTop, setSectorTop] = useState(0)
   const [tick, setTick] = useState(0)
   const [reloadKey, setReloadKey] = useState(0)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -176,6 +199,31 @@ export function Journey({ gw, onClose, t }: JourneyProps) {
       alive = false
     }
   }, [gw, cols, chartRows, reloadKey])
+
+  // The renderer is width-aware here too, so the sector frame is refetched on
+  // resize — and dropped after a mutation, so a deleted note cannot linger in
+  // one axis while it is gone from the other.
+  useEffect(() => {
+    if (axis !== 'sectors') {
+      return
+    }
+
+    let alive = true
+    setSectorErr('')
+
+    gw.request<SectorsResponse>('learning.sectors', { cols })
+      .then(r => alive && setSectors(r))
+      .catch((e: unknown) => alive && setSectorErr(rpcErrorMessage(e)))
+
+    return () => {
+      alive = false
+    }
+  }, [gw, cols, axis, reloadKey])
+
+  useEffect(() => {
+    setSectors(null)
+    setSectorTop(0)
+  }, [reloadKey])
 
   const tree = buildTree(data?.buckets ?? [])
   const activeRow = tree[Math.min(cursor, Math.max(0, tree.length - 1))]
@@ -294,6 +342,48 @@ export function Journey({ gw, onClose, t }: JourneyProps) {
       return onClose()
     }
 
+    // ── Sector axis: read-only, so it never borrows the timeline's cursor ──
+    // Edit/delete stay out deliberately: the selected node belongs to the
+    // timeline tree, which is not on screen here, and acting on an invisible
+    // selection is how a wrong note gets deleted.
+    if (axis === 'sectors') {
+      if (ch === 's' || back) {
+        return setAxis('timeline')
+      }
+
+      const rows = sectors?.grid.length ?? 0
+
+      if (key.upArrow || ch === 'k') {
+        return setSectorTop(v => Math.max(0, v - 1))
+      }
+
+      if (key.downArrow || ch === 'j') {
+        return setSectorTop(v => Math.min(Math.max(0, rows - 1), v + 1))
+      }
+
+      if (key.pageUp || (key.ctrl && ch === 'u')) {
+        return setSectorTop(v => Math.max(0, v - page))
+      }
+
+      if (key.pageDown || (key.ctrl && ch === 'd')) {
+        return setSectorTop(v => Math.min(Math.max(0, rows - 1), v + page))
+      }
+
+      if (ch === 'g') {
+        return setSectorTop(0)
+      }
+
+      if (ch === 'G') {
+        return setSectorTop(Math.max(0, rows - 1))
+      }
+
+      return
+    }
+
+    if (mode === 'timeline' && ch === 's') {
+      return setAxis('sectors')
+    }
+
     // Edit / delete work in both modes whenever a node is selected.
     if (activeNode && ch === 'd' && !key.ctrl) {
       setNotice('')
@@ -404,6 +494,46 @@ export function Journey({ gw, onClose, t }: JourneyProps) {
     )
   }
 
+  // ── Sectors: the same graph grouped by area, links counted both ways ──
+  if (axis === 'sectors') {
+    const listH = Math.max(3, rows - 8)
+    const grid = sectors?.grid ?? []
+    const top = Math.min(sectorTop, Math.max(0, grid.length - 1))
+    const shown = grid.slice(top, top + listH)
+    const below = Math.max(0, grid.length - top - shown.length)
+    // A window that hides rows without saying so reads as a complete picture.
+    // The truncation inside a sector is already spoken by the renderer ("…
+    // +N more"); this is the truncation the overlay itself adds.
+    const clipped = top || below ? `${top} above · ${below} below` : ''
+
+    return (
+      <Box alignItems="stretch" flexDirection="column" flexGrow={1} paddingX={1} paddingY={1}>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text wrap="truncate-end">
+            <Text bold color={t.color.primary}>
+              ✦ Sectors
+            </Text>
+            <Text color={t.color.muted}> knowledge by area, with links in both directions</Text>
+          </Text>
+        </Box>
+
+        <Box flexDirection="column" flexGrow={1} flexShrink={1} minHeight={0} overflow="hidden">
+          {sectorErr ? <Text color={t.color.error}>error: {sectorErr}</Text> : null}
+          {!sectorErr && !sectors ? <Text color={t.color.muted}>grouping your notes by area…</Text> : null}
+          {shown.map((row, i) => (
+            <ChartRow key={top + i} palette={palette} row={row} />
+          ))}
+        </Box>
+
+        <Footer>
+          {clipped ? <Hint t={t}>{clipped}</Hint> : null}
+          {sectors?.summary.length ? <Hint t={t}>{sectors.summary.join(' · ')}</Hint> : null}
+          <Hint t={t}>↑↓/jk scroll · g/G top/bottom · s/Esc timeline · q close</Hint>
+        </Footer>
+      </Box>
+    )
+  }
+
   // ── Item: a single memory, body scrolled via the shared ScrollBox ──
   if (mode === 'item' && activeBucket && activeNode) {
     const body = activeNode.body ? activeNode.body.split(/\r?\n/) : ['No additional detail recorded yet.']
@@ -509,7 +639,7 @@ export function Journey({ gw, onClose, t }: JourneyProps) {
         {!confirmDelete && !notice && data.summary.length ? <Hint t={t}>{data.summary.join(' · ')}</Hint> : null}
         <Hint t={t}>
           ↑↓/jk move{activeNode?.body ? ' · Enter/→ open' : ''}
-          {activeNode ? ' · e edit · d delete' : ''} · g/G top/bottom · q close
+          {activeNode ? ' · e edit · d delete' : ''} · s sectors · g/G top/bottom · q close
         </Hint>
       </Footer>
     </Box>
