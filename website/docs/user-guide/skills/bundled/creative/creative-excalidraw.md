@@ -297,6 +297,39 @@ is a different one — and every sync would double the backlog.
 
 Running it twice in a row produces no second set of edits.
 
+### Widgets from the Command Line
+
+The Workbench's six sets each carry their own vocabulary — theme and branches for
+a mindmap, participant and call for a sequence, persona and container for C4,
+lane and milestone for a roadmap. Until now the only way to reach them was to
+open a canvas and drag shapes with a mouse.
+
+```bash
+digit excalidraw list
+digit excalidraw mindmap --text outline.txt --out карта.excalidraw
+digit excalidraw c4 --text система.txt --out c4.excalidraw --palette paper
+```
+
+One input shape serves all six, because a router model must not be offered a
+choice of argument form:
+
+```
+Тема                       # уровень 0 — фигура верхнего уровня набора
+  Ветвь                    # отступ — уровень ниже
+    Лист
+Ветвь -> Лист: подпись     # связь между двумя подписями
+```
+
+Indentation width does not matter, only that it increases. On tree widgets
+(mindmap, C4, flowchart) the indentation itself is drawn as a line — otherwise a
+mindmap is three columns of rectangles and the reader guesses the kinship. On
+lane widgets (roadmap, sequence, kanban) the top level becomes a column.
+
+Rows are spaced by the shapes actually drawn, not by a constant: «Система в
+фокусе» from C4 is taller than «Лист» from the mindmap, and one step either
+overlaps in some sets or leaves holes in others. The self-test checks that no
+two top-level shapes overlap, in every set.
+
 ### Uploading for a Shareable Link
 
 Run the upload script (located in this skill's `scripts/` directory) via terminal:
