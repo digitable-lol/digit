@@ -183,6 +183,87 @@ def test_a_cycle_stops_the_write_before_the_first_task(sandbox):
     assert sandbox.export([]) == []
 
 
+# -- drawing: tasks → map --------------------------------------------------
+
+
+@pytest.fixture()
+def library():
+    """The Workbench set when it is next door, a stand-in otherwise."""
+    items, _source = tasks._library_for_test()
+    return items
+
+
+def test_a_drawn_map_reads_back_as_the_same_tasks(library):
+    """The two directions are one contract. If a map this utility drew does not
+    parse back into the tasks it came from, one of the halves is lying."""
+    drawn = tasks.draw(tasks._sample_tasks(), library)
+    back = tasks.parse_map(drawn)
+    seen = {n["description"]: n for n in back["nodes"].values()}
+
+    assert set(seen) == {"Собрать основу", "Проверить основу"}
+    assert seen["Собрать основу"]["priority"] == "H"
+    assert seen["Собрать основу"]["project"] == "Этап.Разбор"
+    assert len(back["links"]) == 1
+    assert back["notes"] == []
+
+
+def test_drawing_is_repeatable(library):
+    """Random ids would make the second run a different file, and a manual edit
+    inside it impossible to find again."""
+    first = tasks.draw(tasks._sample_tasks(), library)
+    second = tasks.draw(tasks._sample_tasks(), library)
+    assert json.dumps(first, sort_keys=True) == json.dumps(second, sort_keys=True)
+
+
+def test_a_shape_inside_a_shape_is_not_a_second_task(library):
+    """The Workbench card carries a status pill — itself a labelled rectangle."""
+    drawn = tasks.draw(tasks._sample_tasks(), library)
+    assert len(tasks.parse_map(drawn)["nodes"]) == 2
+
+
+def test_a_long_description_is_not_truncated_and_does_not_overlap(library):
+    """Card geometry comes from a library built for short labels."""
+    long_text = "Очень длинное описание задачи, " * 6
+    task = dict(tasks._sample_tasks()[0], description=long_text.strip())
+    drawn = tasks.draw([task], library)
+
+    titles = [e for e in drawn["elements"]
+              if e.get("type") == "text" and not e.get("containerId")]
+    joined = " ".join(" ".join(t["text"].split()) for t in titles)
+    assert long_text.strip() in joined
+
+    card = tasks.primary_of([e for e in drawn["elements"]
+                             if e.get("type") in tasks.TASK_SHAPES])
+    title = next(t for t in titles if tasks._starts_inside(t, card))
+    assert tasks.box_of(title)[3] <= tasks.box_of(card)[3]
+
+
+def test_arrows_are_bound_to_both_ends(library):
+    """An unbound arrow looks like a dependency and is not one."""
+    drawn = tasks.draw(tasks._sample_tasks(), library)
+    arrows = [e for e in drawn["elements"] if e.get("type") == "arrow"]
+    assert arrows
+    for arrow in arrows:
+        assert arrow["startBinding"]["elementId"]
+        assert arrow["endBinding"]["elementId"]
+
+
+@requires_task
+def test_to_map_refuses_to_overwrite_a_map(tmp_path: Path, sandbox):
+    """Redrawing a map the owner has moved things around in throws that away."""
+    tasks.apply_plan(sandbox, tasks.parse_map(tasks._sample_map()))
+    target = tmp_path / "карта.excalidraw"
+    target.write_text("{}", encoding="utf-8")
+
+    result = subprocess.run(
+        ["python3", str(SCRIPT), "to-map", str(target),
+         "--data-dir", str(sandbox.data_dir)],
+        capture_output=True, text=True, encoding="utf-8", check=False)
+    assert result.returncode == 1
+    assert "sync" in result.stderr
+    assert target.read_text(encoding="utf-8") == "{}"
+
+
 # -- the utility as a command ---------------------------------------------
 
 

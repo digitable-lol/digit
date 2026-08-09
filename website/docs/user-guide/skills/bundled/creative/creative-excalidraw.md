@@ -231,6 +231,38 @@ half the dependencies applied.
 `--self-test` checks the reading rules and, when `task` is on PATH, a full write
 round-trip in a temporary database it creates and removes itself.
 
+### Drawing the Backlog
+
+The other direction draws the tasks, using **the Workbench's own library sets**
+rather than shapes invented here — so the map looks like one a person drew by
+dragging «Карточка задачи» out of the kanban set, because it is made of exactly
+that.
+
+```bash
+python skills/creative/excalidraw/scripts/tasks.py to-map ~/diagrams/бэклог.excalidraw \
+    --project digit --palette carbon
+```
+
+The library lives in the courses checkout (`static/workbench/excalidraw/`), where
+it is generated and checked by `npm run test:excalidraw`; this utility walks up
+from itself to find it, and `--library` points at it directly. A copy vendored
+here would be a second truth that drifts from the first in silence.
+
+- The first level of the project becomes a **frame**, the second a **group** with
+  a caption — the same two things `from-map` reads back, so a drawn map parses
+  into the tasks it came from. That round trip is what the self-test checks.
+- Priority is written as the `!H` mark in the title, not as a fill: the fills in
+  those sets carry the palette, and repainting a card pastel would break the
+  look the library was taken for.
+- Dependencies become arrows **bound at both ends**. An arrow bound at neither
+  looks like a dependency and is not one — `from-map` says so rather than
+  inventing the link.
+- A card grows downward when the description does not fit, and everything below
+  the title moves with it. Nothing is truncated.
+
+`to-map` refuses to overwrite an existing map: redrawing throws away every
+position the owner moved by hand.
+
 ### Uploading for a Shareable Link
 
 Run the upload script (located in this skill's `scripts/` directory) via terminal:
