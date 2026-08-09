@@ -1,0 +1,526 @@
+{
+  "schema": "digitmorf-morphrig-report/v1",
+  "variant": "production",
+  "quality": "production",
+  "forms": [
+    "Core",
+    "Cursor",
+    "Trace",
+    "Archivist",
+    "Weaver",
+    "Forge",
+    "Sentinel",
+    "Lantern"
+  ],
+  "core_is_basis": true,
+  "morph_target_names": [
+    "Cursor",
+    "Trace",
+    "Archivist",
+    "Weaver",
+    "Forge",
+    "Sentinel",
+    "Lantern"
+  ],
+  "objects": [
+    {
+      "name": "glass_ribbon_1",
+      "vertices": 896,
+      "faces": 894,
+      "shape_keys": [
+        "Basis",
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "basis_bounds": {
+        "min": [
+          -2.389738082885742,
+          -0.16949136555194855,
+          -2.161815881729126
+        ],
+        "max": [
+          2.2918970584869385,
+          0.3506818413734436,
+          2.308070659637451
+        ]
+      }
+    },
+    {
+      "name": "glass_ribbon_2",
+      "vertices": 896,
+      "faces": 894,
+      "shape_keys": [
+        "Basis",
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "basis_bounds": {
+        "min": [
+          -1.745619535446167,
+          -0.2986453175544739,
+          -1.556370496749878
+        ],
+        "max": [
+          1.784158706665039,
+          0.17869524657726288,
+          1.7550636529922485
+        ]
+      }
+    },
+    {
+      "name": "glass_ribbon_3",
+      "vertices": 896,
+      "faces": 894,
+      "shape_keys": [
+        "Basis",
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "basis_bounds": {
+        "min": [
+          -1.3540351390838623,
+          -0.03478176146745682,
+          -1.2197036743164062
+        ],
+        "max": [
+          1.3943915367126465,
+          0.43862366676330566,
+          1.3809655904769897
+        ]
+      }
+    },
+    {
+      "name": "glass_ribbon_4",
+      "vertices": 896,
+      "faces": 894,
+      "shape_keys": [
+        "Basis",
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "basis_bounds": {
+        "min": [
+          -0.9252021312713623,
+          -0.47653090953826904,
+          -0.8063703775405884
+        ],
+        "max": [
+          0.9115520119667053,
+          -0.19703370332717896,
+          0.9000605344772339
+        ]
+      }
+    },
+    {
+      "name": "continuous_lowercase_d_current",
+      "vertices": 1024,
+      "faces": 1018,
+      "shape_keys": [
+        "Basis",
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "basis_bounds": {
+        "min": [
+          -1.0472817420959473,
+          -0.7360321879386902,
+          -1.2704750299453735
+        ],
+        "max": [
+          1.0067498683929443,
+          -0.5654662251472473,
+          1.6239508390426636
+        ]
+      }
+    },
+    {
+      "name": "spatial_orbit_1",
+      "vertices": 768,
+      "faces": 768,
+      "shape_keys": [
+        "Basis",
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "basis_bounds": {
+        "min": [
+          -2.187000036239624,
+          -0.3278000056743622,
+          -1.615839958190918
+        ],
+        "max": [
+          2.187000036239624,
+          -0.1738000065088272,
+          1.615839958190918
+        ]
+      }
+    },
+    {
+      "name": "spatial_orbit_2",
+      "vertices": 768,
+      "faces": 768,
+      "shape_keys": [
+        "Basis",
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "basis_bounds": {
+        "min": [
+          -1.6884161233901978,
+          -0.07849529385566711,
+          -1.2482783794403076
+        ],
+        "max": [
+          1.6884161233901978,
+          0.07849529385566711,
+          1.2482783794403076
+        ]
+      }
+    },
+    {
+      "name": "spatial_orbit_3",
+      "vertices": 768,
+      "faces": 768,
+      "shape_keys": [
+        "Basis",
+        "Cursor",
+        "Trace",
+        "Archivist",
+        "Weaver",
+        "Forge",
+        "Sentinel",
+        "Lantern"
+      ],
+      "basis_bounds": {
+        "min": [
+          -1.5696876049041748,
+          0.17107124626636505,
+          -1.1610510349273682
+        ],
+        "max": [
+          1.5696876049041748,
+          0.33052903413772583,
+          1.1610510349273682
+        ]
+      }
+    }
+  ],
+  "animation": {
+    "name": "Digitmorf_AllForms",
+    "start": 1,
+    "end": 355,
+    "fps": 30
+  },
+  "gpu_devices": [
+    "NVIDIA RTX 6000 Ada Generation",
+    "NVIDIA RTX 6000 Ada Generation"
+  ],
+  "form_metrics": {
+    "Core": {
+      "projected_bounds_xz": [
+        -2.389738082885742,
+        -2.161815881729126,
+        2.2918970584869385,
+        2.308070659637451
+      ],
+      "projected_area_xz": 20.926377910010558
+    },
+    "Cursor": {
+      "projected_bounds_xz": [
+        -1.7478609085083008,
+        -2.0448639392852783,
+        1.2059999704360962,
+        2.427114963531494
+      ],
+      "projected_area_xz": 13.209603532495152
+    },
+    "Trace": {
+      "projected_bounds_xz": [
+        -2.7973999977111816,
+        -1.3618128299713135,
+        2.7973999977111816,
+        1.1524126529693604
+      ],
+      "projected_area_xz": 14.066588720447271
+    },
+    "Archivist": {
+      "projected_bounds_xz": [
+        -2.622999906539917,
+        -1.6333413124084473,
+        2.622999906539917,
+        2.4289751052856445
+      ],
+      "projected_area_xz": 21.310911167894346
+    },
+    "Weaver": {
+      "projected_bounds_xz": [
+        -2.545288562774658,
+        -2.028865337371826,
+        2.5452802181243896,
+        2.0296883583068848
+      ],
+      "projected_area_xz": 20.6603467388245
+    },
+    "Forge": {
+      "projected_bounds_xz": [
+        -2.579400062561035,
+        -1.4824626445770264,
+        2.579400062561035,
+        1.9730314016342163
+      ],
+      "projected_area_xz": 17.826203117953128
+    },
+    "Sentinel": {
+      "projected_bounds_xz": [
+        -1.9791518449783325,
+        -2.4374730587005615,
+        1.9115396738052368,
+        2.2271788120269775
+      ],
+      "projected_area_xz": 18.148721471517547
+    },
+    "Lantern": {
+      "projected_bounds_xz": [
+        -1.7851799726486206,
+        -2.3757200241088867,
+        1.7443745136260986,
+        2.28029727935791
+      ],
+      "projected_area_xz": 16.433666761623954
+    }
+  },
+  "transition_checks": [
+    {
+      "from": "Core",
+      "to": "Cursor",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8525101989146334,
+      "passed": true
+    },
+    {
+      "from": "Core",
+      "to": "Trace",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8351859475846992,
+      "passed": true
+    },
+    {
+      "from": "Core",
+      "to": "Archivist",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.7574748133160086,
+      "passed": true
+    },
+    {
+      "from": "Core",
+      "to": "Weaver",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.7320019666675928,
+      "passed": true
+    },
+    {
+      "from": "Core",
+      "to": "Forge",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8242097302563076,
+      "passed": true
+    },
+    {
+      "from": "Core",
+      "to": "Sentinel",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.765578852032558,
+      "passed": true
+    },
+    {
+      "from": "Core",
+      "to": "Lantern",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.7617069186897355,
+      "passed": true
+    },
+    {
+      "from": "Cursor",
+      "to": "Trace",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8829808876348532,
+      "passed": true
+    },
+    {
+      "from": "Cursor",
+      "to": "Archivist",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.9489407384889753,
+      "passed": true
+    },
+    {
+      "from": "Cursor",
+      "to": "Weaver",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.9205320208614916,
+      "passed": true
+    },
+    {
+      "from": "Cursor",
+      "to": "Forge",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.921498064531247,
+      "passed": true
+    },
+    {
+      "from": "Cursor",
+      "to": "Sentinel",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8284386183568275,
+      "passed": true
+    },
+    {
+      "from": "Cursor",
+      "to": "Lantern",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8006775985778,
+      "passed": true
+    },
+    {
+      "from": "Trace",
+      "to": "Archivist",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8998320402755583,
+      "passed": true
+    },
+    {
+      "from": "Trace",
+      "to": "Weaver",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.951758796001773,
+      "passed": true
+    },
+    {
+      "from": "Trace",
+      "to": "Forge",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8906229726687023,
+      "passed": true
+    },
+    {
+      "from": "Trace",
+      "to": "Sentinel",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.9762480325301134,
+      "passed": true
+    },
+    {
+      "from": "Trace",
+      "to": "Lantern",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8883668019689753,
+      "passed": true
+    },
+    {
+      "from": "Archivist",
+      "to": "Weaver",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.9154129973692631,
+      "passed": true
+    },
+    {
+      "from": "Archivist",
+      "to": "Forge",
+      "finite": true,
+      "minimum_projected_area_ratio": 1.0,
+      "passed": true
+    },
+    {
+      "from": "Archivist",
+      "to": "Sentinel",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8028795687373989,
+      "passed": true
+    },
+    {
+      "from": "Archivist",
+      "to": "Lantern",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8019069342644027,
+      "passed": true
+    },
+    {
+      "from": "Weaver",
+      "to": "Forge",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.9121787250563396,
+      "passed": true
+    },
+    {
+      "from": "Weaver",
+      "to": "Sentinel",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.8019638518961324,
+      "passed": true
+    },
+    {
+      "from": "Weaver",
+      "to": "Lantern",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.81175970998193,
+      "passed": true
+    },
+    {
+      "from": "Forge",
+      "to": "Sentinel",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.7823588296611635,
+      "passed": true
+    },
+    {
+      "from": "Forge",
+      "to": "Lantern",
+      "finite": true,
+      "minimum_projected_area_ratio": 0.7956849390233787,
+      "passed": true
+    },
+    {
+      "from": "Sentinel",
+      "to": "Lantern",
+      "finite": true,
+      "minimum_projected_area_ratio": 1.0,
+      "passed": true
+    }
+  ],
+  "all_transitions_passed": true
+}

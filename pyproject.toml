@@ -427,6 +427,10 @@ digit_cli = ["observability/schemas/*.json", "ruleparse/tool_catalog.json", "rul
 # topic-setup image disappears. Loaded via Path(__file__).parent / "assets"
 # in gateway/status_phrases.py and gateway/run.py.
 gateway = ["assets/**/*"]
+# Digitmorf ships as an offline-first pet. The desktop uses its production GLB
+# from apps/desktop/public; this package data is the shared TUI / no-WebGL
+# fallback and the metadata that marks the richer renderer kind.
+agent = ["pet/builtin/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

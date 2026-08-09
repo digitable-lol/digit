@@ -203,7 +203,7 @@ export function PetSettings() {
                             </span>
                             {isBusy && <Loader2 className="size-4 shrink-0 animate-spin text-(--ui-text-tertiary)" />}
                           </button>
-                          {!isBusy && (pet.installed || pet.generated) && (
+                          {!isBusy && !pet.bundled && (pet.installed || pet.generated) && (
                             <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100">
                               {pet.generated && (
                                 <PetAction

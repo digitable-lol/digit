@@ -29,6 +29,7 @@ export interface PetChangeMeta {
   displayName?: string
   scale?: number
   spritesheetRevision?: string
+  renderKind?: 'digitmorf-3d' | 'sprite'
 }
 
 export const $petChange = atom<{ meta?: PetChangeMeta; tick: number }>({ tick: 0 })

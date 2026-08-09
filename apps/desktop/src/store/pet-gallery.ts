@@ -30,6 +30,8 @@ export interface GalleryPet {
   curated?: boolean
   /** Hatched locally by the user (createdBy=generator) — badged + ranked first. */
   generated?: boolean
+  /** Distributed with Digit; selectable but never uninstalled or renamed. */
+  bundled?: boolean
 }
 
 export interface PetGallery {
