@@ -11,6 +11,23 @@ export const DIGITMORF_FORMS = [
   'lantern'
 ] as const satisfies readonly DigitmorfForm[]
 
+/**
+ * Separately authored Blender body plans. These are opt-in WIP assets and do
+ * not replace the fixed-topology production rig used by DigitmorfPet.
+ */
+export const DIGITMORF_LIVING_PACK_STATUS = 'work-in-progress' as const
+
+export const DIGITMORF_LIVING_CLIPS = {
+  active: [121, 180],
+  attention: [61, 100],
+  idle: [1, 48],
+  morph_in: [241, 280],
+  morph_out: [201, 240]
+} as const
+
+export const digitmorfLivingAssetRelativePath = (form: DigitmorfForm) =>
+  `digitmorf/living-v1/${form}/digitmorf-${form}-living-v1.glb`
+
 export const DIGITMORF_MORPH_TARGET_NAMES: Readonly<Record<Exclude<DigitmorfForm, 'core'>, string>> = {
   cursor: 'Cursor',
   trace: 'Trace',

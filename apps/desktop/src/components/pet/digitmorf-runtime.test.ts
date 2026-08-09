@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DIGITMORF_FORMS,
+  DIGITMORF_LIVING_CLIPS,
+  DIGITMORF_LIVING_PACK_STATUS,
   DIGITMORF_LOOK_DIRECTIONS,
   DIGITMORF_MORPH_TARGET_NAMES,
   DIGITMORF_MOTION_SEMANTICS,
+  digitmorfLivingAssetRelativePath,
   digitmorfLookDirection,
   digitmorfLookVector,
   DigitmorfRigAdapter,
@@ -35,6 +39,15 @@ function makeRig() {
 }
 
 describe('Digitmorf morph-rig runtime', () => {
+  it('keeps the Blender living pack explicit and opt-in', () => {
+    expect(DIGITMORF_LIVING_PACK_STATUS).toBe('work-in-progress')
+    expect(Object.keys(DIGITMORF_LIVING_CLIPS)).toHaveLength(5)
+
+    for (const form of DIGITMORF_FORMS) {
+      expect(digitmorfLivingAssetRelativePath(form)).toBe(`digitmorf/living-v1/${form}/digitmorf-${form}-living-v1.glb`)
+    }
+  })
+
   it('drives all eight fixed-topology morph meshes', () => {
     const { meshes, root } = makeRig()
     const rig = new DigitmorfRigAdapter(root)
