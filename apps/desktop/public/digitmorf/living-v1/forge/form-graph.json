@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 2,
+  "form": "forge",
+  "heroVersion": 25,
+  "identityAnchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "modules": [
+    {
+      "id": "Anatomy_Forge_continuous_underbody_v25",
+      "module": "anatomical_underbody",
+      "bone": "body"
+    },
+    {
+      "id": "Forge_face_void_mask",
+      "module": "face_void",
+      "bone": "head"
+    },
+    {
+      "id": "Forge_gaze_boundary",
+      "module": "quantum_orbit",
+      "bone": "head"
+    },
+    {
+      "id": "Forge_electron_orbit_A",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Forge_electron_orbit_B",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Forge_quark_1",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Forge_quark_2",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Forge_quark_3",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Forge_evidence_cube_boundary",
+      "module": "evidence_seal_boundary",
+      "bone": "seal"
+    },
+    {
+      "id": "Forge_evidence_cube_amber",
+      "module": "evidence_seal_core",
+      "bone": "seal"
+    },
+    {
+      "id": "Forge_D_current_main",
+      "module": "d_current",
+      "bone": "body"
+    },
+    {
+      "id": "Forge_current_node_01",
+      "module": "current_node",
+      "bone": "body"
+    },
+    {
+      "id": "Forge_staff_obsidian_core",
+      "module": "forge_staff_core",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_boundary_spine_-1",
+      "module": "forge_staff_boundary_spine",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_boundary_spine_1",
+      "module": "forge_staff_boundary_spine",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_cyan_inlay",
+      "module": "forge_staff_inlay",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_silver_helical_wrap",
+      "module": "forge_staff_helical_wrap",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_growth_ring_01",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_growth_ring_02",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_growth_ring_03",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_growth_ring_04",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_growth_ring_05",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_growth_ring_06",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_growth_ring_07",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_grip_braid_01",
+      "module": "forge_staff_braided_grip",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_grip_braid_02",
+      "module": "forge_staff_braided_grip",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_grip_braid_03",
+      "module": "forge_staff_braided_grip",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_branch_-1",
+      "module": "forge_staff_forked_crown",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_edge_-1",
+      "module": "forge_staff_crown_inlay",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_-1_01",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_-1_02",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_-1_03",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_-1_04",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_-1_05",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_-1_06",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_branch_1",
+      "module": "forge_staff_forked_crown",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_edge_1",
+      "module": "forge_staff_crown_inlay",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_1_01",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_1_02",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_1_03",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_1_04",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_1_05",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_crown_leaf_1_06",
+      "module": "forge_staff_crown_leaf",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_quantum_head_outer",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_quantum_head_inner",
+      "module": "quantum_orbit",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_head_quark_01",
+      "module": "staff_evidence_quark",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_head_quark_02",
+      "module": "staff_evidence_quark",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_head_quark_03",
+      "module": "staff_evidence_quark",
+      "bone": "staff"
+    },
+    {
+      "id": "Forge_staff_ferrule",
+      "module": "forge_staff_ferrule",
+      "bone": "staff"
+    }
+  ],
+  "transition": {
+    "gesture": "digitmorf_form_resonance",
+    "anchor": "evidence_seal"
+  }
+}

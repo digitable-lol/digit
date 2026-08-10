@@ -1,7 +1,7 @@
 ---
 name: blender-modular-assembly
 description: Build complex Blender assets from validated modules.
-version: 1.0.0
+version: 1.1.0
 author: Marat Zimnurov and Digit
 license: MIT
 platforms: [linux, macos, windows]
@@ -118,6 +118,14 @@ construct reference axes, frames, hinges, and mounting points first. Render the
 blockout in front, side, three-quarter, and back views. Do not detail a silhouette
 that has not passed.
 
+An image-to-3D or text-to-3D result may supply one continuous anatomical
+underbody when its silhouette passes. Treat it as a replaceable module: remove
+detached islands, keep the largest connected component, retopologize or
+decimate to a declared budget, and name its provenance. Never let generation
+bake the face signal, evidence seal, cloak, staff, armour layers, or other
+identity-bearing assemblies into the underbody. Build those from independent
+FormGraph leaves so they remain inspectable and rebuildable.
+
 ### 4. Build one ready module at a time
 
 Call `ready`, choose one leaf, and call `begin_module`. Make each Blender call
@@ -127,6 +135,11 @@ editing. Apply transforms before armature deformation or export.
 
 Never clear or rebuild unrelated passing modules. If a module fails, mark it
 `rejected`, retain the evidence, and rebuild only that module.
+
+For a batch of independent forms or props, assign disjoint graph branches to
+separate Blender MCP ports. Each worker owns one output directory and never
+opens or saves another worker's `.blend`. Parallelism changes scheduling, not
+the dependency or approval gates.
 
 ### 5. Validate locally before composition
 
@@ -163,6 +176,13 @@ morph transitions for detachment and interpenetration. Generate LODs from the
 approved master, preserve names and material slots, export an animated GLB, and
 retain the editable `.blend`, graph, reports, and render evidence.
 
+Re-import the exported GLB into an isolated scene. On a long-lived MCP process,
+delete every object datablock directly between imports; operator deletion only
+sees the active view layer and can leave objects in linked collections. Verify
+the expected armature, required named actions, triangle budget, embedded
+textures and attachment of every runtime mesh. Record and justify importer-only
+display helpers separately; never silently count them as authored geometry.
+
 ## Pitfalls
 
 - **Monolithic prompt-to-mesh generation:** useful for rough props, not hero
@@ -177,6 +197,12 @@ retain the editable `.blend`, graph, reports, and render evidence.
   server connection and return compact JSON evidence.
 - **Self-approval:** programmatic checks can approve structure, never taste or
   identity. Keep a user or independent visual gate for hero assets.
+- **Generated identity details:** a plausible underbody is not a finished hero.
+  Quantum gaze, evidence seal, current, mantle and props must remain named,
+  independently rebuildable modules.
+- **Dirty clean-import scenes:** `bpy.ops.object.delete` can miss linked
+  collections in a persistent MCP instance. Remove `bpy.data.objects`
+  datablocks directly before each validation import.
 
 ## Verification
 
@@ -188,5 +214,7 @@ retain the editable `.blend`, graph, reports, and render evidence.
 - [ ] Required render checkpoints include assembled, detail, rig, and exploded
       evidence and have been visually inspected.
 - [ ] The armature and extreme-pose tests preserve attachments and volume.
+- [ ] A clean GLB import contains the expected rig and every required named
+      action, with every authored runtime mesh bound to the rig.
 - [ ] `.blend`, animated `.glb`, FormGraph, statistics, and QA renders exist.
 - [ ] The approved asset, not an earlier draft, is the one selected for runtime.

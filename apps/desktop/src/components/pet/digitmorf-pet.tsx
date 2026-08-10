@@ -12,43 +12,39 @@ import {
 import { $busy } from '@/store/session'
 
 import {
-  blendDigitmorfWeights,
-  DIGITMORF_FORMS,
-  DIGITMORF_LOOK_DIRECTIONS,
+  digitmorfClipForMotion,
+  digitmorfLivingAssetRelativePath,
   digitmorfLookDirection,
-  type DigitmorfLookDirection,
-  type DigitmorfMotionSemantic,
-  DigitmorfRigAdapter,
-  type DigitmorfRigNode,
-  type DigitmorfWeights,
-  exactDigitmorfWeights,
-  proceduralDigitmorfWeights,
-  sampleDigitmorfMotion
+  type DigitmorfMotionSemantic
 } from './digitmorf-runtime'
 
 const assetPath = (path: string) => {
   const clean = path.replace(/^\/+/, '')
   const pageUrl = typeof window === 'undefined' ? import.meta.url : window.location.href
 
-  // Resolve from the document rather than this emitted JS chunk. In packaged
-  // Electron the document is dist/index.html while the chunk is dist/assets/*;
-  // in Vite dev BASE_URL keeps the same helper rooted at the public directory.
   return new URL(`${import.meta.env.BASE_URL}${clean}`, pageUrl).href
 }
 
-const MODEL_URL = assetPath('digitmorf/digitmorf-morphrig-v1.glb')
 const THREE_URL = assetPath('digitmorf/vendor/three.module.min.js')
 const GLTF_LOADER_URL = assetPath('digitmorf/vendor/GLTFLoader.js')
 const FALLBACK_URL = assetPath('digitmorf/digitmorf-core.webp')
 
-// Identity palette in scene-linear numeric form. These are 3D lights, not UI
-// chrome, so CSS theme tokens cannot represent them.
+// Scene-linear lighting belongs to the 3D identity, not the application theme.
 const LIGHT_CYAN = 0x31f5ff
 const LIGHT_PALE = 0xe5fbff
 const LIGHT_VOID = 0x02060a
-
 const TRANSITION_MS = 760
-const PROCEDURAL_MIX = 0.14
+
+const FORM_YAW: Readonly<Record<DigitmorfForm, number>> = {
+  core: -Math.PI / 2,
+  cursor: 0,
+  trace: 0,
+  archivist: 0,
+  weaver: 0,
+  forge: 0,
+  sentinel: -Math.PI / 2,
+  lantern: 0
+}
 
 const semanticForState = (state: PetState, row?: string): DigitmorfMotionSemantic => {
   if (row === 'running-left' || row === 'running-right') {
@@ -82,14 +78,61 @@ const semanticForState = (state: PetState, row?: string): DigitmorfMotionSemanti
   return 'idle'
 }
 
-const seedFor = (value: string) => {
-  let hash = 2166136261
+const resolvedForm = (state: PetState) => {
+  let form = deriveDigitmorfForm($petActivity.get(), $busy.get())
 
-  for (const char of value) {
-    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619)
+  if (form === 'core' && state === 'run') {
+    form = 'cursor'
   }
 
-  return hash >>> 0
+  if (form === 'core' && state === 'jump') {
+    form = 'lantern'
+  }
+
+  return form
+}
+
+const smoothstep = (value: number) => {
+  const amount = Math.max(0, Math.min(1, value))
+
+  return amount * amount * (3 - 2 * amount)
+}
+
+interface RendererNode {
+  geometry?: { dispose?: () => void }
+  material?: { dispose?: () => void } | Array<{ dispose?: () => void }>
+  name?: string
+  position?: { set?: (x: number, y: number, z: number) => void }
+  traverse: (visit: (node: RendererNode) => void) => void
+}
+
+interface LivingClip {
+  name: string
+}
+
+interface LivingEntry {
+  form: DigitmorfForm
+  group: { scale: { setScalar: (value: number) => void } }
+  motionRoot: {
+    position: { y: number }
+    rotation: { x: number; y: number; z: number }
+    scale: { set: (x: number, y: number, z: number) => void }
+  }
+  model: RendererNode
+  mixer: {
+    clipAction: (clip: LivingClip) => {
+      enabled: boolean
+      paused: boolean
+      play: () => void
+      reset: () => void
+    }
+    setTime: (seconds: number) => void
+    stopAllAction: () => void
+    update: (seconds: number) => void
+  }
+  clips: LivingClip[]
+  activeClip?: string
+  baseScale: number
 }
 
 interface DigitmorfPetProps {
@@ -101,7 +144,7 @@ interface DigitmorfPetProps {
   rowOverride?: string
 }
 
-/** Production GLB renderer for the bundled Digitmorf pet. */
+/** Production renderer for the independently authored Digitmorf living forms. */
 export function DigitmorfPet({
   info,
   drawW,
@@ -116,12 +159,12 @@ export function DigitmorfPet({
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
 
-  // eslint-disable-next-line no-restricted-syntax -- hot animation props stay current without rebuilding the GLB scene
+  // eslint-disable-next-line no-restricted-syntax -- hot animation props must not rebuild the WebGL scene
   useEffect(() => {
     stateOverrideRef.current = stateOverride
   }, [stateOverride])
 
-  // eslint-disable-next-line no-restricted-syntax -- hot animation props stay current without rebuilding the GLB scene
+  // eslint-disable-next-line no-restricted-syntax -- hot animation props must not rebuild the WebGL scene
   useEffect(() => {
     rowOverrideRef.current = rowOverride
   }, [rowOverride])
@@ -138,20 +181,19 @@ export function DigitmorfPet({
     let renderer: { dispose: () => void; render: (scene: unknown, camera: unknown) => void } | null = null
     let scene: { traverse: (visit: (node: RendererNode) => void) => void } | null = null
     let pauseController: ReturnType<typeof createRendererLoopPauseController> | null = null
+    let removePointer: (() => void) | undefined
+    let wake: () => void = () => undefined
+    let requestGeneration = 0
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const proceduralSeed = seedFor(info.slug ?? 'digitmorf')
-
-    let wake: () => void = () => undefined
-
     const unsubs = [$petState.listen(() => wake()), $petActivity.listen(() => wake()), $busy.listen(() => wake())]
 
-    type RendererNode = DigitmorfRigNode & {
-      geometry?: { dispose?: () => void }
-      material?: { dispose?: () => void } | Array<{ dispose?: () => void }>
-      position?: DigitmorfRigNode['position'] & { set?: (x: number, y: number, z: number) => void }
-      rotation?: DigitmorfRigNode['rotation']
-      traverse: (visit: (node: RendererNode) => void) => void
+    const disposeNode = (root: RendererNode) => {
+      root.traverse(node => {
+        node.geometry?.dispose?.()
+        const materials = Array.isArray(node.material) ? node.material : node.material ? [node.material] : []
+        materials.forEach(material => material.dispose?.())
+      })
     }
 
     const boot = async () => {
@@ -193,64 +235,146 @@ export function DigitmorfPet({
         pale.position.set(4, 2, 5)
         nextScene.add(pale)
 
-        const gltf = await new Promise<{ scene: RendererNode }>((resolve, reject) => {
-          new loaderModule.GLTFLoader().load(MODEL_URL, resolve, undefined, reject)
-        })
+        const loadEntry = async (form: DigitmorfForm): Promise<LivingEntry> => {
+          const gltf = await new Promise<{ scene: RendererNode; animations: LivingClip[] }>((resolve, reject) => {
+            new loaderModule.GLTFLoader().load(
+              assetPath(digitmorfLivingAssetRelativePath(form)),
+              resolve,
+              undefined,
+              reject
+            )
+          })
+
+          const model = gltf.scene
+          const box = new THREE.Box3().setFromObject(model)
+          const center = box.getCenter(new THREE.Vector3())
+          const size = box.getSize(new THREE.Vector3())
+          model.position?.set?.(-center.x, -center.y, -center.z)
+
+          const group = new THREE.Group()
+          const motionRoot = new THREE.Group()
+          motionRoot.add(model)
+          group.add(motionRoot)
+
+          const baseScale = 7.5 / Math.max(size.x, size.y, size.z)
+          motionRoot.scale.set(baseScale, baseScale, baseScale)
+          motionRoot.rotation.y = FORM_YAW[form]
+
+          return {
+            form,
+            group,
+            motionRoot,
+            model,
+            mixer: new THREE.AnimationMixer(model),
+            clips: gltf.animations,
+            baseScale
+          }
+        }
+
+        const activateClip = (entry: LivingEntry, clipName: string) => {
+          if (entry.activeClip === clipName) {
+            return
+          }
+
+          const clip = entry.clips.find(candidate => candidate.name === clipName)
+
+          if (!clip) {
+            throw new Error(`Digitmorf ${entry.form} is missing ${clipName}`)
+          }
+
+          entry.mixer.stopAllAction()
+          const action = entry.mixer.clipAction(clip)
+          action.reset()
+          action.enabled = true
+          action.play()
+          action.paused = reducedMotion.matches
+
+          if (reducedMotion.matches) {
+            entry.mixer.setTime(0)
+          }
+
+          entry.activeClip = clipName
+        }
+
+        const disposeEntry = (entry: LivingEntry, removeFromScene = true) => {
+          entry.mixer.stopAllAction()
+
+          if (removeFromScene) {
+            nextScene.remove(entry.group)
+          }
+
+          disposeNode(entry.model)
+        }
+
+        const initialState = stateOverrideRef.current ?? $petState.get()
+        let targetForm = resolvedForm(initialState)
+        let current = await loadEntry(targetForm)
 
         if (disposed) {
+          disposeEntry(current, false)
           nextRenderer.dispose()
 
           return
         }
 
-        const model = gltf.scene
-        const box = new THREE.Box3().setFromObject(model)
-        const center = box.getCenter(new THREE.Vector3())
-        const size = box.getSize(new THREE.Vector3())
-        model.position?.set?.(-center.x, -center.y, -center.z)
+        nextScene.add(current.group)
+        current.group.scale.setScalar(1)
+        activateClip(current, digitmorfClipForMotion(semanticForState(initialState, rowOverrideRef.current)))
 
-        const motionRoot = new THREE.Group()
-        motionRoot.add(model)
-        const baseScale = 7.5 / Math.max(size.x, size.y, size.z)
-        motionRoot.scale.setScalar(baseScale)
-        nextScene.add(motionRoot)
-
-        const rig = new DigitmorfRigAdapter(model)
-
-        if (!rig.diagnostics.complete) {
-          throw new Error(`Incomplete Digitmorf rig: ${JSON.stringify(rig.diagnostics)}`)
-        }
-
-        const orbitNodes: Array<{ rotation: { y: number } }> = []
-        model.traverse((node: { name?: string; rotation?: { y: number } }) => {
-          if (
-            node.rotation &&
-            String(node.name ?? '')
-              .toLowerCase()
-              .includes('spatial_orbit')
-          ) {
-            orbitNodes.push(node as { rotation: { y: number } })
-          }
-        })
-
-        let activeForm: DigitmorfForm = deriveDigitmorfForm($petActivity.get(), $busy.get())
-        let fromWeights = exactDigitmorfWeights(activeForm)
-        let targetWeights = exactDigitmorfWeights(activeForm)
-        let displayedWeights = exactDigitmorfWeights(activeForm)
-        let transitionStart = performance.now()
-        let pointerDirection: DigitmorfLookDirection = DIGITMORF_LOOK_DIRECTIONS[0]
+        let requestedForm: DigitmorfForm | null = null
+        let lastTimestamp = performance.now()
+        let pointerX = 0
+        let pointerY = 0
         let pointerLookUntil = 0
+        let transition: { from: LivingEntry; to: LivingEntry; start: number; removed: boolean } | undefined
 
-        const changeForm = (next: DigitmorfForm, now: number) => {
-          if (next === activeForm) {
+        const requestForm = (form: DigitmorfForm) => {
+          targetForm = form
+
+          if (form === current.form || requestedForm || transition) {
             return
           }
 
-          activeForm = next
-          canvas.dataset.digitmorfForm = next
-          fromWeights = { ...displayedWeights }
-          targetWeights = exactDigitmorfWeights(next)
-          transitionStart = now
+          requestedForm = form
+          const generation = ++requestGeneration
+          void loadEntry(form)
+            .then(next => {
+              requestedForm = null
+
+              if (disposed || generation !== requestGeneration || targetForm !== form) {
+                disposeEntry(next, false)
+                wake()
+
+                return
+              }
+
+              const previous = current
+              current = next
+              current.group.scale.setScalar(reducedMotion.matches ? 1 : 0.001)
+              nextScene.add(current.group)
+              activateClip(previous, 'digitmorf_form_resonance')
+              activateClip(
+                current,
+                digitmorfClipForMotion(
+                  semanticForState(stateOverrideRef.current ?? $petState.get(), rowOverrideRef.current)
+                )
+              )
+
+              if (reducedMotion.matches) {
+                disposeEntry(previous)
+              } else {
+                transition = { from: previous, to: current, start: performance.now(), removed: false }
+              }
+
+              canvas.dataset.digitmorfForm = form
+              wake()
+            })
+            .catch(error => {
+              requestedForm = null
+              console.warn(`Digitmorf living form ${form} failed to load`, error)
+              canvas.dataset.digitmorfDegraded = form
+              wake()
+            })
         }
 
         const onPointerMove = (event: PointerEvent) => {
@@ -260,15 +384,15 @@ export function DigitmorfPet({
             return
           }
 
-          const x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-          const y = 1 - ((event.clientY - rect.top) / rect.height) * 2
-          pointerDirection = digitmorfLookDirection(x, y)
-          canvas.dataset.digitmorfLook = pointerDirection
+          pointerX = ((event.clientX - rect.left) / rect.width) * 2 - 1
+          pointerY = 1 - ((event.clientY - rect.top) / rect.height) * 2
+          canvas.dataset.digitmorfLook = digitmorfLookDirection(pointerX, pointerY)
           pointerLookUntil = performance.now() + 1400
           wake()
         }
 
         canvas.addEventListener('pointermove', onPointerMove)
+        removePointer = () => canvas.removeEventListener('pointermove', onPointerMove)
 
         const renderFrame = (now: number) => {
           raf = 0
@@ -277,62 +401,72 @@ export function DigitmorfPet({
             return
           }
 
+          const delta = Math.min(0.05, Math.max(0, (now - lastTimestamp) / 1000))
+          lastTimestamp = now
           const state = stateOverrideRef.current ?? $petState.get()
-          const activity = $petActivity.get()
-          let nextForm = deriveDigitmorfForm(activity, $busy.get())
-
-          if (nextForm === 'core' && state === 'run') {
-            nextForm = 'cursor'
-          }
-
-          if (nextForm === 'core' && state === 'jump') {
-            nextForm = 'lantern'
-          }
-
-          changeForm(nextForm, now)
-
-          const transition = reducedMotion.matches ? 1 : (now - transitionStart) / TRANSITION_MS
-          displayedWeights = blendDigitmorfWeights(fromWeights, targetWeights, transition)
-
-          if (!reducedMotion.matches && nextForm === 'core' && transition >= 1) {
-            const procedural = proceduralDigitmorfWeights(proceduralSeed, now / 1000)
-            const live = { ...displayedWeights } as DigitmorfWeights
-
-            for (const form of DIGITMORF_FORMS) {
-              live[form] = displayedWeights[form] * (1 - PROCEDURAL_MIX) + procedural[form] * PROCEDURAL_MIX
-            }
-
-            rig.applyWeights(live)
-          } else {
-            rig.applyWeights(displayedWeights)
-          }
+          const nextForm = resolvedForm(state)
+          requestForm(nextForm)
 
           const semantic = semanticForState(state, rowOverrideRef.current)
-          const motion = sampleDigitmorfMotion(semantic, now / 1000, activity.toolRunning ? 1 : 0.72)
-          canvas.dataset.digitmorfMotion = semantic
 
-          if (reducedMotion.matches) {
-            motionRoot.position.y = 0
-            motionRoot.rotation.set(0, 0, 0)
-            motionRoot.scale.setScalar(baseScale)
-          } else {
-            motionRoot.position.y = motion.bob
-            motionRoot.rotation.z = motion.lean
-            motionRoot.rotation.y = motion.spin
-            motionRoot.scale.set(baseScale * motion.scaleX, baseScale * motion.scaleY, baseScale * motion.scaleZ)
-            orbitNodes.forEach((node, index) => {
-              node.rotation.y += (index % 2 ? -1 : 1) * 0.0012 * (index + 1)
-            })
+          if (!transition) {
+            activateClip(current, digitmorfClipForMotion(semantic))
           }
 
-          const autoIndex = Math.floor((now / 1000) * 1.2) % DIGITMORF_LOOK_DIRECTIONS.length
-          rig.applyLook(
-            now < pointerLookUntil ? pointerDirection : DIGITMORF_LOOK_DIRECTIONS[autoIndex],
-            now < pointerLookUntil ? 1 : 0.34
-          )
+          if (!reducedMotion.matches) {
+            current.mixer.update(delta)
+          }
+
+          if (transition && !transition.removed) {
+            transition.from.mixer.update(delta)
+          }
+
+          if (transition) {
+            const amount = Math.min(1, (now - transition.start) / TRANSITION_MS)
+
+            if (amount < 0.5) {
+              transition.from.group.scale.setScalar(1 - smoothstep(amount * 2))
+            } else {
+              if (!transition.removed) {
+                disposeEntry(transition.from)
+                transition.removed = true
+              }
+
+              transition.to.group.scale.setScalar(smoothstep((amount - 0.5) * 2))
+            }
+
+            if (amount >= 1) {
+              transition.to.group.scale.setScalar(1)
+              transition = undefined
+            }
+          }
+
+          const activity = $petActivity.get()
+          const energy = activity.toolRunning ? 1 : 0.72
+          const motion = semanticForState(state, rowOverrideRef.current)
+          canvas.dataset.digitmorfMotion = motion
+
+          if (reducedMotion.matches) {
+            current.motionRoot.position.y = 0
+            current.motionRoot.rotation.x = 0
+            current.motionRoot.rotation.y = FORM_YAW[current.form]
+            current.motionRoot.rotation.z = 0
+            current.motionRoot.scale.set(current.baseScale, current.baseScale, current.baseScale)
+          } else {
+            const phase = now / 1000
+            const bob = Math.sin(phase * (motion.startsWith('running') ? 7.2 : 2.4)) * 0.025 * energy
+            const pointerActive = now < pointerLookUntil
+            current.motionRoot.position.y = bob
+            current.motionRoot.rotation.x = pointerActive ? -pointerY * 0.08 : 0
+            current.motionRoot.rotation.y =
+              FORM_YAW[current.form] + (pointerActive ? pointerX * 0.16 : Math.sin(phase * 0.35) * 0.06)
+            current.motionRoot.rotation.z = motion === 'failed' ? -0.04 : 0
+            current.motionRoot.scale.set(current.baseScale, current.baseScale, current.baseScale)
+          }
+
           nextRenderer.render(nextScene, camera)
 
-          if (!reducedMotion.matches || transition < 1) {
+          if (!reducedMotion.matches || transition || requestedForm) {
             raf = window.requestAnimationFrame(renderFrame)
           }
         }
@@ -344,16 +478,14 @@ export function DigitmorfPet({
         }
 
         pauseController = createRendererLoopPauseController(wake, { pauseWhenUnfocused })
-        canvas.dataset.digitmorfForm = activeForm
-        canvas.dataset.digitmorfLook = pointerDirection
+        canvas.dataset.digitmorfForm = current.form
+        canvas.dataset.digitmorfLook = 'n'
         canvas.dataset.digitmorfReady = 'true'
         setReady(true)
         wake()
-
-        return () => canvas.removeEventListener('pointermove', onPointerMove)
       } catch (error) {
         if (!disposed) {
-          console.warn('Digitmorf 3D renderer fell back to its Cycles poster', error)
+          console.warn('Digitmorf living-form renderer fell back to its Cycles poster', error)
           canvas.dataset.digitmorfError = 'true'
           setFailed(true)
         }
@@ -366,18 +498,14 @@ export function DigitmorfPet({
         renderer?.dispose()
         scene = null
         renderer = null
-
-        return undefined
       }
     }
 
-    let removePointer: (() => void) | undefined
-    void boot().then(cleanup => {
-      removePointer = cleanup
-    })
+    void boot()
 
     return () => {
       disposed = true
+      requestGeneration += 1
 
       if (raf) {
         window.cancelAnimationFrame(raf)
@@ -385,11 +513,7 @@ export function DigitmorfPet({
 
       removePointer?.()
       pauseController?.dispose()
-
-      for (const unsub of unsubs) {
-        unsub()
-      }
-
+      unsubs.forEach(unsub => unsub())
       scene?.traverse(node => {
         node.geometry?.dispose?.()
         const materials = Array.isArray(node.material) ? node.material : node.material ? [node.material] : []

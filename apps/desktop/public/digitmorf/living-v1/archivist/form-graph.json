@@ -1,0 +1,2368 @@
+{
+  "schemaVersion": 1,
+  "id": "archivist-a-v19",
+  "units": "m",
+  "coordinateSystem": "Z_UP",
+  "rootModule": "asset",
+  "modules": [
+    {
+      "id": "asset",
+      "kind": "assembly",
+      "parent": null,
+      "stage": 0,
+      "generator": "composition",
+      "dependsOn": [],
+      "attachments": [],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "named-hierarchy"
+        ],
+        "visual": [
+          "approved silhouette"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 0, \"objects\": 1, \"polygons\": 0, \"triangles\": 0, \"vertices\": 0}"
+      ],
+      "artifacts": [
+        "FORMGRAPH_Archivist_A"
+      ],
+      "metrics": {
+        "objects": 1,
+        "meshes": 0,
+        "vertices": 0,
+        "polygons": 0,
+        "triangles": 0
+      }
+    },
+    {
+      "id": "rig",
+      "kind": "rig",
+      "parent": "asset",
+      "stage": 1,
+      "generator": "armature",
+      "dependsOn": [
+        "asset"
+      ],
+      "attachments": [],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 0, \"objects\": 1, \"polygons\": 0, \"triangles\": 0, \"vertices\": 0}"
+      ],
+      "artifacts": [
+        "RIG_Archivist_A_anatomical_armature"
+      ],
+      "metrics": {
+        "objects": 1,
+        "meshes": 0,
+        "vertices": 0,
+        "polygons": 0,
+        "triangles": 0
+      }
+    },
+    {
+      "id": "body",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 2,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "rig"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 3, \"objects\": 3, \"polygons\": 4608, \"triangles\": 8928, \"vertices\": 4470}"
+      ],
+      "artifacts": [
+        "body_abdomen",
+        "body_chest",
+        "body_pelvis"
+      ],
+      "metrics": {
+        "objects": 3,
+        "meshes": 3,
+        "vertices": 4470,
+        "polygons": 4608,
+        "triangles": 8928
+      }
+    },
+    {
+      "id": "head",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 3,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "rig"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 1, \"objects\": 1, \"polygons\": 1536, \"triangles\": 2976, \"vertices\": 1490}"
+      ],
+      "artifacts": [
+        "head_crystal_core"
+      ],
+      "metrics": {
+        "objects": 1,
+        "meshes": 1,
+        "vertices": 1490,
+        "polygons": 1536,
+        "triangles": 2976
+      }
+    },
+    {
+      "id": "torso_lattice",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 4,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "body"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 12, \"objects\": 12, \"polygons\": 84, \"triangles\": 192, \"vertices\": 120}"
+      ],
+      "artifacts": [
+        "torso_scale_L_00",
+        "torso_scale_L_01",
+        "torso_scale_L_02",
+        "torso_scale_L_03",
+        "torso_scale_L_04",
+        "torso_scale_L_05",
+        "torso_scale_R_00",
+        "torso_scale_R_01",
+        "torso_scale_R_02",
+        "torso_scale_R_03",
+        "torso_scale_R_04",
+        "torso_scale_R_05"
+      ],
+      "metrics": {
+        "objects": 12,
+        "meshes": 12,
+        "vertices": 120,
+        "polygons": 84,
+        "triangles": 192
+      }
+    },
+    {
+      "id": "torso_current",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 5,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "torso_lattice"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 5, \"objects\": 5, \"polygons\": 996, \"triangles\": 1992, \"vertices\": 1056}"
+      ],
+      "artifacts": [
+        "torso_current_00",
+        "torso_current_01",
+        "torso_current_02",
+        "torso_current_03",
+        "torso_current_04"
+      ],
+      "metrics": {
+        "objects": 5,
+        "meshes": 5,
+        "vertices": 1056,
+        "polygons": 996,
+        "triangles": 1992
+      }
+    },
+    {
+      "id": "limb",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 6,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "rig"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 12, \"objects\": 12, \"polygons\": 1848, \"triangles\": 2848, \"vertices\": 1448}"
+      ],
+      "artifacts": [
+        "anatomy_forearm.L",
+        "anatomy_forearm.R",
+        "anatomy_upper_arm.L",
+        "anatomy_upper_arm.R",
+        "leg_knee_boundary_L",
+        "leg_knee_boundary_R",
+        "leg_knee_inset_L",
+        "leg_knee_inset_R",
+        "leg_shin_muscle_L",
+        "leg_shin_muscle_R",
+        "leg_thigh_muscle_L",
+        "leg_thigh_muscle_R"
+      ],
+      "metrics": {
+        "objects": 12,
+        "meshes": 12,
+        "vertices": 1448,
+        "polygons": 1848,
+        "triangles": 2848
+      }
+    },
+    {
+      "id": "hand",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 7,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "limb"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 2, \"objects\": 2, \"polygons\": 640, \"triangles\": 640, \"vertices\": 324}"
+      ],
+      "artifacts": [
+        "hand_L",
+        "hand_R"
+      ],
+      "metrics": {
+        "objects": 2,
+        "meshes": 2,
+        "vertices": 324,
+        "polygons": 640,
+        "triangles": 640
+      }
+    },
+    {
+      "id": "hock",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 8,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "limb"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 12, \"objects\": 12, \"polygons\": 1796, \"triangles\": 2040, \"vertices\": 1050}"
+      ],
+      "artifacts": [
+        "leg_hock_boundary_L",
+        "leg_hock_boundary_R",
+        "leg_hock_inset_L",
+        "leg_hock_inset_R",
+        "leg_hock_tendon_volume_L",
+        "leg_hock_tendon_volume_R",
+        "leg_tarsal_plate_L_00",
+        "leg_tarsal_plate_L_01",
+        "leg_tarsal_plate_L_02",
+        "leg_tarsal_plate_R_00",
+        "leg_tarsal_plate_R_01",
+        "leg_tarsal_plate_R_02"
+      ],
+      "metrics": {
+        "objects": 12,
+        "meshes": 12,
+        "vertices": 1050,
+        "polygons": 1796,
+        "triangles": 2040
+      }
+    },
+    {
+      "id": "metatarsal",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 9,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hock"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 6, \"objects\": 6, \"polygons\": 1428, \"triangles\": 1704, \"vertices\": 864}"
+      ],
+      "artifacts": [
+        "leg_ankle_boundary_L",
+        "leg_ankle_boundary_R",
+        "leg_ankle_inset_L",
+        "leg_ankle_inset_R",
+        "leg_metatarsal_L",
+        "leg_metatarsal_R"
+      ],
+      "metrics": {
+        "objects": 6,
+        "meshes": 6,
+        "vertices": 864,
+        "polygons": 1428,
+        "triangles": 1704
+      }
+    },
+    {
+      "id": "foot",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 10,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "metatarsal"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 2, \"objects\": 2, \"polygons\": 244, \"triangles\": 632, \"vertices\": 320}"
+      ],
+      "artifacts": [
+        "foot_palm_wedge_L",
+        "foot_palm_wedge_R"
+      ],
+      "metrics": {
+        "objects": 2,
+        "meshes": 2,
+        "vertices": 320,
+        "polygons": 244,
+        "triangles": 632
+      }
+    },
+    {
+      "id": "toe",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 11,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "foot"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 26, \"objects\": 26, \"polygons\": 6148, \"triangles\": 10600, \"vertices\": 5352}"
+      ],
+      "artifacts": [
+        "dewclaw_L_phalanx",
+        "dewclaw_R_phalanx",
+        "toe_L_01_contact_pad",
+        "toe_L_01_distal",
+        "toe_L_01_knuckle",
+        "toe_L_01_proximal",
+        "toe_L_02_contact_pad",
+        "toe_L_02_distal",
+        "toe_L_02_knuckle",
+        "toe_L_02_proximal",
+        "toe_L_03_contact_pad",
+        "toe_L_03_distal",
+        "toe_L_03_knuckle",
+        "toe_L_03_proximal",
+        "toe_R_01_contact_pad",
+        "toe_R_01_distal",
+        "toe_R_01_knuckle",
+        "toe_R_01_proximal",
+        "toe_R_02_contact_pad",
+        "toe_R_02_distal",
+        "toe_R_02_knuckle",
+        "toe_R_02_proximal",
+        "toe_R_03_contact_pad",
+        "toe_R_03_distal",
+        "toe_R_03_knuckle",
+        "toe_R_03_proximal"
+      ],
+      "metrics": {
+        "objects": 26,
+        "meshes": 26,
+        "vertices": 5352,
+        "polygons": 6148,
+        "triangles": 10600
+      }
+    },
+    {
+      "id": "talon",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 12,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "toe"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 14, \"objects\": 14, \"polygons\": 332, \"triangles\": 1160, \"vertices\": 608}"
+      ],
+      "artifacts": [
+        "dewclaw_L_talon",
+        "dewclaw_R_talon",
+        "talon_L_01_root",
+        "talon_L_01_tip",
+        "talon_L_02_root",
+        "talon_L_02_tip",
+        "talon_L_03_root",
+        "talon_L_03_tip",
+        "talon_R_01_root",
+        "talon_R_01_tip",
+        "talon_R_02_root",
+        "talon_R_02_tip",
+        "talon_R_03_root",
+        "talon_R_03_tip"
+      ],
+      "metrics": {
+        "objects": 14,
+        "meshes": 14,
+        "vertices": 608,
+        "polygons": 332,
+        "triangles": 1160
+      }
+    },
+    {
+      "id": "leg_tendon",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 13,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hock",
+        "metatarsal"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 10, \"objects\": 10, \"polygons\": 2472, \"triangles\": 4944, \"vertices\": 2592}"
+      ],
+      "artifacts": [
+        "leg_tendon_front_L",
+        "leg_tendon_front_R",
+        "leg_tendon_paw_L",
+        "leg_tendon_paw_R",
+        "toe_L_01_d_current",
+        "toe_L_02_d_current",
+        "toe_L_03_d_current",
+        "toe_R_01_d_current",
+        "toe_R_02_d_current",
+        "toe_R_03_d_current"
+      ],
+      "metrics": {
+        "objects": 10,
+        "meshes": 10,
+        "vertices": 2592,
+        "polygons": 2472,
+        "triangles": 4944
+      }
+    },
+    {
+      "id": "sleeve_l",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 14,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "limb"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 16, \"objects\": 16, \"polygons\": 1024, \"triangles\": 1024, \"vertices\": 560}"
+      ],
+      "artifacts": [
+        "sleeve_L_00_00",
+        "sleeve_L_00_01",
+        "sleeve_L_00_02",
+        "sleeve_L_00_03",
+        "sleeve_L_00_04",
+        "sleeve_L_00_05",
+        "sleeve_L_00_06",
+        "sleeve_L_00_07",
+        "sleeve_L_01_00",
+        "sleeve_L_01_01",
+        "sleeve_L_01_02",
+        "sleeve_L_01_03",
+        "sleeve_L_01_04",
+        "sleeve_L_01_05",
+        "sleeve_L_01_06",
+        "sleeve_L_01_07"
+      ],
+      "metrics": {
+        "objects": 16,
+        "meshes": 16,
+        "vertices": 560,
+        "polygons": 1024,
+        "triangles": 1024
+      }
+    },
+    {
+      "id": "sleeve_r",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 15,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "limb"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 16, \"objects\": 16, \"polygons\": 1024, \"triangles\": 1024, \"vertices\": 560}"
+      ],
+      "artifacts": [
+        "sleeve_R_00_00",
+        "sleeve_R_00_01",
+        "sleeve_R_00_02",
+        "sleeve_R_00_03",
+        "sleeve_R_00_04",
+        "sleeve_R_00_05",
+        "sleeve_R_00_06",
+        "sleeve_R_00_07",
+        "sleeve_R_01_00",
+        "sleeve_R_01_01",
+        "sleeve_R_01_02",
+        "sleeve_R_01_03",
+        "sleeve_R_01_04",
+        "sleeve_R_01_05",
+        "sleeve_R_01_06",
+        "sleeve_R_01_07"
+      ],
+      "metrics": {
+        "objects": 16,
+        "meshes": 16,
+        "vertices": 560,
+        "polygons": 1024,
+        "triangles": 1024
+      }
+    },
+    {
+      "id": "finger_l",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 16,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hand"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 14, \"objects\": 14, \"polygons\": 460, \"triangles\": 760, \"vertices\": 408}"
+      ],
+      "artifacts": [
+        "finger_L_00_00",
+        "finger_L_00_01",
+        "finger_L_01_00",
+        "finger_L_01_01",
+        "finger_L_02_00",
+        "finger_L_02_01",
+        "finger_L_03_00",
+        "finger_L_03_01",
+        "knuckle_L_00",
+        "knuckle_L_01",
+        "knuckle_L_02",
+        "knuckle_L_03",
+        "thumb_L_00",
+        "thumb_L_01"
+      ],
+      "metrics": {
+        "objects": 14,
+        "meshes": 14,
+        "vertices": 408,
+        "polygons": 460,
+        "triangles": 760
+      }
+    },
+    {
+      "id": "finger_r",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 17,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hand"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 14, \"objects\": 14, \"polygons\": 460, \"triangles\": 760, \"vertices\": 408}"
+      ],
+      "artifacts": [
+        "finger_R_00_00",
+        "finger_R_00_01",
+        "finger_R_01_00",
+        "finger_R_01_01",
+        "finger_R_02_00",
+        "finger_R_02_01",
+        "finger_R_03_00",
+        "finger_R_03_01",
+        "knuckle_R_00",
+        "knuckle_R_01",
+        "knuckle_R_02",
+        "knuckle_R_03",
+        "thumb_R_00",
+        "thumb_R_01"
+      ],
+      "metrics": {
+        "objects": 14,
+        "meshes": 14,
+        "vertices": 408,
+        "polygons": 460,
+        "triangles": 760
+      }
+    },
+    {
+      "id": "mantle_back",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 18,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "body"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 191, \"objects\": 191, \"polygons\": 12224, \"triangles\": 12224, \"vertices\": 6685}"
+      ],
+      "artifacts": [
+        "mantle_folio_00_00",
+        "mantle_folio_00_01",
+        "mantle_folio_00_02",
+        "mantle_folio_00_03",
+        "mantle_folio_00_04",
+        "mantle_folio_00_05",
+        "mantle_folio_00_06",
+        "mantle_folio_00_10",
+        "mantle_folio_00_11",
+        "mantle_folio_00_12",
+        "mantle_folio_00_13",
+        "mantle_folio_00_14",
+        "mantle_folio_00_15",
+        "mantle_folio_01_00",
+        "mantle_folio_01_01",
+        "mantle_folio_01_02",
+        "mantle_folio_01_03",
+        "mantle_folio_01_04",
+        "mantle_folio_01_05",
+        "mantle_folio_01_06",
+        "mantle_folio_01_10",
+        "mantle_folio_01_11",
+        "mantle_folio_01_12",
+        "mantle_folio_01_13",
+        "mantle_folio_01_14",
+        "mantle_folio_01_15",
+        "mantle_folio_01_16",
+        "mantle_folio_02_00",
+        "mantle_folio_02_01",
+        "mantle_folio_02_02",
+        "mantle_folio_02_03",
+        "mantle_folio_02_04",
+        "mantle_folio_02_05",
+        "mantle_folio_02_06",
+        "mantle_folio_02_07",
+        "mantle_folio_02_11",
+        "mantle_folio_02_12",
+        "mantle_folio_02_13",
+        "mantle_folio_02_14",
+        "mantle_folio_02_15",
+        "mantle_folio_02_16",
+        "mantle_folio_02_17",
+        "mantle_folio_03_00",
+        "mantle_folio_03_01",
+        "mantle_folio_03_02",
+        "mantle_folio_03_03",
+        "mantle_folio_03_04",
+        "mantle_folio_03_05",
+        "mantle_folio_03_06",
+        "mantle_folio_03_12",
+        "mantle_folio_03_13",
+        "mantle_folio_03_14",
+        "mantle_folio_03_15",
+        "mantle_folio_03_16",
+        "mantle_folio_03_17",
+        "mantle_folio_03_18",
+        "mantle_folio_04_00",
+        "mantle_folio_04_01",
+        "mantle_folio_04_02",
+        "mantle_folio_04_03",
+        "mantle_folio_04_04",
+        "mantle_folio_04_05",
+        "mantle_folio_04_06",
+        "mantle_folio_04_07",
+        "mantle_folio_04_13",
+        "mantle_folio_04_14",
+        "mantle_folio_04_15",
+        "mantle_folio_04_16",
+        "mantle_folio_04_17",
+        "mantle_folio_04_18",
+        "mantle_folio_04_19",
+        "mantle_folio_05_00",
+        "mantle_folio_05_01",
+        "mantle_folio_05_02",
+        "mantle_folio_05_03",
+        "mantle_folio_05_04",
+        "mantle_folio_05_05",
+        "mantle_folio_05_06",
+        "mantle_folio_05_07",
+        "mantle_folio_05_12",
+        "mantle_folio_05_13",
+        "mantle_folio_05_14",
+        "mantle_folio_05_15",
+        "mantle_folio_05_16",
+        "mantle_folio_05_17",
+        "mantle_folio_05_18",
+        "mantle_folio_05_19",
+        "mantle_folio_06_00",
+        "mantle_folio_06_01",
+        "mantle_folio_06_02",
+        "mantle_folio_06_03",
+        "mantle_folio_06_04",
+        "mantle_folio_06_05",
+        "mantle_folio_06_06",
+        "mantle_folio_06_07",
+        "mantle_folio_06_08",
+        "mantle_folio_06_13",
+        "mantle_folio_06_14",
+        "mantle_folio_06_15",
+        "mantle_folio_06_16",
+        "mantle_folio_06_17",
+        "mantle_folio_06_18",
+        "mantle_folio_06_19",
+        "mantle_folio_06_20",
+        "mantle_folio_07_00",
+        "mantle_folio_07_01",
+        "mantle_folio_07_02",
+        "mantle_folio_07_03",
+        "mantle_folio_07_04",
+        "mantle_folio_07_05",
+        "mantle_folio_07_06",
+        "mantle_folio_07_07",
+        "mantle_folio_07_12",
+        "mantle_folio_07_13",
+        "mantle_folio_07_14",
+        "mantle_folio_07_15",
+        "mantle_folio_07_16",
+        "mantle_folio_07_17",
+        "mantle_folio_07_18",
+        "mantle_folio_07_19",
+        "mantle_folio_08_00",
+        "mantle_folio_08_01",
+        "mantle_folio_08_02",
+        "mantle_folio_08_03",
+        "mantle_folio_08_04",
+        "mantle_folio_08_05",
+        "mantle_folio_08_06",
+        "mantle_folio_08_07",
+        "mantle_folio_08_13",
+        "mantle_folio_08_14",
+        "mantle_folio_08_15",
+        "mantle_folio_08_16",
+        "mantle_folio_08_17",
+        "mantle_folio_08_18",
+        "mantle_folio_08_19",
+        "mantle_folio_09_00",
+        "mantle_folio_09_01",
+        "mantle_folio_09_02",
+        "mantle_folio_09_03",
+        "mantle_folio_09_04",
+        "mantle_folio_09_05",
+        "mantle_folio_09_06",
+        "mantle_folio_09_12",
+        "mantle_folio_09_13",
+        "mantle_folio_09_14",
+        "mantle_folio_09_15",
+        "mantle_folio_09_16",
+        "mantle_folio_09_17",
+        "mantle_folio_09_18",
+        "mantle_folio_10_00",
+        "mantle_folio_10_01",
+        "mantle_folio_10_02",
+        "mantle_folio_10_03",
+        "mantle_folio_10_04",
+        "mantle_folio_10_05",
+        "mantle_folio_10_06",
+        "mantle_folio_10_07",
+        "mantle_folio_10_11",
+        "mantle_folio_10_12",
+        "mantle_folio_10_13",
+        "mantle_folio_10_14",
+        "mantle_folio_10_15",
+        "mantle_folio_10_16",
+        "mantle_folio_10_17",
+        "mantle_folio_11_00",
+        "mantle_folio_11_01",
+        "mantle_folio_11_02",
+        "mantle_folio_11_03",
+        "mantle_folio_11_04",
+        "mantle_folio_11_05",
+        "mantle_folio_11_06",
+        "mantle_folio_11_10",
+        "mantle_folio_11_11",
+        "mantle_folio_11_12",
+        "mantle_folio_11_13",
+        "mantle_folio_11_14",
+        "mantle_folio_11_15",
+        "mantle_folio_11_16",
+        "mantle_folio_12_00",
+        "mantle_folio_12_01",
+        "mantle_folio_12_02",
+        "mantle_folio_12_03",
+        "mantle_folio_12_04",
+        "mantle_folio_12_05",
+        "mantle_folio_12_06",
+        "mantle_folio_12_10",
+        "mantle_folio_12_11",
+        "mantle_folio_12_12",
+        "mantle_folio_12_13",
+        "mantle_folio_12_14",
+        "mantle_folio_12_15"
+      ],
+      "metrics": {
+        "objects": 191,
+        "meshes": 191,
+        "vertices": 6685,
+        "polygons": 12224,
+        "triangles": 12224
+      }
+    },
+    {
+      "id": "mantle_lapel_l",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 19,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "body"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 22, \"objects\": 22, \"polygons\": 1408, \"triangles\": 1408, \"vertices\": 770}"
+      ],
+      "artifacts": [
+        "mantle_lapel_L_00_00",
+        "mantle_lapel_L_00_01",
+        "mantle_lapel_L_01_00",
+        "mantle_lapel_L_01_01",
+        "mantle_lapel_L_01_02",
+        "mantle_lapel_L_02_00",
+        "mantle_lapel_L_02_01",
+        "mantle_lapel_L_03_00",
+        "mantle_lapel_L_03_01",
+        "mantle_lapel_L_03_02",
+        "mantle_lapel_L_04_00",
+        "mantle_lapel_L_04_01",
+        "mantle_lapel_L_05_00",
+        "mantle_lapel_L_05_01",
+        "mantle_lapel_L_05_02",
+        "mantle_lapel_L_06_00",
+        "mantle_lapel_L_06_01",
+        "mantle_lapel_L_07_00",
+        "mantle_lapel_L_07_01",
+        "mantle_lapel_L_07_02",
+        "mantle_lapel_L_08_00",
+        "mantle_lapel_L_08_01"
+      ],
+      "metrics": {
+        "objects": 22,
+        "meshes": 22,
+        "vertices": 770,
+        "polygons": 1408,
+        "triangles": 1408
+      }
+    },
+    {
+      "id": "mantle_lapel_r",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 20,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "body"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 22, \"objects\": 22, \"polygons\": 1408, \"triangles\": 1408, \"vertices\": 770}"
+      ],
+      "artifacts": [
+        "mantle_lapel_R_00_00",
+        "mantle_lapel_R_00_01",
+        "mantle_lapel_R_01_00",
+        "mantle_lapel_R_01_01",
+        "mantle_lapel_R_01_02",
+        "mantle_lapel_R_02_00",
+        "mantle_lapel_R_02_01",
+        "mantle_lapel_R_03_00",
+        "mantle_lapel_R_03_01",
+        "mantle_lapel_R_03_02",
+        "mantle_lapel_R_04_00",
+        "mantle_lapel_R_04_01",
+        "mantle_lapel_R_05_00",
+        "mantle_lapel_R_05_01",
+        "mantle_lapel_R_05_02",
+        "mantle_lapel_R_06_00",
+        "mantle_lapel_R_06_01",
+        "mantle_lapel_R_07_00",
+        "mantle_lapel_R_07_01",
+        "mantle_lapel_R_07_02",
+        "mantle_lapel_R_08_00",
+        "mantle_lapel_R_08_01"
+      ],
+      "metrics": {
+        "objects": 22,
+        "meshes": 22,
+        "vertices": 770,
+        "polygons": 1408,
+        "triangles": 1408
+      }
+    },
+    {
+      "id": "collar",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 21,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "body"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 51, \"objects\": 51, \"polygons\": 3264, \"triangles\": 3264, \"vertices\": 1785}"
+      ],
+      "artifacts": [
+        "collar_folio_00_00",
+        "collar_folio_00_01",
+        "collar_folio_00_02",
+        "collar_folio_00_03",
+        "collar_folio_00_04",
+        "collar_folio_00_05",
+        "collar_folio_00_06",
+        "collar_folio_00_07",
+        "collar_folio_00_08",
+        "collar_folio_00_09",
+        "collar_folio_00_10",
+        "collar_folio_00_11",
+        "collar_folio_00_12",
+        "collar_folio_00_13",
+        "collar_folio_01_00",
+        "collar_folio_01_01",
+        "collar_folio_01_02",
+        "collar_folio_01_03",
+        "collar_folio_01_04",
+        "collar_folio_01_05",
+        "collar_folio_01_06",
+        "collar_folio_01_07",
+        "collar_folio_01_08",
+        "collar_folio_01_09",
+        "collar_folio_01_10",
+        "collar_folio_01_11",
+        "collar_folio_01_12",
+        "collar_folio_01_13",
+        "collar_folio_01_14",
+        "collar_folio_01_15",
+        "collar_folio_01_16",
+        "collar_folio_02_00",
+        "collar_folio_02_01",
+        "collar_folio_02_02",
+        "collar_folio_02_03",
+        "collar_folio_02_04",
+        "collar_folio_02_05",
+        "collar_folio_02_06",
+        "collar_folio_02_07",
+        "collar_folio_02_08",
+        "collar_folio_02_09",
+        "collar_folio_02_10",
+        "collar_folio_02_11",
+        "collar_folio_02_12",
+        "collar_folio_02_13",
+        "collar_folio_02_14",
+        "collar_folio_02_15",
+        "collar_folio_02_16",
+        "collar_folio_02_17",
+        "collar_folio_02_18",
+        "collar_folio_02_19"
+      ],
+      "metrics": {
+        "objects": 51,
+        "meshes": 51,
+        "vertices": 1785,
+        "polygons": 3264,
+        "triangles": 3264
+      }
+    },
+    {
+      "id": "wing_l",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 22,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "collar"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 40, \"objects\": 40, \"polygons\": 2560, \"triangles\": 2560, \"vertices\": 1400}"
+      ],
+      "artifacts": [
+        "folded_wing_L_00_00",
+        "folded_wing_L_00_01",
+        "folded_wing_L_00_02",
+        "folded_wing_L_00_03",
+        "folded_wing_L_00_04",
+        "folded_wing_L_01_00",
+        "folded_wing_L_01_01",
+        "folded_wing_L_01_02",
+        "folded_wing_L_01_03",
+        "folded_wing_L_01_04",
+        "folded_wing_L_02_00",
+        "folded_wing_L_02_01",
+        "folded_wing_L_02_02",
+        "folded_wing_L_02_03",
+        "folded_wing_L_02_04",
+        "folded_wing_L_03_00",
+        "folded_wing_L_03_01",
+        "folded_wing_L_03_02",
+        "folded_wing_L_03_03",
+        "folded_wing_L_03_04",
+        "folded_wing_L_04_00",
+        "folded_wing_L_04_01",
+        "folded_wing_L_04_02",
+        "folded_wing_L_04_03",
+        "folded_wing_L_04_04",
+        "folded_wing_L_05_00",
+        "folded_wing_L_05_01",
+        "folded_wing_L_05_02",
+        "folded_wing_L_05_03",
+        "folded_wing_L_05_04",
+        "folded_wing_L_06_00",
+        "folded_wing_L_06_01",
+        "folded_wing_L_06_02",
+        "folded_wing_L_06_03",
+        "folded_wing_L_06_04",
+        "folded_wing_L_07_00",
+        "folded_wing_L_07_01",
+        "folded_wing_L_07_02",
+        "folded_wing_L_07_03",
+        "folded_wing_L_07_04"
+      ],
+      "metrics": {
+        "objects": 40,
+        "meshes": 40,
+        "vertices": 1400,
+        "polygons": 2560,
+        "triangles": 2560
+      }
+    },
+    {
+      "id": "wing_r",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 23,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "collar"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 40, \"objects\": 40, \"polygons\": 2560, \"triangles\": 2560, \"vertices\": 1400}"
+      ],
+      "artifacts": [
+        "folded_wing_R_00_00",
+        "folded_wing_R_00_01",
+        "folded_wing_R_00_02",
+        "folded_wing_R_00_03",
+        "folded_wing_R_00_04",
+        "folded_wing_R_01_00",
+        "folded_wing_R_01_01",
+        "folded_wing_R_01_02",
+        "folded_wing_R_01_03",
+        "folded_wing_R_01_04",
+        "folded_wing_R_02_00",
+        "folded_wing_R_02_01",
+        "folded_wing_R_02_02",
+        "folded_wing_R_02_03",
+        "folded_wing_R_02_04",
+        "folded_wing_R_03_00",
+        "folded_wing_R_03_01",
+        "folded_wing_R_03_02",
+        "folded_wing_R_03_03",
+        "folded_wing_R_03_04",
+        "folded_wing_R_04_00",
+        "folded_wing_R_04_01",
+        "folded_wing_R_04_02",
+        "folded_wing_R_04_03",
+        "folded_wing_R_04_04",
+        "folded_wing_R_05_00",
+        "folded_wing_R_05_01",
+        "folded_wing_R_05_02",
+        "folded_wing_R_05_03",
+        "folded_wing_R_05_04",
+        "folded_wing_R_06_00",
+        "folded_wing_R_06_01",
+        "folded_wing_R_06_02",
+        "folded_wing_R_06_03",
+        "folded_wing_R_06_04",
+        "folded_wing_R_07_00",
+        "folded_wing_R_07_01",
+        "folded_wing_R_07_02",
+        "folded_wing_R_07_03",
+        "folded_wing_R_07_04"
+      ],
+      "metrics": {
+        "objects": 40,
+        "meshes": 40,
+        "vertices": 1400,
+        "polygons": 2560,
+        "triangles": 2560
+      }
+    },
+    {
+      "id": "hood_shell",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 24,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "head"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 18, \"objects\": 18, \"polygons\": 108, \"triangles\": 216, \"vertices\": 144}"
+      ],
+      "artifacts": [
+        "hood_shell_wedge_00",
+        "hood_shell_wedge_01",
+        "hood_shell_wedge_02",
+        "hood_shell_wedge_03",
+        "hood_shell_wedge_04",
+        "hood_shell_wedge_05",
+        "hood_shell_wedge_06",
+        "hood_shell_wedge_07",
+        "hood_shell_wedge_08",
+        "hood_shell_wedge_09",
+        "hood_shell_wedge_10",
+        "hood_shell_wedge_11",
+        "hood_shell_wedge_12",
+        "hood_shell_wedge_13",
+        "hood_shell_wedge_14",
+        "hood_shell_wedge_15",
+        "hood_shell_wedge_16",
+        "hood_shell_wedge_17"
+      ],
+      "metrics": {
+        "objects": 18,
+        "meshes": 18,
+        "vertices": 144,
+        "polygons": 108,
+        "triangles": 216
+      }
+    },
+    {
+      "id": "hood_folios",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 25,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hood_shell"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 48, \"objects\": 48, \"polygons\": 3072, \"triangles\": 3072, \"vertices\": 1680}"
+      ],
+      "artifacts": [
+        "hood_nape_shard_00_00",
+        "hood_nape_shard_00_01",
+        "hood_nape_shard_00_02",
+        "hood_nape_shard_00_12",
+        "hood_nape_shard_00_13",
+        "hood_nape_shard_01_00",
+        "hood_nape_shard_01_01",
+        "hood_nape_shard_01_02",
+        "hood_nape_shard_01_03",
+        "hood_nape_shard_01_13",
+        "hood_nape_shard_01_14",
+        "hood_nape_shard_01_15",
+        "hood_nape_shard_02_00",
+        "hood_nape_shard_02_01",
+        "hood_nape_shard_02_02",
+        "hood_nape_shard_02_03",
+        "hood_nape_shard_02_14",
+        "hood_nape_shard_02_15",
+        "hood_nape_shard_02_16",
+        "hood_nape_shard_02_17",
+        "hood_nape_shard_03_00",
+        "hood_nape_shard_03_01",
+        "hood_nape_shard_03_02",
+        "hood_nape_shard_03_03",
+        "hood_nape_shard_03_15",
+        "hood_nape_shard_03_16",
+        "hood_nape_shard_03_17",
+        "hood_nape_shard_03_18",
+        "hood_nape_shard_03_19",
+        "hood_nape_shard_04_00",
+        "hood_nape_shard_04_01",
+        "hood_nape_shard_04_02",
+        "hood_nape_shard_04_03",
+        "hood_nape_shard_04_17",
+        "hood_nape_shard_04_18",
+        "hood_nape_shard_04_19",
+        "hood_nape_shard_04_20",
+        "hood_nape_shard_04_21",
+        "hood_side_fold_L_00",
+        "hood_side_fold_L_01",
+        "hood_side_fold_L_02",
+        "hood_side_fold_L_03",
+        "hood_side_fold_L_04",
+        "hood_side_fold_R_00",
+        "hood_side_fold_R_01",
+        "hood_side_fold_R_02",
+        "hood_side_fold_R_03",
+        "hood_side_fold_R_04"
+      ],
+      "metrics": {
+        "objects": 48,
+        "meshes": 48,
+        "vertices": 1680,
+        "polygons": 3072,
+        "triangles": 3072
+      }
+    },
+    {
+      "id": "ear_l",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 26,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hood_shell"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 6, \"objects\": 6, \"polygons\": 268, \"triangles\": 280, \"vertices\": 156}"
+      ],
+      "artifacts": [
+        "ear_edge_folio_L_00",
+        "ear_edge_folio_L_01",
+        "ear_edge_folio_L_02",
+        "ear_edge_folio_L_03",
+        "ear_quantum_inset_L",
+        "ear_shell_L"
+      ],
+      "metrics": {
+        "objects": 6,
+        "meshes": 6,
+        "vertices": 156,
+        "polygons": 268,
+        "triangles": 280
+      }
+    },
+    {
+      "id": "ear_r",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 27,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hood_shell"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 6, \"objects\": 6, \"polygons\": 268, \"triangles\": 280, \"vertices\": 156}"
+      ],
+      "artifacts": [
+        "ear_edge_folio_R_00",
+        "ear_edge_folio_R_01",
+        "ear_edge_folio_R_02",
+        "ear_edge_folio_R_03",
+        "ear_quantum_inset_R",
+        "ear_shell_R"
+      ],
+      "metrics": {
+        "objects": 6,
+        "meshes": 6,
+        "vertices": 156,
+        "polygons": 268,
+        "triangles": 280
+      }
+    },
+    {
+      "id": "hood_rim",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 28,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hood_shell"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 19, \"objects\": 19, \"polygons\": 1836, \"triangles\": 3672, \"vertices\": 1872}"
+      ],
+      "artifacts": [
+        "hood_aperture_current",
+        "hood_front_rim_00",
+        "hood_front_rim_01",
+        "hood_front_rim_02",
+        "hood_front_rim_03",
+        "hood_front_rim_04",
+        "hood_front_rim_05",
+        "hood_front_rim_06",
+        "hood_front_rim_07",
+        "hood_front_rim_08",
+        "hood_front_rim_09",
+        "hood_front_rim_10",
+        "hood_front_rim_11",
+        "hood_front_rim_12",
+        "hood_front_rim_13",
+        "hood_front_rim_14",
+        "hood_front_rim_15",
+        "hood_front_rim_16",
+        "hood_front_rim_17"
+      ],
+      "metrics": {
+        "objects": 19,
+        "meshes": 19,
+        "vertices": 1872,
+        "polygons": 1836,
+        "triangles": 3672
+      }
+    },
+    {
+      "id": "face",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 29,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hood_rim"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 1, \"objects\": 1, \"polygons\": 2560, \"triangles\": 4992, \"vertices\": 2498}"
+      ],
+      "artifacts": [
+        "face_receptive_void"
+      ],
+      "metrics": {
+        "objects": 1,
+        "meshes": 1,
+        "vertices": 2498,
+        "polygons": 2560,
+        "triangles": 4992
+      }
+    },
+    {
+      "id": "eyes",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 30,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "face"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 7, \"objects\": 7, \"polygons\": 9776, \"triangles\": 18992, \"vertices\": 9504}"
+      ],
+      "artifacts": [
+        "face_electron_nucleus",
+        "face_electron_orbit_a",
+        "face_electron_orbit_b",
+        "face_hadron_orbit",
+        "face_quark_1",
+        "face_quark_2",
+        "face_quark_3"
+      ],
+      "metrics": {
+        "objects": 7,
+        "meshes": 7,
+        "vertices": 9504,
+        "polygons": 9776,
+        "triangles": 18992
+      }
+    },
+    {
+      "id": "face_particles",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 31,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "face"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 3, \"objects\": 3, \"polygons\": 240, \"triangles\": 240, \"vertices\": 126}"
+      ],
+      "artifacts": [
+        "face_muzzle_quark_1",
+        "face_muzzle_quark_2",
+        "face_muzzle_quark_3"
+      ],
+      "metrics": {
+        "objects": 3,
+        "meshes": 3,
+        "vertices": 126,
+        "polygons": 240,
+        "triangles": 240
+      }
+    },
+    {
+      "id": "tail",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 32,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "rig"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 1, \"objects\": 1, \"polygons\": 1332, \"triangles\": 2664, \"vertices\": 1344}"
+      ],
+      "artifacts": [
+        "tail_obsidian_core"
+      ],
+      "metrics": {
+        "objects": 1,
+        "meshes": 1,
+        "vertices": 1344,
+        "polygons": 1332,
+        "triangles": 2664
+      }
+    },
+    {
+      "id": "tail_folios",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 33,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "tail"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 126, \"objects\": 126, \"polygons\": 8064, \"triangles\": 8064, \"vertices\": 4410}"
+      ],
+      "artifacts": [
+        "tail_folio_00_00_00",
+        "tail_folio_00_00_01",
+        "tail_folio_00_00_02",
+        "tail_folio_00_00_03",
+        "tail_folio_00_00_04",
+        "tail_folio_00_00_05",
+        "tail_folio_00_00_06",
+        "tail_folio_00_00_07",
+        "tail_folio_00_00_08",
+        "tail_folio_00_01_00",
+        "tail_folio_00_01_01",
+        "tail_folio_00_01_02",
+        "tail_folio_00_01_03",
+        "tail_folio_00_01_04",
+        "tail_folio_00_01_05",
+        "tail_folio_00_01_06",
+        "tail_folio_00_01_07",
+        "tail_folio_00_01_08",
+        "tail_folio_01_00_00",
+        "tail_folio_01_00_01",
+        "tail_folio_01_00_02",
+        "tail_folio_01_00_03",
+        "tail_folio_01_00_04",
+        "tail_folio_01_00_05",
+        "tail_folio_01_00_06",
+        "tail_folio_01_00_07",
+        "tail_folio_01_00_08",
+        "tail_folio_01_01_00",
+        "tail_folio_01_01_01",
+        "tail_folio_01_01_02",
+        "tail_folio_01_01_03",
+        "tail_folio_01_01_04",
+        "tail_folio_01_01_05",
+        "tail_folio_01_01_06",
+        "tail_folio_01_01_07",
+        "tail_folio_01_01_08",
+        "tail_folio_02_00_00",
+        "tail_folio_02_00_01",
+        "tail_folio_02_00_02",
+        "tail_folio_02_00_03",
+        "tail_folio_02_00_04",
+        "tail_folio_02_00_05",
+        "tail_folio_02_00_06",
+        "tail_folio_02_00_07",
+        "tail_folio_02_00_08",
+        "tail_folio_02_01_00",
+        "tail_folio_02_01_01",
+        "tail_folio_02_01_02",
+        "tail_folio_02_01_03",
+        "tail_folio_02_01_04",
+        "tail_folio_02_01_05",
+        "tail_folio_02_01_06",
+        "tail_folio_02_01_07",
+        "tail_folio_02_01_08",
+        "tail_folio_03_00_00",
+        "tail_folio_03_00_01",
+        "tail_folio_03_00_02",
+        "tail_folio_03_00_03",
+        "tail_folio_03_00_04",
+        "tail_folio_03_00_05",
+        "tail_folio_03_00_06",
+        "tail_folio_03_00_07",
+        "tail_folio_03_00_08",
+        "tail_folio_03_01_00",
+        "tail_folio_03_01_01",
+        "tail_folio_03_01_02",
+        "tail_folio_03_01_03",
+        "tail_folio_03_01_04",
+        "tail_folio_03_01_05",
+        "tail_folio_03_01_06",
+        "tail_folio_03_01_07",
+        "tail_folio_03_01_08",
+        "tail_folio_04_00_00",
+        "tail_folio_04_00_01",
+        "tail_folio_04_00_02",
+        "tail_folio_04_00_03",
+        "tail_folio_04_00_04",
+        "tail_folio_04_00_05",
+        "tail_folio_04_00_06",
+        "tail_folio_04_00_07",
+        "tail_folio_04_00_08",
+        "tail_folio_04_01_00",
+        "tail_folio_04_01_01",
+        "tail_folio_04_01_02",
+        "tail_folio_04_01_03",
+        "tail_folio_04_01_04",
+        "tail_folio_04_01_05",
+        "tail_folio_04_01_06",
+        "tail_folio_04_01_07",
+        "tail_folio_04_01_08",
+        "tail_folio_05_00_00",
+        "tail_folio_05_00_01",
+        "tail_folio_05_00_02",
+        "tail_folio_05_00_03",
+        "tail_folio_05_00_04",
+        "tail_folio_05_00_05",
+        "tail_folio_05_00_06",
+        "tail_folio_05_00_07",
+        "tail_folio_05_00_08",
+        "tail_folio_05_01_00",
+        "tail_folio_05_01_01",
+        "tail_folio_05_01_02",
+        "tail_folio_05_01_03",
+        "tail_folio_05_01_04",
+        "tail_folio_05_01_05",
+        "tail_folio_05_01_06",
+        "tail_folio_05_01_07",
+        "tail_folio_05_01_08",
+        "tail_folio_06_00_00",
+        "tail_folio_06_00_01",
+        "tail_folio_06_00_02",
+        "tail_folio_06_00_03",
+        "tail_folio_06_00_04",
+        "tail_folio_06_00_05",
+        "tail_folio_06_00_06",
+        "tail_folio_06_00_07",
+        "tail_folio_06_00_08",
+        "tail_folio_06_01_00",
+        "tail_folio_06_01_01",
+        "tail_folio_06_01_02",
+        "tail_folio_06_01_03",
+        "tail_folio_06_01_04",
+        "tail_folio_06_01_05",
+        "tail_folio_06_01_06",
+        "tail_folio_06_01_07",
+        "tail_folio_06_01_08"
+      ],
+      "metrics": {
+        "objects": 126,
+        "meshes": 126,
+        "vertices": 4410,
+        "polygons": 8064,
+        "triangles": 8064
+      }
+    },
+    {
+      "id": "staff",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 34,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "hand",
+        "finger_l"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 48, \"objects\": 48, \"polygons\": 65800, \"triangles\": 130360, \"vertices\": 65346}"
+      ],
+      "artifacts": [
+        "staff_core_spoke_00",
+        "staff_core_spoke_01",
+        "staff_core_spoke_02",
+        "staff_counterwound_filament_00",
+        "staff_counterwound_filament_01",
+        "staff_cyan_conductive_inlay",
+        "staff_ferrule_00",
+        "staff_ferrule_01",
+        "staff_ferrule_02",
+        "staff_ferrule_03",
+        "staff_grip_braid_00",
+        "staff_grip_braid_01",
+        "staff_grip_braid_02",
+        "staff_grip_collar_00",
+        "staff_grip_collar_01",
+        "staff_grip_obsidian_sleeve",
+        "staff_grounding_claw_00",
+        "staff_grounding_claw_01",
+        "staff_grounding_claw_02",
+        "staff_grounding_evidence_mote",
+        "staff_grounding_ferrule",
+        "staff_memory_index_shard_00",
+        "staff_memory_index_shard_01",
+        "staff_memory_index_shard_02",
+        "staff_memory_index_shard_03",
+        "staff_memory_index_shard_04",
+        "staff_memory_index_shard_05",
+        "staff_memory_index_shard_06",
+        "staff_obsidian_shaft",
+        "staff_orbital_quark_00",
+        "staff_orbital_quark_01",
+        "staff_orbital_quark_02",
+        "staff_probability_cage_inner",
+        "staff_probability_cage_meridian",
+        "staff_probability_cage_middle",
+        "staff_probability_cage_outer",
+        "staff_probability_lens_blade_00",
+        "staff_probability_lens_blade_01",
+        "staff_probability_lens_blade_02",
+        "staff_probability_lens_blade_03",
+        "staff_probability_lens_blade_04",
+        "staff_probability_lens_blade_05",
+        "staff_probability_yoke_L",
+        "staff_probability_yoke_R",
+        "staff_probability_yoke_tip_L",
+        "staff_probability_yoke_tip_R",
+        "staff_signal_core",
+        "staff_signal_core_shell"
+      ],
+      "metrics": {
+        "objects": 48,
+        "meshes": 48,
+        "vertices": 65346,
+        "polygons": 65800,
+        "triangles": 130360
+      }
+    },
+    {
+      "id": "seal",
+      "kind": "mesh",
+      "parent": "asset",
+      "stage": 35,
+      "generator": "procedural-piece-assembly",
+      "dependsOn": [
+        "torso_lattice"
+      ],
+      "attachments": [
+        {
+          "to": "rig",
+          "interface": "armature:declared-bone",
+          "mode": "rigid-skin"
+        }
+      ],
+      "parameters": {},
+      "acceptance": {
+        "required": [
+          "nonempty",
+          "finite-transform",
+          "applied-scale"
+        ],
+        "visual": [
+          "module addressed in turnaround and exploded view"
+        ]
+      },
+      "status": "validated",
+      "notes": [
+        "Blender build completed: {\"meshes\": 2, \"objects\": 2, \"polygons\": 16, \"triangles\": 40, \"vertices\": 24}"
+      ],
+      "artifacts": [
+        "evidence_seal_hex_mount",
+        "single_amber_evidence_seal"
+      ],
+      "metrics": {
+        "objects": 2,
+        "meshes": 2,
+        "vertices": 24,
+        "polygons": 16,
+        "triangles": 40
+      }
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "identity-turnaround",
+      "after": [
+        "body",
+        "head",
+        "torso_lattice",
+        "torso_current",
+        "limb",
+        "hand",
+        "hock",
+        "metatarsal",
+        "foot",
+        "toe",
+        "talon",
+        "leg_tendon",
+        "sleeve_l",
+        "sleeve_r",
+        "finger_l",
+        "finger_r",
+        "mantle_back",
+        "mantle_lapel_l",
+        "mantle_lapel_r",
+        "collar",
+        "wing_l",
+        "wing_r",
+        "hood_shell",
+        "hood_folios",
+        "ear_l",
+        "ear_r",
+        "hood_rim",
+        "face",
+        "eyes",
+        "face_particles",
+        "tail",
+        "tail_folios",
+        "staff",
+        "seal"
+      ],
+      "requiredViews": [
+        "front",
+        "three-quarter",
+        "back",
+        "detail",
+        "staff-detail",
+        "lower-body",
+        "leg-anatomy",
+        "skeleton",
+        "exploded"
+      ],
+      "validators": [
+        "manifest",
+        "geometry",
+        "visual"
+      ],
+      "status": "fail",
+      "renders": {
+        "back": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-back.png",
+        "detail": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-detail.png",
+        "exploded": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-exploded.png",
+        "front": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-front.png",
+        "leg-anatomy": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-leg-anatomy.png",
+        "lower-body": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-lower-body.png",
+        "skeleton": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-skeleton.png",
+        "staff-detail": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-staff-detail.png",
+        "three-quarter": "/home/u/work/digitmorf-highpoly-v2/archivist-a-modular-v19/digitmorf-archivist-a-modular-v19-three-quarter.png"
+      },
+      "notes": [
+        "Automated geometry gates passed; external visual approval is still pending."
+      ]
+    }
+  ],
+  "metadata": {
+    "sourcePrompt": "Archivist A approved turnaround",
+    "referenceImages": [
+      "/home/u/work/digitmorf-highpoly-v2/references/archivist-a-turnaround-v1.png"
+    ],
+    "targetRuntime": "courses.digitable.life/digit"
+  }
+}

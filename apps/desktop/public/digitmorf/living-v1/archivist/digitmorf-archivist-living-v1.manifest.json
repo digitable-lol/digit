@@ -1,6 +1,6 @@
 {
   "schema": "digitmorf-living-form/v2",
-  "status": "visual-approval-candidate",
+  "status": "approved-modular-hero",
   "version": 19,
   "form": "Archivist",
   "role": "structured knowledge",
@@ -18,7 +18,8 @@
   "rig": {
     "type": "armature/v2",
     "name": "RIG_Archivist_A_anatomical_armature",
-    "bones": 44
+    "bones": 44,
+    "geometryBound": true
   },
   "clips": {
     "idle": "digitmorf_idle",
@@ -26,7 +27,7 @@
     "active": "digitmorf_inspect",
     "form_resonance": "digitmorf_form_resonance"
   },
-  "transition": "true-cross-form-morph-pending",
+  "transition": "evidence-seal-collapse-crossfade/v2",
   "form_graph": {
     "validated_modules": 36,
     "purpose": "assembly graph; module count is not a morph count"
@@ -52,6 +53,6 @@
     "clean_glb_import": true,
     "animations_after_import": 4,
     "embedded_images_after_import": 1,
-    "external_visual_approval": "pending"
+    "external_visual_approval": "approved"
   }
 }

@@ -1,6 +1,7 @@
 {
-  "schema": "digitmorf-living-form/v1",
-  "status": "work-in-progress",
+  "schema": "digitmorf-living-form/v2",
+  "status": "approved-modular-hero",
+  "version": 24,
   "form": "Trace",
   "role": "memory and movement",
   "family": "otter-salamander-sighthound",
@@ -13,34 +14,56 @@
     "smoky_glass_tissue",
     "silver_boundary"
   ],
-  "rig": "transform-node/v1",
-  "clips": {
-    "idle": [
-      1,
-      48
-    ],
-    "attention": [
-      61,
-      100
-    ],
-    "active": [
-      121,
-      180
-    ],
-    "morph_out": [
-      201,
-      240
-    ],
-    "morph_in": [
-      241,
-      280
-    ]
+  "construction": "continuous retopologised anatomy plus independently named rigid-skinned semantic modules",
+  "rig": {
+    "type": "semantic-armature/v22",
+    "name": "RIG_Digitmorf_Trace_v24",
+    "bones": 8,
+    "geometryBound": true
   },
-  "transition": "seal-collapse-crossfade/v1",
-  "objects": 64,
-  "mesh_objects": 57,
-  "vertices": 2528,
-  "triangles": 4804,
+  "clips": {
+    "idle": "digitmorf_idle",
+    "attention": "digitmorf_attention",
+    "active": "digitmorf_inspect",
+    "form_resonance": "digitmorf_form_resonance"
+  },
+  "transition": "evidence-seal-collapse-crossfade/v2",
+  "form_graph": {
+    "modules": 20,
+    "purpose": "assembly graph; module count is not a morph count"
+  },
+  "geometry": {
+    "meshObjects": 20,
+    "vertices": 82706,
+    "triangles": 165716
+  },
+  "cleanup": {
+    "detachedIslandsRemoved": 2,
+    "underbodyTargetTriangles": 160000
+  },
+  "runtime": "digitmorf-trace-living-v1.glb",
+  "runtime_bytes": 5909144,
+  "runtime_sha256": "2717d4f856569469e993e0c02053d6bb0e95082e51b1e07270992a0ed7894af5",
   "source": "digitmorf-trace-living-v1.blend",
-  "runtime": "digitmorf-trace-living-v1.glb"
+  "qa": {
+    "views": [
+      "digitmorf-trace-front.png",
+      "digitmorf-trace-three-quarter.png",
+      "digitmorf-trace-side.png",
+      "digitmorf-trace-back.png"
+    ],
+    "cleanGlbImport": true,
+    "importedActions": [
+      "digitmorf_attention",
+      "digitmorf_form_resonance",
+      "digitmorf_idle",
+      "digitmorf_inspect"
+    ],
+    "importedMeshObjects": 21,
+    "importedTriangles": 165716,
+    "unboundMeshObjects": [],
+    "ignoredBlenderImportHelpers": [
+      "Icosphere"
+    ]
+  }
 }

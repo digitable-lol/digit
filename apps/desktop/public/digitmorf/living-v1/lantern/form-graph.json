@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 2,
+  "form": "lantern",
+  "heroVersion": 24,
+  "identityAnchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "modules": [
+    {
+      "id": "Anatomy_Lantern_continuous_underbody_v24",
+      "module": "anatomical_underbody",
+      "bone": "body"
+    },
+    {
+      "id": "Lantern_face_void_mask",
+      "module": "face_void",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gaze_boundary",
+      "module": "quantum_orbit",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_electron_orbit_A",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Lantern_electron_orbit_B",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Lantern_quark_1",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Lantern_quark_2",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Lantern_quark_3",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Lantern_evidence_cube_boundary",
+      "module": "evidence_seal_boundary",
+      "bone": "seal"
+    },
+    {
+      "id": "Lantern_evidence_cube_amber",
+      "module": "evidence_seal_core",
+      "bone": "seal"
+    },
+    {
+      "id": "Lantern_D_current_main",
+      "module": "d_current",
+      "bone": "body"
+    },
+    {
+      "id": "Lantern_current_node_01",
+      "module": "current_node",
+      "bone": "body"
+    },
+    {
+      "id": "Lantern_gill_light_-1_01",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_-1_01",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_-1_02",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_-1_02",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_-1_03",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_-1_03",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_-1_04",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_-1_04",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_-1_05",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_-1_05",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_-1_06",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_-1_06",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_-1_07",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_-1_07",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_1_01",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_1_01",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_1_02",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_1_02",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_1_03",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_1_03",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_1_04",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_1_04",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_1_05",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_1_05",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_1_06",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_1_06",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_light_1_07",
+      "module": "antler_gill_light",
+      "bone": "head"
+    },
+    {
+      "id": "Lantern_gill_leaf_1_07",
+      "module": "antler_gill_leaf",
+      "bone": "head"
+    }
+  ],
+  "transition": {
+    "gesture": "digitmorf_form_resonance",
+    "anchor": "evidence_seal"
+  }
+}

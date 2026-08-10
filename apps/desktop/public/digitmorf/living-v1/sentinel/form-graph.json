@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "form": "sentinel",
+  "heroVersion": 24,
+  "identityAnchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "modules": [
+    {
+      "id": "Anatomy_Sentinel_continuous_underbody_v24",
+      "module": "anatomical_underbody",
+      "bone": "body"
+    },
+    {
+      "id": "Sentinel_face_void_mask",
+      "module": "face_void",
+      "bone": "head"
+    },
+    {
+      "id": "Sentinel_gaze_boundary",
+      "module": "quantum_orbit",
+      "bone": "head"
+    },
+    {
+      "id": "Sentinel_electron_orbit_A",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Sentinel_electron_orbit_B",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Sentinel_quark_1",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Sentinel_quark_2",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Sentinel_quark_3",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Sentinel_evidence_cube_boundary",
+      "module": "evidence_seal_boundary",
+      "bone": "seal"
+    },
+    {
+      "id": "Sentinel_evidence_cube_amber",
+      "module": "evidence_seal_core",
+      "bone": "seal"
+    },
+    {
+      "id": "Sentinel_D_current_main",
+      "module": "d_current",
+      "bone": "body"
+    },
+    {
+      "id": "Sentinel_current_node_01",
+      "module": "current_node",
+      "bone": "body"
+    }
+  ],
+  "transition": {
+    "gesture": "digitmorf_form_resonance",
+    "anchor": "evidence_seal"
+  }
+}

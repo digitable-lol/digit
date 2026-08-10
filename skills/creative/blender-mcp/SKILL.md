@@ -1,7 +1,7 @@
 ---
 name: blender-mcp
-description: Drive Blender over MCP to model, render and export 3D assets — including headless on a server with no GPU. Use when the task involves Blender, .blend files, GLB/glTF export, procedural geometry, 3D game assets, renders, or the blender-mcp addon.
-version: 1.0.0
+description: Drive Blender locally or remotely through MCP.
+version: 1.1.0
 author: Digitable
 license: MIT
 platforms: [linux, macos, windows]
@@ -86,6 +86,12 @@ protocol makes every hood panel, hand segment, tail section, prop component, and
 rig interface independently rebuildable and validated. Keep this skill as the
 transport and Blender API reference; keep the modular skill as the construction
 contract.
+
+For independent assets, use a bounded pool of localhost Blender sockets (for
+example `9876`–`9879`) and give each process a disjoint job and output
+directory. Saturate the available host only after checking VRAM and RAM
+headroom; parallel Blender scenes must not open or save the same `.blend`. The
+MCP bridge and sockets stay on the remote host behind SSH.
 
 ### Step 0: Orient before building
 
@@ -228,6 +234,9 @@ Before a GLB replaces procedural geometry in a running game:
 - [ ] the procedural or simplified fallback still works when the asset fails to
       load;
 - [ ] frame time and bundle-size deltas recorded.
+- [ ] the exported GLB was imported into a scene isolated from earlier MCP
+      jobs; expected armatures and named actions survived and every authored
+      runtime mesh is attached to its declared rig.
 
 ## Pitfalls
 
