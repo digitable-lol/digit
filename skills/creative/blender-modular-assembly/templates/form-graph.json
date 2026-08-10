@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "id": "modular-character",
+  "units": "m",
+  "coordinateSystem": "Z_UP",
+  "rootModule": "character",
+  "modules": [
+    {
+      "id": "character",
+      "kind": "assembly",
+      "parent": null,
+      "stage": 0,
+      "generator": "composition",
+      "dependsOn": [],
+      "attachments": [],
+      "parameters": {},
+      "acceptance": {"required": ["named-hierarchy"], "visual": ["approved silhouette"]},
+      "status": "planned",
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "rig",
+      "kind": "rig",
+      "parent": "character",
+      "stage": 1,
+      "generator": "armature",
+      "dependsOn": [],
+      "attachments": [],
+      "parameters": {"rootAtBase": true},
+      "acceptance": {"required": ["nonempty", "finite-transform"], "visual": ["proportions match blockout"]},
+      "status": "planned",
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "blockout",
+      "kind": "mesh",
+      "parent": "character",
+      "stage": 1,
+      "generator": "massing-volumes",
+      "dependsOn": ["rig"],
+      "attachments": [{"to": "rig", "interface": "bone:root", "mode": "rigid-skin"}],
+      "parameters": {},
+      "acceptance": {"required": ["nonempty", "finite-transform"], "visual": ["front side and back silhouettes pass"]},
+      "status": "planned",
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "head",
+      "kind": "assembly",
+      "parent": "character",
+      "stage": 2,
+      "generator": "composition",
+      "dependsOn": ["blockout"],
+      "attachments": [{"to": "rig", "interface": "bone:head", "mode": "rigid-skin"}],
+      "parameters": {},
+      "acceptance": {"required": ["named-hierarchy"], "visual": ["identity reads at runtime size"]},
+      "status": "planned",
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "cloak",
+      "kind": "assembly",
+      "parent": "character",
+      "stage": 2,
+      "generator": "layered-folios",
+      "dependsOn": ["blockout"],
+      "attachments": [{"to": "rig", "interface": "bone:chest", "mode": "deform"}],
+      "parameters": {"layers": 12},
+      "acceptance": {"required": ["nonempty", "applied-scale"], "visual": ["layer order and outer silhouette pass"]},
+      "status": "planned",
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "tail",
+      "kind": "assembly",
+      "parent": "character",
+      "stage": 2,
+      "generator": "bone-chain-with-folios",
+      "dependsOn": ["rig", "blockout"],
+      "attachments": [{"to": "rig", "interface": "bone:pelvis", "mode": "deform"}],
+      "parameters": {"segments": 5},
+      "acceptance": {"required": ["nonempty", "finite-transform"], "visual": ["continuous curl without detached clusters"]},
+      "status": "planned",
+      "notes": [],
+      "artifacts": []
+    },
+    {
+      "id": "prop",
+      "kind": "assembly",
+      "parent": "character",
+      "stage": 2,
+      "generator": "segmented-prop",
+      "dependsOn": ["rig", "blockout"],
+      "attachments": [{"to": "rig", "interface": "socket:hand-grip", "mode": "constraint"}],
+      "parameters": {},
+      "acceptance": {"required": ["nonempty", "applied-scale"], "visual": ["grip contact and readable silhouette"]},
+      "status": "planned",
+      "notes": [],
+      "artifacts": []
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "blockout-turnaround",
+      "after": ["blockout"],
+      "requiredViews": ["front", "side", "three-quarter", "back"],
+      "validators": ["manifest", "geometry", "visual"],
+      "status": "pending",
+      "renders": {},
+      "notes": []
+    },
+    {
+      "id": "identity-turnaround",
+      "after": ["head", "cloak", "tail", "prop"],
+      "requiredViews": ["front", "side", "three-quarter", "back", "detail", "exploded"],
+      "validators": ["manifest", "geometry", "visual"],
+      "status": "pending",
+      "renders": {},
+      "notes": []
+    }
+  ],
+  "metadata": {"sourcePrompt": "", "referenceImages": [], "targetRuntime": ""}
+}

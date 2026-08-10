@@ -2,6 +2,7 @@
   "schema": "digitmorf-living-pack/v1",
   "status": "work-in-progress",
   "productionDefault": false,
+  "reviewDefault": "archivist",
   "forms": [
     {
       "id": "core",
@@ -24,8 +25,12 @@
     {
       "id": "archivist",
       "role": "structured knowledge",
-      "family": "owl-lynx",
-      "bodyPlan": "anthropomorphic"
+      "family": "owl-lynx-quantum-archivist",
+      "bodyPlan": "anthropomorphic-digitigrade",
+      "assetTier": "hero-review",
+      "version": 19,
+      "trianglesBeforeModifiers": 238520,
+      "bones": 44
     },
     {
       "id": "weaver",
@@ -67,6 +72,14 @@
     "morph_out": [201, 240],
     "morph_in": [241, 280]
   },
+  "perFormClipContracts": {
+    "archivist": {
+      "idle": "digitmorf_idle",
+      "attention": "digitmorf_attention",
+      "active": "digitmorf_inspect",
+      "form_resonance": "digitmorf_form_resonance"
+    }
+  },
   "transition": "seal-collapse-crossfade/v1",
   "morphspace": {
     "runtime": "morphspace/digitmorf-living-morphspace-v1.glb",
@@ -74,5 +87,5 @@
     "frames": 481,
     "fps": 24
   },
-  "notes": "Experimental Blender blockouts. The approved 2D living-form atlas remains the visual target; digitmorf-morphrig-v1.glb remains the production default."
+  "notes": "Archivist v19 is the first high-poly hero review asset and the default Blender Lab form. The other seven forms remain experimental blockouts; digitmorf-morphrig-v1.glb remains the cross-form production default until true transitions are implemented."
 }

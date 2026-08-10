@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blender Modular Assembly"
+  short_description: "Build complex 3D assets from validated modules"
+  default_prompt: "Use $blender-modular-assembly to decompose this concept into small Blender modules, assemble it incrementally, and validate every checkpoint."
