@@ -1,149 +1,201 @@
 {
-  "schema": "digitmorf-living-pack-validation/v1",
-  "root": "living-results-v1/remote-output",
+  "schema": "digitmorf-living-pack-validation/v2",
+  "status": "approved-modular-hero",
   "passed": true,
   "forms": [
     {
-      "form": "Core",
+      "form": "core",
       "passed": true,
       "failures": [],
-      "glb": "living-results-v1/remote-output/core/digitmorf-core-living-v1.glb",
-      "glb_bytes": 231700,
-      "glb_sha256": "d32783db575cabe0c622d0c58124965fe950fb82f89158931fdb2320c032c4df",
-      "blend": "living-results-v1/remote-output/core/digitmorf-core-living-v1.blend",
-      "blend_bytes": 183811,
-      "nodes": 88,
-      "meshes": 81,
-      "materials": 7,
-      "animations": 3,
-      "animation_channels": 5
+      "sourceVersion": 24,
+      "glb": "core/digitmorf-core-living-v1.glb",
+      "glbBytes": 6578108,
+      "glbSha256": "5f5d54d4c063cdfc856e3f25c86dfb1963678ef6c1c53c21f2edd73a2ce6e044",
+      "meshObjects": 15,
+      "triangles": 184939,
+      "armatures": 1,
+      "bones": 8,
+      "actions": [
+        "digitmorf_attention",
+        "digitmorf_form_resonance",
+        "digitmorf_idle",
+        "digitmorf_inspect"
+      ],
+      "geometryBound": true,
+      "ignoredBlenderImportHelpers": [
+        "Icosphere"
+      ]
     },
     {
-      "form": "Cursor",
+      "form": "cursor",
       "passed": true,
       "failures": [],
-      "glb": "living-results-v1/remote-output/cursor/digitmorf-cursor-living-v1.glb",
-      "glb_bytes": 193948,
-      "glb_sha256": "c1823a6af4088f4b449698ba4aaca40c0b4486cceef60d025359090bbfcc2445",
-      "blend": "living-results-v1/remote-output/cursor/digitmorf-cursor-living-v1.blend",
-      "blend_bytes": 174106,
-      "nodes": 60,
-      "meshes": 53,
-      "materials": 7,
-      "animations": 3,
-      "animation_channels": 5
+      "sourceVersion": 24,
+      "glb": "cursor/digitmorf-cursor-living-v1.glb",
+      "glbBytes": 5368180,
+      "glbSha256": "945c124b495787dd26e185a4ad090dc834d6341ac554dcdc88caf71fa0cc8a53",
+      "meshObjects": 13,
+      "triangles": 149916,
+      "armatures": 1,
+      "bones": 8,
+      "actions": [
+        "digitmorf_attention",
+        "digitmorf_form_resonance",
+        "digitmorf_idle",
+        "digitmorf_inspect"
+      ],
+      "geometryBound": true,
+      "ignoredBlenderImportHelpers": [
+        "Icosphere"
+      ]
     },
     {
-      "form": "Trace",
+      "form": "trace",
       "passed": true,
       "failures": [],
-      "glb": "living-results-v1/remote-output/trace/digitmorf-trace-living-v1.glb",
-      "glb_bytes": 205148,
-      "glb_sha256": "ad50b103078ca721b24a73b32477e298b2bc30863f22f955c025332d7ce784f7",
-      "blend": "living-results-v1/remote-output/trace/digitmorf-trace-living-v1.blend",
-      "blend_bytes": 176506,
-      "nodes": 64,
-      "meshes": 57,
-      "materials": 7,
-      "animations": 3,
-      "animation_channels": 5
+      "sourceVersion": 24,
+      "glb": "trace/digitmorf-trace-living-v1.glb",
+      "glbBytes": 5909144,
+      "glbSha256": "2717d4f856569469e993e0c02053d6bb0e95082e51b1e07270992a0ed7894af5",
+      "meshObjects": 21,
+      "triangles": 165716,
+      "armatures": 1,
+      "bones": 8,
+      "actions": [
+        "digitmorf_attention",
+        "digitmorf_form_resonance",
+        "digitmorf_idle",
+        "digitmorf_inspect"
+      ],
+      "geometryBound": true,
+      "ignoredBlenderImportHelpers": [
+        "Icosphere"
+      ]
     },
     {
-      "form": "Archivist",
+      "form": "archivist",
       "passed": true,
       "failures": [],
-      "quality_tier": "hero-review",
-      "version": 19,
-      "glb": "living-v1/archivist/digitmorf-archivist-living-v1.glb",
-      "glb_bytes": 13556752,
-      "glb_sha256": "e9532401009f8442af10fd5126ed3f9d7757bf6c04c37275f9190466356fc796",
-      "blend": "authoring/living-v1/source/archivist/digitmorf-archivist-living-v1.blend",
-      "blend_bytes": 4836587,
-      "nodes": 969,
-      "meshes": 922,
-      "materials": 12,
+      "sourceVersion": 19,
+      "glb": "archivist/digitmorf-archivist-living-v1.glb",
+      "glbBytes": 13556752,
+      "glbSha256": "e9532401009f8442af10fd5126ed3f9d7757bf6c04c37275f9190466356fc796",
+      "meshObjects": 922,
+      "triangles": 238520,
+      "armatures": 1,
       "bones": 44,
-      "vertices_before_modifiers": 121700,
-      "triangles_before_modifiers": 238520,
-      "animations": 4,
-      "animation_channels": 528,
-      "embedded_images": 1,
-      "clean_glb_import": true
+      "actions": [
+        "digitmorf_attention",
+        "digitmorf_form_resonance",
+        "digitmorf_idle",
+        "digitmorf_inspect"
+      ],
+      "geometryBound": true,
+      "embeddedImages": 1,
+      "validationSource": "archivist-v19 factory-empty import"
     },
     {
-      "form": "Weaver",
+      "form": "weaver",
       "passed": true,
       "failures": [],
-      "glb": "living-results-v1/remote-output/weaver/digitmorf-weaver-living-v1.glb",
-      "glb_bytes": 282736,
-      "glb_sha256": "298da64ba1598551314b395c0154a9a82c3ce776ec80788521d77da9891c04be",
-      "blend": "living-results-v1/remote-output/weaver/digitmorf-weaver-living-v1.blend",
-      "blend_bytes": 192331,
-      "nodes": 92,
-      "meshes": 81,
-      "materials": 7,
-      "animations": 4,
-      "animation_channels": 6
+      "sourceVersion": 24,
+      "glb": "weaver/digitmorf-weaver-living-v1.glb",
+      "glbBytes": 5880908,
+      "glbSha256": "29c50110eebbfbe4de058742e10010297462cf61d98681b9f892b6ad733b0b7f",
+      "meshObjects": 13,
+      "triangles": 164916,
+      "armatures": 1,
+      "bones": 8,
+      "actions": [
+        "digitmorf_attention",
+        "digitmorf_form_resonance",
+        "digitmorf_idle",
+        "digitmorf_inspect"
+      ],
+      "geometryBound": true,
+      "ignoredBlenderImportHelpers": [
+        "Icosphere"
+      ]
     },
     {
-      "form": "Forge",
+      "form": "forge",
       "passed": true,
       "failures": [],
-      "glb": "living-results-v1/remote-output/forge/digitmorf-forge-living-v1.glb",
-      "glb_bytes": 214844,
-      "glb_sha256": "4b5c605563885940b9d628c92d86f6e0d9f95ef013c1e8427c5211ff6dc7f65f",
-      "blend": "living-results-v1/remote-output/forge/digitmorf-forge-living-v1.blend",
-      "blend_bytes": 180841,
-      "nodes": 66,
-      "meshes": 59,
-      "materials": 7,
-      "animations": 4,
-      "animation_channels": 6
+      "sourceVersion": 25,
+      "glb": "forge/digitmorf-forge-living-v1.glb",
+      "glbBytes": 8738204,
+      "glbSha256": "f723a4d7be5c532e215d6d0762722c6d930476dbac79592407637ca75e0f3ad5",
+      "meshObjects": 50,
+      "triangles": 228127,
+      "armatures": 1,
+      "bones": 8,
+      "actions": [
+        "digitmorf_attention",
+        "digitmorf_form_resonance",
+        "digitmorf_idle",
+        "digitmorf_inspect"
+      ],
+      "geometryBound": true,
+      "ignoredBlenderImportHelpers": [
+        "Icosphere"
+      ]
     },
     {
-      "form": "Sentinel",
+      "form": "sentinel",
       "passed": true,
       "failures": [],
-      "glb": "living-results-v1/remote-output/sentinel/digitmorf-sentinel-living-v1.glb",
-      "glb_bytes": 227088,
-      "glb_sha256": "c168d60897394c392f19bca271645a23d85094bc91db0e1655d2d224663623cf",
-      "blend": "living-results-v1/remote-output/sentinel/digitmorf-sentinel-living-v1.blend",
-      "blend_bytes": 186275,
-      "nodes": 64,
-      "meshes": 56,
-      "materials": 7,
-      "animations": 4,
-      "animation_channels": 6
+      "sourceVersion": 24,
+      "glb": "sentinel/digitmorf-sentinel-living-v1.glb",
+      "glbBytes": 5706532,
+      "glbSha256": "a03a8775d56384b8eafeae64ab06e55061d1b7c5fb52a4437b99b06a062f6a8a",
+      "meshObjects": 13,
+      "triangles": 159916,
+      "armatures": 1,
+      "bones": 8,
+      "actions": [
+        "digitmorf_attention",
+        "digitmorf_form_resonance",
+        "digitmorf_idle",
+        "digitmorf_inspect"
+      ],
+      "geometryBound": true,
+      "ignoredBlenderImportHelpers": [
+        "Icosphere"
+      ]
     },
     {
-      "form": "Lantern",
+      "form": "lantern",
       "passed": true,
       "failures": [],
-      "glb": "living-results-v1/remote-output/lantern/digitmorf-lantern-living-v1.glb",
-      "glb_bytes": 232524,
-      "glb_sha256": "f2d0914559792e7e68f398e15e5ba824bd011312076bbe02531003bc3f15f726",
-      "blend": "living-results-v1/remote-output/lantern/digitmorf-lantern-living-v1.blend",
-      "blend_bytes": 187155,
-      "nodes": 68,
-      "meshes": 60,
-      "materials": 7,
-      "animations": 4,
-      "animation_channels": 6
+      "sourceVersion": 24,
+      "glb": "lantern/digitmorf-lantern-living-v1.glb",
+      "glbBytes": 5565748,
+      "glbSha256": "42100f883e747557e2d3bb01a3f448e8e34e237c8d4a7cb09e490a4f4f211b58",
+      "meshObjects": 41,
+      "triangles": 154564,
+      "armatures": 1,
+      "bones": 8,
+      "actions": [
+        "digitmorf_attention",
+        "digitmorf_form_resonance",
+        "digitmorf_idle",
+        "digitmorf_inspect"
+      ],
+      "geometryBound": true,
+      "ignoredBlenderImportHelpers": [
+        "Icosphere"
+      ]
     }
   ],
-  "morphspace": {
-    "passed": true,
-    "failures": [],
-    "glb": "living-results-v1/remote-output/morphspace/digitmorf-living-morphspace-v1.glb",
-    "glb_bytes": 1627812,
-    "glb_sha256": "8bac4c9f5805fdc043ffdf75befdc742b67aeffe7c2abf22115913d6e0af5a0f",
-    "blend": "living-results-v1/remote-output/morphspace/digitmorf-living-morphspace-v1.blend",
-    "blend_bytes": 694155,
-    "nodes": 570,
-    "meshes": 506,
-    "materials": 49,
-    "animations": 8,
-    "animation_channels": 8,
-    "frame_end": 481
+  "contracts": {
+    "minimumRuntimeTriangles": 100000,
+    "semanticBones": 8,
+    "requiredActions": [
+      "digitmorf_attention",
+      "digitmorf_form_resonance",
+      "digitmorf_idle",
+      "digitmorf_inspect"
+    ],
+    "allGeometryRigBound": true
   }
 }

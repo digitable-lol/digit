@@ -11,22 +11,26 @@ export const DIGITMORF_FORMS = [
   'lantern'
 ] as const satisfies readonly DigitmorfForm[]
 
-/**
- * Separately authored Blender body plans. These are opt-in WIP assets and do
- * not replace the fixed-topology production rig used by DigitmorfPet.
- */
-export const DIGITMORF_LIVING_PACK_STATUS = 'work-in-progress' as const
+/** Separately authored production body plans used by DigitmorfPet. */
+export const DIGITMORF_LIVING_PACK_STATUS = 'approved-modular-hero' as const
 
 export const DIGITMORF_LIVING_CLIPS = {
-  active: [121, 180],
-  attention: [61, 100],
-  idle: [1, 48],
-  morph_in: [241, 280],
-  morph_out: [201, 240]
+  active: 'digitmorf_inspect',
+  attention: 'digitmorf_attention',
+  idle: 'digitmorf_idle',
+  formResonance: 'digitmorf_form_resonance'
 } as const
+
+export const DIGITMORF_LIVING_TRANSITION = 'evidence-seal-collapse-crossfade/v2' as const
 
 export const digitmorfLivingAssetRelativePath = (form: DigitmorfForm) =>
   `digitmorf/living-v1/${form}/digitmorf-${form}-living-v1.glb`
+
+export const digitmorfLivingManifestRelativePath = (form: DigitmorfForm) =>
+  `digitmorf/living-v1/${form}/digitmorf-${form}-living-v1.manifest.json`
+
+export const digitmorfLivingFormGraphRelativePath = (form: DigitmorfForm) =>
+  `digitmorf/living-v1/${form}/form-graph.json`
 
 export const DIGITMORF_MORPH_TARGET_NAMES: Readonly<Record<Exclude<DigitmorfForm, 'core'>, string>> = {
   cursor: 'Cursor',
@@ -51,6 +55,22 @@ export const DIGITMORF_MOTION_SEMANTICS = [
 ] as const
 
 export type DigitmorfMotionSemantic = (typeof DIGITMORF_MOTION_SEMANTICS)[number]
+
+export function digitmorfClipForMotion(semantic: DigitmorfMotionSemantic) {
+  if (semantic === 'failed' || semantic === 'waving' || semantic === 'waiting') {
+    return DIGITMORF_LIVING_CLIPS.attention
+  }
+
+  if (semantic === 'jumping') {
+    return DIGITMORF_LIVING_CLIPS.formResonance
+  }
+
+  if (semantic === 'running' || semantic === 'running-left' || semantic === 'running-right' || semantic === 'review') {
+    return DIGITMORF_LIVING_CLIPS.active
+  }
+
+  return DIGITMORF_LIVING_CLIPS.idle
+}
 
 export const DIGITMORF_LOOK_DIRECTIONS = [
   'n',

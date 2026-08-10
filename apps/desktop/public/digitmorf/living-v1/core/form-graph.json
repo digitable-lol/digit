@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 2,
+  "form": "core",
+  "heroVersion": 24,
+  "identityAnchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "modules": [
+    {
+      "id": "Anatomy_Core_continuous_underbody_v24",
+      "module": "anatomical_underbody",
+      "bone": "body"
+    },
+    {
+      "id": "Core_face_void_mask",
+      "module": "face_void",
+      "bone": "head"
+    },
+    {
+      "id": "Core_gaze_boundary",
+      "module": "quantum_orbit",
+      "bone": "head"
+    },
+    {
+      "id": "Core_electron_orbit_A",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Core_electron_orbit_B",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Core_quark_1",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Core_quark_2",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Core_quark_3",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Core_evidence_cube_boundary",
+      "module": "evidence_seal_boundary",
+      "bone": "seal"
+    },
+    {
+      "id": "Core_evidence_cube_amber",
+      "module": "evidence_seal_core",
+      "bone": "seal"
+    },
+    {
+      "id": "Core_D_current_main",
+      "module": "d_current",
+      "bone": "body"
+    },
+    {
+      "id": "Core_current_node_01",
+      "module": "current_node",
+      "bone": "body"
+    },
+    {
+      "id": "Core_quantum_auricle_L",
+      "module": "pangolin_manta_auricle",
+      "bone": "head"
+    },
+    {
+      "id": "Core_quantum_auricle_R",
+      "module": "pangolin_manta_auricle",
+      "bone": "head"
+    }
+  ],
+  "transition": {
+    "gesture": "digitmorf_form_resonance",
+    "anchor": "evidence_seal"
+  }
+}

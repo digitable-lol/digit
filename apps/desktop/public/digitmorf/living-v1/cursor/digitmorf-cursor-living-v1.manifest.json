@@ -1,10 +1,11 @@
 {
-  "schema": "digitmorf-living-form/v1",
-  "status": "work-in-progress",
+  "schema": "digitmorf-living-form/v2",
+  "status": "approved-modular-hero",
+  "version": 24,
   "form": "Cursor",
   "role": "intent and direction",
   "family": "fox-hare-heron",
-  "body_plan": "digitigrade",
+  "body_plan": "digitigrade-biped",
   "identity_anchors": [
     "face_void",
     "quantum_gaze",
@@ -13,34 +14,56 @@
     "smoky_glass_tissue",
     "silver_boundary"
   ],
-  "rig": "transform-node/v1",
-  "clips": {
-    "idle": [
-      1,
-      48
-    ],
-    "attention": [
-      61,
-      100
-    ],
-    "active": [
-      121,
-      180
-    ],
-    "morph_out": [
-      201,
-      240
-    ],
-    "morph_in": [
-      241,
-      280
-    ]
+  "construction": "continuous retopologised anatomy plus independently named rigid-skinned semantic modules",
+  "rig": {
+    "type": "semantic-armature/v22",
+    "name": "RIG_Digitmorf_Cursor_v24",
+    "bones": 8,
+    "geometryBound": true
   },
-  "transition": "seal-collapse-crossfade/v1",
-  "objects": 60,
-  "mesh_objects": 53,
-  "vertices": 2376,
-  "triangles": 4516,
+  "clips": {
+    "idle": "digitmorf_idle",
+    "attention": "digitmorf_attention",
+    "active": "digitmorf_inspect",
+    "form_resonance": "digitmorf_form_resonance"
+  },
+  "transition": "evidence-seal-collapse-crossfade/v2",
+  "form_graph": {
+    "modules": 12,
+    "purpose": "assembly graph; module count is not a morph count"
+  },
+  "geometry": {
+    "meshObjects": 12,
+    "vertices": 74862,
+    "triangles": 149916
+  },
+  "cleanup": {
+    "detachedIslandsRemoved": 5,
+    "underbodyTargetTriangles": 145000
+  },
+  "runtime": "digitmorf-cursor-living-v1.glb",
+  "runtime_bytes": 5368180,
+  "runtime_sha256": "945c124b495787dd26e185a4ad090dc834d6341ac554dcdc88caf71fa0cc8a53",
   "source": "digitmorf-cursor-living-v1.blend",
-  "runtime": "digitmorf-cursor-living-v1.glb"
+  "qa": {
+    "views": [
+      "digitmorf-cursor-front.png",
+      "digitmorf-cursor-three-quarter.png",
+      "digitmorf-cursor-side.png",
+      "digitmorf-cursor-back.png"
+    ],
+    "cleanGlbImport": true,
+    "importedActions": [
+      "digitmorf_attention",
+      "digitmorf_form_resonance",
+      "digitmorf_idle",
+      "digitmorf_inspect"
+    ],
+    "importedMeshObjects": 13,
+    "importedTriangles": 149916,
+    "unboundMeshObjects": [],
+    "ignoredBlenderImportHelpers": [
+      "Icosphere"
+    ]
+  }
 }

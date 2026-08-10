@@ -1,60 +1,97 @@
 {
-  "schema": "digitmorf-living-pack/v1",
-  "status": "work-in-progress",
-  "productionDefault": false,
+  "schema": "digitmorf-living-pack/v2",
+  "status": "approved-modular-hero",
+  "productionDefault": true,
   "reviewDefault": "archivist",
   "forms": [
     {
       "id": "core",
       "role": "present attentive self",
       "family": "pangolin-manta",
-      "bodyPlan": "compact-quadruped"
+      "bodyPlan": "compact-quadruped",
+      "assetTier": "modular-hero",
+      "version": 24,
+      "triangles": 184939,
+      "bones": 8,
+      "formGraphModules": 14
     },
     {
       "id": "cursor",
       "role": "intent and direction",
       "family": "fox-hare-heron",
-      "bodyPlan": "digitigrade"
+      "bodyPlan": "digitigrade-biped",
+      "assetTier": "modular-hero",
+      "version": 24,
+      "triangles": 149916,
+      "bones": 8,
+      "formGraphModules": 12
     },
     {
       "id": "trace",
       "role": "memory and movement",
       "family": "otter-salamander-sighthound",
-      "bodyPlan": "long-quadruped"
+      "bodyPlan": "long-quadruped",
+      "assetTier": "modular-hero",
+      "version": 24,
+      "triangles": 165716,
+      "bones": 8,
+      "formGraphModules": 20
     },
     {
       "id": "archivist",
       "role": "structured knowledge",
       "family": "owl-lynx-quantum-archivist",
       "bodyPlan": "anthropomorphic-digitigrade",
-      "assetTier": "hero-review",
+      "assetTier": "modular-hero",
       "version": 19,
-      "trianglesBeforeModifiers": 238520,
-      "bones": 44
+      "triangles": 238520,
+      "bones": 44,
+      "formGraphModules": 36
     },
     {
       "id": "weaver",
       "role": "synthesis and connection",
       "family": "spider-moth-cat",
-      "bodyPlan": "six-limbed-anthropomorphic"
+      "bodyPlan": "six-limbed-anthropomorphic",
+      "assetTier": "modular-hero",
+      "version": 24,
+      "triangles": 164916,
+      "bones": 8,
+      "formGraphModules": 12
     },
     {
       "id": "forge",
       "role": "concentrated making",
       "family": "badger-ram",
-      "bodyPlan": "anthropomorphic"
+      "bodyPlan": "anthropomorphic",
+      "assetTier": "modular-hero",
+      "version": 25,
+      "triangles": 228127,
+      "bones": 8,
+      "formGraphModules": 49,
+      "heroProp": "49-module quantum staff"
     },
     {
       "id": "sentinel",
       "role": "checking and protection",
       "family": "wolf-owl-stag",
-      "bodyPlan": "tall-quadruped"
+      "bodyPlan": "tall-quadruped",
+      "assetTier": "modular-hero",
+      "version": 24,
+      "triangles": 159916,
+      "bones": 8,
+      "formGraphModules": 12
     },
     {
       "id": "lantern",
       "role": "calm explanation",
       "family": "deer-moth-axolotl",
-      "bodyPlan": "slim-quadruped"
+      "bodyPlan": "slim-quadruped",
+      "assetTier": "modular-hero",
+      "version": 24,
+      "triangles": 154564,
+      "bones": 8,
+      "formGraphModules": 40
     }
   ],
   "identityAnchors": [
@@ -65,27 +102,18 @@
     "smoky_glass_tissue",
     "silver_boundary"
   ],
-  "clips": {
-    "idle": [1, 48],
-    "attention": [61, 100],
-    "active": [121, 180],
-    "morph_out": [201, 240],
-    "morph_in": [241, 280]
+  "perFormClipContract": {
+    "idle": "digitmorf_idle",
+    "attention": "digitmorf_attention",
+    "active": "digitmorf_inspect",
+    "form_resonance": "digitmorf_form_resonance"
   },
-  "perFormClipContracts": {
-    "archivist": {
-      "idle": "digitmorf_idle",
-      "attention": "digitmorf_attention",
-      "active": "digitmorf_inspect",
-      "form_resonance": "digitmorf_form_resonance"
-    }
-  },
-  "transition": "seal-collapse-crossfade/v1",
-  "morphspace": {
+  "transition": "evidence-seal-collapse-crossfade/v2",
+  "formGraphSemantics": "FormGraph counts independently authored assembly modules; it is not a number of morph targets. Cross-form morphism is the identity-preserving transition between eight separate body plans.",
+  "legacyMorphspace": {
     "runtime": "morphspace/digitmorf-living-morphspace-v1.glb",
     "manifest": "morphspace/digitmorf-living-morphspace-v1.manifest.json",
-    "frames": 481,
-    "fps": 24
+    "status": "compatibility-preview"
   },
-  "notes": "Archivist v19 is the first high-poly hero review asset and the default Blender Lab form. The other seven forms remain experimental blockouts; digitmorf-morphrig-v1.glb remains the cross-form production default until true transitions are implemented."
+  "notes": "All eight canonical forms are approved hero assets. Seven v24/v25 forms use a shared 8-bone semantic rig and 4 named clips; Archivist v19 retains its detailed 44-bone rig with the same named clip contract. Runtime switches forms through evidence-seal collapse/crossfade while preserving the six identity anchors."
 }

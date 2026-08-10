@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 2,
+  "form": "cursor",
+  "heroVersion": 24,
+  "identityAnchors": [
+    "face_void",
+    "quantum_gaze",
+    "d_current",
+    "evidence_seal",
+    "smoky_glass_tissue",
+    "silver_boundary"
+  ],
+  "modules": [
+    {
+      "id": "Anatomy_Cursor_continuous_underbody_v24",
+      "module": "anatomical_underbody",
+      "bone": "body"
+    },
+    {
+      "id": "Cursor_face_void_mask",
+      "module": "face_void",
+      "bone": "head"
+    },
+    {
+      "id": "Cursor_gaze_boundary",
+      "module": "quantum_orbit",
+      "bone": "head"
+    },
+    {
+      "id": "Cursor_electron_orbit_A",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Cursor_electron_orbit_B",
+      "module": "quantum_orbit",
+      "bone": "gaze"
+    },
+    {
+      "id": "Cursor_quark_1",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Cursor_quark_2",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Cursor_quark_3",
+      "module": "quantum_particle",
+      "bone": "gaze"
+    },
+    {
+      "id": "Cursor_evidence_cube_boundary",
+      "module": "evidence_seal_boundary",
+      "bone": "seal"
+    },
+    {
+      "id": "Cursor_evidence_cube_amber",
+      "module": "evidence_seal_core",
+      "bone": "seal"
+    },
+    {
+      "id": "Cursor_D_current_main",
+      "module": "d_current",
+      "bone": "body"
+    },
+    {
+      "id": "Cursor_current_node_01",
+      "module": "current_node",
+      "bone": "body"
+    }
+  ],
+  "transition": {
+    "gesture": "digitmorf_form_resonance",
+    "anchor": "evidence_seal"
+  }
+}

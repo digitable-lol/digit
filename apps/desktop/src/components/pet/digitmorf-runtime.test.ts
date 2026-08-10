@@ -7,7 +7,10 @@ import {
   DIGITMORF_LOOK_DIRECTIONS,
   DIGITMORF_MORPH_TARGET_NAMES,
   DIGITMORF_MOTION_SEMANTICS,
+  digitmorfClipForMotion,
   digitmorfLivingAssetRelativePath,
+  digitmorfLivingFormGraphRelativePath,
+  digitmorfLivingManifestRelativePath,
   digitmorfLookDirection,
   digitmorfLookVector,
   DigitmorfRigAdapter,
@@ -39,12 +42,24 @@ function makeRig() {
 }
 
 describe('Digitmorf morph-rig runtime', () => {
-  it('keeps the Blender living pack explicit and opt-in', () => {
-    expect(DIGITMORF_LIVING_PACK_STATUS).toBe('work-in-progress')
-    expect(Object.keys(DIGITMORF_LIVING_CLIPS)).toHaveLength(5)
+  it('publishes the approved living pack and its renderer paths', () => {
+    expect(DIGITMORF_LIVING_PACK_STATUS).toBe('approved-modular-hero')
+    expect(new Set(Object.values(DIGITMORF_LIVING_CLIPS))).toEqual(
+      new Set(['digitmorf_idle', 'digitmorf_attention', 'digitmorf_inspect', 'digitmorf_form_resonance'])
+    )
 
     for (const form of DIGITMORF_FORMS) {
       expect(digitmorfLivingAssetRelativePath(form)).toBe(`digitmorf/living-v1/${form}/digitmorf-${form}-living-v1.glb`)
+      expect(digitmorfLivingManifestRelativePath(form)).toContain(`/living-v1/${form}/`)
+      expect(digitmorfLivingFormGraphRelativePath(form)).toContain(`/living-v1/${form}/form-graph.json`)
+    }
+  })
+
+  it('maps every pet motion onto an action shipped by every living form', () => {
+    const shipped = new Set(Object.values(DIGITMORF_LIVING_CLIPS))
+
+    for (const semantic of DIGITMORF_MOTION_SEMANTICS) {
+      expect(shipped.has(digitmorfClipForMotion(semantic))).toBe(true)
     }
   })
 
