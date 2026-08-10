@@ -1,10 +1,11 @@
 {
-  "schema": "digitmorf-living-form/v1",
-  "status": "work-in-progress",
+  "schema": "digitmorf-living-form/v2",
+  "status": "visual-approval-candidate",
+  "version": 19,
   "form": "Archivist",
   "role": "structured knowledge",
-  "family": "owl-lynx",
-  "body_plan": "anthropomorphic",
+  "family": "owl-lynx-quantum-archivist",
+  "body_plan": "anthropomorphic-digitigrade",
   "identity_anchors": [
     "face_void",
     "quantum_gaze",
@@ -13,34 +14,44 @@
     "smoky_glass_tissue",
     "silver_boundary"
   ],
-  "rig": "transform-node/v1",
-  "clips": {
-    "idle": [
-      1,
-      48
-    ],
-    "attention": [
-      61,
-      100
-    ],
-    "active": [
-      121,
-      180
-    ],
-    "morph_out": [
-      201,
-      240
-    ],
-    "morph_in": [
-      241,
-      280
-    ]
+  "construction": "armature-first modular assembly from independently named crystalline and anatomical parts",
+  "rig": {
+    "type": "armature/v2",
+    "name": "RIG_Archivist_A_anatomical_armature",
+    "bones": 44
   },
-  "transition": "seal-collapse-crossfade/v1",
-  "objects": 75,
-  "mesh_objects": 66,
-  "vertices": 2944,
-  "triangles": 5588,
+  "clips": {
+    "idle": "digitmorf_idle",
+    "attention": "digitmorf_attention",
+    "active": "digitmorf_inspect",
+    "form_resonance": "digitmorf_form_resonance"
+  },
+  "transition": "true-cross-form-morph-pending",
+  "form_graph": {
+    "validated_modules": 36,
+    "purpose": "assembly graph; module count is not a morph count"
+  },
+  "geometry": {
+    "scene_mesh_objects": 816,
+    "glb_nodes": 969,
+    "glb_meshes": 922,
+    "vertices_before_modifiers": 121700,
+    "triangles_before_modifiers": 238520,
+    "materials": 12
+  },
+  "runtime_pbr": {
+    "normal_map_embedded": true,
+    "uv_mapped_mesh_objects": 772,
+    "mapping": "dominant-axis tileable UV"
+  },
+  "runtime": "digitmorf-archivist-living-v1.glb",
+  "runtime_bytes": 13556752,
+  "runtime_sha256": "e9532401009f8442af10fd5126ed3f9d7757bf6c04c37275f9190466356fc796",
   "source": "digitmorf-archivist-living-v1.blend",
-  "runtime": "digitmorf-archivist-living-v1.glb"
+  "qa": {
+    "clean_glb_import": true,
+    "animations_after_import": 4,
+    "embedded_images_after_import": 1,
+    "external_visual_approval": "pending"
+  }
 }
