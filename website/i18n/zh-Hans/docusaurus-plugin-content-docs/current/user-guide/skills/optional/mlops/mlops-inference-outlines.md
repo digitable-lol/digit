@@ -660,7 +660,7 @@ class Article(BaseModel):
 ## 资源
 
 - **文档**：https://outlines-dev.github.io/outlines
-- **GitHub**：https://github.com/outlines-dev/outlines（8k+ stars）
+- **GitHub**：https://github.com/dottxt-ai/outlines（12k+ stars）
 - **Discord**：https://discord.gg/R9DSu34mGd
 - **博客**：https://blog.dottxt.co
 
