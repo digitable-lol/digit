@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "digitmorf-morphgraph",
+  "forms": [
+    {
+      "id": "forge",
+      "rigProfile": "canonical-rig-v2",
+      "sockets": ["head", "quantum-gaze", "evidence-seal", "tail", "staff", "tool-grip"],
+      "modules": ["body", "mane", "horns", "hands", "staff", "quantum-gaze", "evidence-seal"]
+    },
+    {
+      "id": "sentinel",
+      "rigProfile": "canonical-rig-v2",
+      "sockets": ["head", "quantum-gaze", "evidence-seal", "tail", "wing-l", "wing-r"],
+      "modules": ["body", "boundary-arch", "plates", "tail", "quantum-gaze", "evidence-seal"]
+    }
+  ],
+  "transitions": [
+    {
+      "id": "forge-to-sentinel",
+      "from": "forge",
+      "to": "sentinel",
+      "operator": "module-socket-recompose",
+      "status": "draft",
+      "requiredSockets": ["head", "quantum-gaze", "evidence-seal", "tail"],
+      "correspondence": {
+        "body": "body",
+        "mane": "boundary-arch",
+        "horns": "plates",
+        "quantum-gaze": "quantum-gaze",
+        "evidence-seal": "evidence-seal"
+      }
+    }
+  ]
+}

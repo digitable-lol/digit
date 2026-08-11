@@ -1,13 +1,13 @@
 ---
 name: blender-modular-assembly
 description: Build complex Blender assets from validated modules.
-version: 1.1.0
+version: 2.0.0
 author: Marat Zimnurov and Digit
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   digit:
-    tags: [blender, mcp, 3d, modelling, decomposition, assembly, rigging, qa]
+    tags: [blender, mcp, 3d, modelling, decomposition, assembly, rigging, morphgraph, training, qa]
     category: creative
     related_skills: [blender-mcp, fts, fts-specify]
 ---
@@ -70,7 +70,10 @@ complete_module(ctx, [panel_left, panel_top, panel_right])
 ```
 
 Read `references/form-graph.md` before authoring or changing the graph. Read
-`references/qa-contract.md` before the first render checkpoint.
+`references/authoring-v2.md` before sculpt, retopology, baking, rigging, or LOD
+work. Read `references/morph-graph.md` before creating a hybrid or transition.
+Read `references/training-traces.md` and `references/qa-contract.md` before the
+first build or render checkpoint.
 
 ## Quick Reference
 
@@ -82,7 +85,13 @@ Read `references/form-graph.md` before authoring or changing the graph. Read
 | Record an external state transition | `scripts/form_graph.py set-status` |
 | Record a render gate | `scripts/form_graph.py checkpoint` |
 | Inspect progress | `scripts/form_graph.py summary` |
+| Build structural training pairs | `scripts/formgraph_ranker.py dataset` |
+| Train the structural ranker | `scripts/formgraph_ranker.py train` |
+| Sweep ranker hyperparameters in parallel | `scripts/formgraph_ranker.py sweep` |
+| Score a proposed decomposition | `scripts/formgraph_ranker.py score` |
 | Begin/complete inside Blender | `assembly.blender_runtime` through `execute_blender_code` |
+| Resolve an allowed form transition | `assembly.morphgraph` through `execute_blender_code` |
+| Record accepted and rejected work | `assembly.training_trace` through `execute_blender_code` |
 | Inspect the actual scene | `get_scene_info`, `get_object_info` |
 | Judge appearance | `get_viewport_screenshot` plus saved renders |
 
@@ -94,6 +103,11 @@ Save the source prompt and every approved reference. State the target use,
 coordinate system, real scale, required views, polygon budgets, deformation
 needs, material families, and identity invariants. Keep inferred details marked
 as inferred. A reference image is an appearance constraint, not topology.
+
+When the intent arrives through FTS or Flang, compile the trusted description
+into this contract before invoking Blender. The language layer may propose
+modules and parameters; it may not bypass validation, run arbitrary embedded
+code, or silently widen filesystem and network access.
 
 ### 2. Decompose recursively
 
@@ -169,12 +183,35 @@ Do not mark an approval checkpoint as passed without inspecting the returned
 image. A successful screenshot response can still contain a black or stale
 frame.
 
-### 8. Rig, animate, optimize, and export
+### 8. Sculpt, retopologize, and bake the approved master
 
-Add animation only after the neutral assembly passes. Test extreme poses and
-morph transitions for detachment and interpenetration. Generate LODs from the
-approved master, preserve names and material slots, export an animated GLB, and
-retain the editable `.blend`, graph, reports, and render evidence.
+Treat the high-resolution sculpt, deformation topology, and runtime meshes as
+separate artifacts. Sculpt primary mass, secondary anatomy, surface breakup,
+and identity detail on named layers. Retopologize LOD0 with deliberate loops at
+every joint and secondary-motion root. Automatic decimation is permitted for
+derived LODs, never as the final LOD0 topology.
+
+Bake tangent-space normal, ambient occlusion, curvature, thickness, and
+position maps from the approved sculpt through an explicit cage. Inspect seams,
+gradients, ray misses, and mirrored tangent behavior before authoring PBR
+materials. Follow the budgets in `references/authoring-v2.md`.
+
+### 9. Rig, animate, morph, optimize, and export
+
+Bind all forms to the semantic CanonicalRig before creating transitions. Add
+limb IK, retargeting, quantum-gaze look-at, and secondary motion for the mantle,
+tail, ears, and tool crown. Test extreme poses and every named state. Generate
+LOD0/LOD1/LOD2 from the approved master while preserving names, material slots,
+sockets, and animation semantics.
+
+A MorphGraph is an allowlist, not proof that two meshes can transform. Approve
+a transition only after its module correspondence, common sockets, neutral-pose
+alignment, identity continuity, and in-between renders pass. A hybrid descriptor
+is a weighted module policy such as `Forge 0.65 + Sentinel 0.35`; it is not a
+linear vertex blend unless both forms also share a verified topology map.
+
+Export an animated GLB and retain the editable `.blend`, source sculpt,
+retopology mesh, bakes, textures, graphs, reports, traces, and render evidence.
 
 Re-import the exported GLB into an isolated scene. On a long-lived MCP process,
 delete every object datablock directly between imports; operator deletion only
@@ -203,6 +240,12 @@ display helpers separately; never silently count them as authored geometry.
 - **Dirty clean-import scenes:** `bpy.ops.object.delete` can miss linked
   collections in a persistent MCP instance. Remove `bpy.data.objects`
   datablocks directly before each validation import.
+- **Synthetic self-congratulation:** the ranker can reject broken graphs, but it
+  cannot label its own render visually accepted. Capture human or independent
+  visual verdicts as immutable trace events.
+- **Vertex interpolation across incompatible bodies:** use socket-preserving
+  module substitution or a field/cage transition until a correspondence map has
+  been validated.
 
 ## Verification
 
@@ -214,6 +257,9 @@ display helpers separately; never silently count them as authored geometry.
 - [ ] Required render checkpoints include assembled, detail, rig, and exploded
       evidence and have been visually inspected.
 - [ ] The armature and extreme-pose tests preserve attachments and volume.
+- [ ] Canonical sockets survive retargeting, every LOD, and every allowed morph.
+- [ ] Normal/AO/curvature bakes pass seam, cage, and tangent-space inspection.
+- [ ] Accepted and rejected decisions are present in a durable training trace.
 - [ ] A clean GLB import contains the expected rig and every required named
       action, with every authored runtime mesh bound to the rig.
 - [ ] `.blend`, animated `.glb`, FormGraph, statistics, and QA renders exist.

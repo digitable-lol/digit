@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "forge-sentinel-65-35",
+  "rigProfile": "canonical-rig-v2",
+  "components": [
+    {"form": "forge", "weight": 0.65},
+    {"form": "sentinel", "weight": 0.35}
+  ],
+  "activeSockets": ["head", "quantum-gaze", "evidence-seal", "tail", "staff", "tool-grip"],
+  "modulePolicy": {
+    "body": "weighted-field",
+    "mane": "preserve-from-forge",
+    "boundary-arch": "preserve-from-sentinel",
+    "staff": "preserve-from-forge",
+    "quantum-gaze": "identity-invariant",
+    "evidence-seal": "single-instance"
+  }
+}
