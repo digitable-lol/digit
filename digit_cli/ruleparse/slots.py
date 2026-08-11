@@ -404,7 +404,52 @@ def numbers(tokens: list[Token]) -> list[int]:
     return [int(t.norm) for t in tokens if t.is_digit]
 
 
-def number_near(tokens: list[Token], lemmas: set[str]) -> int | None:
+# ---------------------------------------------------------------------------
+# Число, НАЗЫВАЮЩЕЕ ПАРАМЕТР, — это не операнд (DGT-DIGIT-12).
+#
+# Тот же класс ошибки, что уже пойман для литералов в `_is_instruction`, но у
+# чисел: «переведи число из системы счисления 16 в 2» не содержит числа для
+# перевода — 16 и 2 называют ОСНОВАНИЯ. «верхний предел 3999» называет предел,
+# а не операнд. Пока извлечение брало `numbers(tokens)[0]`, оно переводило
+# основание в двоичную и печатало ответ как проверенный.
+#
+# Замер на измерительном наборе: слой правил доходил до ответа на 10 запросах,
+# где набор ждёт отказа; три из них — ровно этот случай.
+#
+# Отказ здесь ничего не стоит: пустой обязательный слот значит «не разобрали»,
+# и запрос уходит модели обычным ходом (agent/rule_cascade.py).
+# ---------------------------------------------------------------------------
+def _numbers_bound_to(tokens: list[Token], lemmas: set[str], span: int = 2) -> set[int]:
+    """Значения чисел, стоящих вплотную к слову, которое называет параметр."""
+    bound: set[int] = set()
+    for i, tok in enumerate(tokens):
+        if tok.lemma not in lemmas and tok.norm not in lemmas:
+            continue
+        for j in range(max(0, i - span), min(len(tokens), i + span + 1)):
+            if tokens[j].is_digit:
+                bound.add(int(tokens[j].norm))
+    return bound
+
+
+#: Слова, после которых число называет ОСНОВАНИЕ системы счисления.
+BASE_CONTEXT = {"система", "счисление", "основание", "base", "ричный", "разряд"}
+#: Слова, после которых число называет ГРАНИЦУ, а не операнд.
+LIMIT_CONTEXT = {"предел", "максимум", "минимум", "лимит", "диапазон",
+                 "граница", "порог", "ограничение"}
+
+
+def free_numbers(tokens: list[Token], context: set[str]) -> list[int]:
+    """Числа, НЕ связанные словом-именем параметра, в порядке появления.
+
+    Прилагается к операндным слотам. Пустой список значит «операнда в запросе
+    нет», а не «возьми первое попавшееся число».
+    """
+    bound = _numbers_bound_to(tokens, context)
+    return [n for n in numbers(tokens) if n not in bound]
+
+
+def number_near(tokens: list[Token], lemmas: set[str],
+                exclude: set[int] | None = None) -> int | None:
     """The digit standing next to one of `lemmas` («12 раундами», «отступ 4»).
 
     Surface form is checked as well as the lemma: OpenCorpora reads «бит» as a
@@ -414,7 +459,12 @@ def number_near(tokens: list[Token], lemmas: set[str]) -> int | None:
         if tok.lemma in lemmas or tok.norm in lemmas:
             for j in (i - 1, i + 1, i - 2, i + 2):
                 if 0 <= j < len(tokens) and tokens[j].is_digit:
-                    return int(tokens[j].norm)
+                    val = int(tokens[j].norm)
+                    # Число, уже занятое другим параметром (номер версии), не
+                    # годится в этот слот — но соседнее свободное годится.
+                    if exclude and val in exclude:
+                        continue
+                    return val
     return None
 
 
@@ -506,8 +556,16 @@ def extract(tool_id: str, query: str, tokens: list[Token],
     elif tool_id == "token-generator":
         put("length", number_near(tokens, {"символ", "длина", "знак"}))
     elif tool_id == "uuid-generator":
-        if not re.search(r"верси\w*\s+\d", normalize(query)):
-            put("count", number_near(tokens, {"uuid", "штука", "гуид"}))
+        # Номер ВЕРСИИ — не количество. Кириллическую запись «версии 5» отсекали
+        # и раньше, но латинская «UUID v5» проходила мимо, и пятёрка уезжала в
+        # count: пользователь просил пятую версию, а получал пять штук четвёртой.
+        #
+        # Гасить count целиком при виде версии нельзя — «дай мне 5 uuid v4»
+        # называет и версию, и количество, и запрос законный. Поэтому из
+        # кандидатов вычёркивается ровно число версии, а не считается весь
+        # запрос испорченным.
+        ver = {int(m) for m in re.findall(r"(?:верси\w*\s*|\bv\s?)(\d+)", normalize(query))}
+        put("count", number_near(tokens, {"uuid", "штука", "гуид"}, exclude=ver))
     elif tool_id == "ulid-generator":
         put("amount", number_near(tokens, {"ulid", "штука", "идентификатор"}))
     elif tool_id == "otp-generator":
@@ -558,7 +616,14 @@ def extract(tool_id: str, query: str, tokens: list[Token],
     elif tool_id == "text-to-nato-alphabet":
         put("input", lit("text") or main_literal(query, tokens, ents))
     elif tool_id == "base-converter":
-        nums = numbers(tokens)
+        # Числа, называющие ОСНОВАНИЕ, операндом быть не могут. Кроме соседства
+        # со словом «система/счисление» основание встаёт и за предлогом —
+        # «...счисления 16 в 2», где второе число называет цель перевода.
+        nums = free_numbers(tokens, BASE_CONTEXT)
+        if nums and any(t.lemma in BASE_CONTEXT or t.norm in BASE_CONTEXT for t in tokens):
+            after_prep = {int(tokens[i].norm) for i in range(1, len(tokens))
+                          if tokens[i].is_digit and tokens[i - 1].lemma in {"в", "из", "к", "на"}}
+            nums = [n for n in nums if n not in after_prep]
         put("input", str(nums[0]) if nums else None)
         src = dst = None
         from .morph import prep_frames
@@ -586,7 +651,8 @@ def extract(tool_id: str, query: str, tokens: list[Token],
         if r:
             put("inputRoman", r)
         else:
-            nums = numbers(tokens)
+            # «верхний предел 3999» называет границу, а не число для перевода.
+            nums = free_numbers(tokens, LIMIT_CONTEXT)
             put("inputNumeral", nums[0] if nums else None)
     elif tool_id in {"json-to-yaml-converter", "yaml-to-json-converter", "json-to-toml",
                      "toml-to-json", "toml-to-yaml", "yaml-to-toml", "xml-to-json",

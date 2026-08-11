@@ -93,9 +93,44 @@ LEGACY_PUBLIC_TO_CORE = {
 }
 
 
+#: Где искать бинарь, если DIGIT_TOOLS_CORE_HOME не задан. Список, а не одна
+#: строка: место сборки и место установки — разные каталоги, и дважды подряд
+#: замер объявляли невозможным, потому что смотрели только во второй.
+BINARY_SEARCH_PATH = (
+    "~/.digit/mcp-servers/tools-core",
+    "~/src/tools-core",
+    "~/projects/digit-ml/tools-core",
+)
+
+
 def default_binary() -> str:
-    home = os.environ.get("DIGIT_TOOLS_CORE_HOME") or "~/.digit/mcp-servers/tools-core"
-    return str(pathlib.Path(home).expanduser() / "dist" / "digit-tools-mcp")
+    home = os.environ.get("DIGIT_TOOLS_CORE_HOME")
+    if home:
+        return str(pathlib.Path(home).expanduser() / "dist" / "digit-tools-mcp")
+    for cand in BINARY_SEARCH_PATH:
+        path = pathlib.Path(cand).expanduser() / "dist" / "digit-tools-mcp"
+        if path.exists():
+            return str(path)
+    return str(pathlib.Path(BINARY_SEARCH_PATH[0]).expanduser() / "dist" / "digit-tools-mcp")
+
+
+def require_binary(path: str) -> None:
+    """Отсутствие бинаря обязано называть себя, а не падать трассировкой.
+
+    Без этого «замерить нечем» неотличимо от «замер не проводили»: скрипт
+    падал FileNotFoundError из глубины subprocess, и вывод не говорил ни где
+    искали, ни чем это чинится.
+    """
+    if pathlib.Path(path).exists():
+        return
+    looked = "\n".join(f"    {pathlib.Path(c).expanduser() / 'dist' / 'digit-tools-mcp'}"
+                        for c in BINARY_SEARCH_PATH)
+    sys.exit(
+        f"ЗАМЕРИТЬ НЕЧЕМ: исполнителя нет по пути\n    {path}\n"
+        f"Искали здесь:\n{looked}\n"
+        "Укажите каталог сборки: DIGIT_TOOLS_CORE_HOME=/путь/к/tools-core "
+        "(ожидается {DIGIT_TOOLS_CORE_HOME}/dist/digit-tools-mcp)."
+    )
 
 
 class Executor:
@@ -188,6 +223,7 @@ def main() -> int:
     tasks = raw["tasks"] if isinstance(raw, dict) else raw
     tasks = [t for t in tasks if t.get("type") == "tool_routing"]
 
+    require_binary(args.binary)
     executor = Executor(args.binary)
     try:
         before = measure(tasks, executor, "passthrough")
