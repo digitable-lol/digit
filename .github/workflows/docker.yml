@@ -24,7 +24,26 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  IMAGE_NAME: nousresearch/hermes-agent
+  # ДВА ИМЕНИ, А НЕ ОДНО. Раньше здесь стоял единственный IMAGE_NAME =
+  # nousresearch/hermes-agent, и он значил сразу две разные вещи: адрес
+  # публикации у заданий publish/merge — и тег локально загруженного образа у
+  # НАШЕГО задания build. То есть наша же сборка носила чужое имя, а перепутать
+  # «что мы собираем» с «куда мы пушим» можно было молча: правка одной строки
+  # env меняла и то и другое, и ничто об этом не говорило.
+  #
+  # TEST_IMAGE_NAME — наш и только наш: образ грузится в локальный демон
+  # (load: true) и наружу не уходит. Имя то же, что в docker-compose*.yml
+  # (image: digit).
+  TEST_IMAGE_NAME: digit
+  # PUBLISH_IMAGE_NAME — ЧУЖОЕ пространство имён апстрима. Употребляется
+  # только заданиями publish и merge, а они гейтятся на github.repository ==
+  # 'NousResearch/hermes-agent' и у нас не запускаются никогда. Своего
+  # опубликованного образа Digit не имеет — на это ссылаются
+  # digit_cli/config.py и docker-compose*.yml, объясняя, почему вместо
+  # `docker pull` там `docker compose build`. Смена реестра (GHCR обошёлся бы
+  # без секретов) — решение владельца, а не побочный эффект правки гейтов.
+  # Согласованность этих трёх мест держит tests/ci/test_docker_publish_target.py.
+  PUBLISH_IMAGE_NAME: nousresearch/hermes-agent
 
 jobs:
   # Build and test the image for each architecture. This job runs PR code,
@@ -81,7 +100,7 @@ jobs:
           file: Dockerfile
           load: true
           platforms: ${{ matrix.platform }}
-          tags: ${{ env.IMAGE_NAME }}:test
+          tags: ${{ env.TEST_IMAGE_NAME }}:test
           build-args: |
             DIGIT_GIT_SHA=${{ github.sha }}
           cache-from: ${{ matrix.cache-from }}
@@ -93,7 +112,7 @@ jobs:
       #
       # Piggybacking here avoids a second image build: the build step
       # already loaded the image into the daemon under
-      # `${IMAGE_NAME}:test`, so we just point ``DIGIT_TEST_IMAGE`` at
+      # `${TEST_IMAGE_NAME}:test`, so we just point ``DIGIT_TEST_IMAGE`` at
       # that.  The fixture's ``DIGIT_TEST_IMAGE`` branch (see
       # tests/docker/conftest.py:62-63) short-circuits the rebuild.
       #
@@ -125,7 +144,7 @@ jobs:
       - name: Run docker integration tests
         env:
           # Skip rebuild; use the image already loaded by the build step.
-          DIGIT_TEST_IMAGE: ${{ env.IMAGE_NAME }}:test
+          DIGIT_TEST_IMAGE: ${{ env.TEST_IMAGE_NAME }}:test
           # Match the policy in tests.yml :: test job — no accidental
           # real-API calls from inside the harness.
           OPENROUTER_API_KEY: ""
@@ -140,7 +159,7 @@ jobs:
   # ---------------------------------------------------------------------------
   publish:
     # Проверка намеренно остаётся апстримовой, в отличие от `build` выше.
-    # Задача пушит в Docker Hub под именем ${IMAGE_NAME} = nousresearch/
+    # Задача пушит в Docker Hub под именем ${PUBLISH_IMAGE_NAME} = nousresearch/
     # hermes-agent по секретам DOCKERHUB_*, которых у форка нет и быть не
     # должно: это чужое пространство имён. Своего опубликованного образа Digit
     # не имеет — на этот же гейт ссылаются digit_cli/config.py и
@@ -201,7 +220,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             DIGIT_GIT_SHA=${{ github.sha }}
-          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ env.PUBLISH_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
           cache-from: ${{ matrix.cache-from }}
           cache-to: ${{ matrix.cache-to }}
 
@@ -263,7 +282,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         env:
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          IMAGE_NAME: ${{ env.PUBLISH_IMAGE_NAME }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
@@ -292,7 +311,7 @@ jobs:
 
       - name: Inspect image
         env:
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          IMAGE_NAME: ${{ env.PUBLISH_IMAGE_NAME }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
