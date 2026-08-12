@@ -35,8 +35,11 @@ description: "通过 OpenHue CLI 控制 Philips Hue 灯光、场景和房间"
 ## 前提条件
 
 ```bash
-# Linux (pre-built binary)
-curl -sL https://github.com/openhue/openhue-cli/releases/latest/download/openhue-linux-amd64 -o ~/.local/bin/openhue && chmod +x ~/.local/bin/openhue
+# Linux (pre-built binary — releases ship tarballs, not bare binaries)
+curl -sL "https://github.com/openhue/openhue-cli/releases/latest/download/openhue_Linux_x86_64.tar.gz" \
+  | tar -xz -C /tmp openhue \
+  && install -m 0755 /tmp/openhue ~/.local/bin/openhue
+# (use openhue_Linux_arm64.tar.gz on ARM64)
 
 # macOS
 brew install openhue/cli/openhue-cli

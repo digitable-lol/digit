@@ -210,6 +210,36 @@ scripts/run_tests.sh
 pytest tests/ -v
 ```
 
+### Run the suite on a big machine, not on your laptop
+
+`scripts/run_tests.sh` spawns a separate `pytest` process **per test file**, and
+there are close to two hundred of them. On an eight-core laptop that is a load
+average in the hundreds, and nobody can work at that machine while it runs. Send
+it to a host with real core count instead:
+
+```bash
+scripts/test-remote.sh                  # the whole suite
+scripts/test-remote.sh tests/agent/     # one directory
+scripts/test-remote.sh -- ruff check .  # any other command
+```
+
+Measured on `tests/acp/` (14 files, 127 tests), same commit: **5.8 s on `dev`
+with 512 workers**, against minutes locally with the laptop unusable meanwhile.
+
+The host comes from `DIGIT_REMOTE` (default `dev`, an alias in
+`~/.ssh/config`). The tree is rsynced to `~/digit-remote` on that host —
+`.venv`, caches, `.digit-runtime` and `.env*` are deliberately not copied: the
+venv is built there by the host, and secrets have no business on another
+machine. Your local tree is never modified by this script.
+
+The remote venv is built with the *same* command CI uses
+(`uv sync --locked` with the same extras, `.github/workflows/tests.yml`), so a
+remote pass means the same thing a CI pass means. Because it is `--locked`, it
+also stops when `uv.lock` has drifted from `pyproject.toml` — which is exactly
+when CI would stop. Fix the drift with `uv lock` in its own commit; the escape
+hatch `DIGIT_REMOTE_RELOCK=1` re-locks **on the host** for a one-off run and
+says out loud that the run is no longer CI-equivalent.
+
 ---
 
 ## Project Structure

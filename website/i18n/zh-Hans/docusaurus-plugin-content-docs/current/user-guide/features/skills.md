@@ -471,7 +471,6 @@ Digit 可以直接从 GitHub 仓库和基于 GitHub 的 tap 安装。当你已�
 - [anthropics/skills](https://github.com/anthropics/skills)
 - [huggingface/skills](https://github.com/huggingface/skills)
 - [NVIDIA/skills](https://github.com/NVIDIA/skills) — NVIDIA 官方验证的技能（带签名 `skill.oms.sig` 与治理用 `skill-card.md`）
-- [VoltAgent/awesome-agent-skills](https://github.com/VoltAgent/awesome-agent-skills)
 - [garrytan/gstack](https://github.com/garrytan/gstack)
 
 - 示例：

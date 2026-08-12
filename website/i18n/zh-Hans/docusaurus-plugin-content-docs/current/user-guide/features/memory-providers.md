@@ -68,7 +68,7 @@ digit memory setup        # 选择 "honcho" — 运行 Honcho 专属的安装后
 
 旧版 `digit honcho setup` 命令仍然有效（现在会重定向到 `digit memory setup`），但只有在 Honcho 被选为激活记忆提供者后才会注册。
 
-**配置：** `$DIGIT_HOME/honcho.json`（profile 本地）或 `~/.honcho/config.json`（全局）。解析顺序：`$DIGIT_HOME/honcho.json` > `~/.digit/honcho.json` > `~/.honcho/config.json`。参见[配置参考](https://github.com/digit-ai/digit/blob/main/plugins/memory/honcho/README.md)和 [Honcho 集成指南](https://docs.honcho.dev/v3/guides/integrations/digit)。
+**配置：** `$DIGIT_HOME/honcho.json`（profile 本地）或 `~/.honcho/config.json`（全局）。解析顺序：`$DIGIT_HOME/honcho.json` > `~/.digit/honcho.json` > `~/.honcho/config.json`。参见[配置参考](https://github.com/digitable-lol/digit/blob/main/plugins/memory/honcho/README.md)和 [Honcho 集成指南](https://docs.honcho.dev/v3/guides/integrations/digit)。
 
 <details>
 <summary>完整配置参考</summary>
@@ -255,7 +255,7 @@ digit honcho sync
 
 </details>
 
-参见[配置参考](https://github.com/digit-ai/digit/blob/main/plugins/memory/honcho/README.md)和 [Honcho 集成指南](https://docs.honcho.dev/v3/guides/integrations/digit)。
+参见[配置参考](https://github.com/digitable-lol/digit/blob/main/plugins/memory/honcho/README.md)和 [Honcho 集成指南](https://docs.honcho.dev/v3/guides/integrations/digit)。
 
 
 ---

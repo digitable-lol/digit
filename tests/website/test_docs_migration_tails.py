@@ -43,7 +43,16 @@ def _owner_repo(path: str) -> str:
     (/issues, /releases), и это не то расхождение, которое здесь ищут."""
     return "/".join(path.strip("/").split("/")[:2])
 
-_RELATED_ROW = re.compile(r"^\|\s*(?:Related skills|相关 skills)\s*\|(.*)\|\s*$", re.M)
+#: Подпись строки о связанных навыках. Вариантов шесть, потому что перевод
+#: правился руками и в разное время: у 60 страниц «相关 skill», у 5 «相关
+#: skills», у 3 «相关技能». Первая редакция сторожа знала только «Related
+#: skills» и «相关 skills» — то есть 5 строк из 68, а про остальные 63 молчала.
+#: Молчание тут неотличимо от успеха: тест был зелёным не потому, что переводы
+#: сходятся, а потому, что он их не открывал. Соседнее «相关工作» (related
+#: work) — не эта строка и сюда намеренно не попадает.
+_RELATED_ROW = re.compile(
+    r"^\|\s*(?:Related\s+skills?|相关\s*skills?|相关技能)\s*\|(.*)\|\s*$", re.M
+)
 _LINK_TARGET = re.compile(r"\((/[^)]+)\)")
 
 
@@ -90,6 +99,89 @@ def test_перевод_не_отправляет_к_другому_навыку
         if zh_targets != en_targets:
             guilty.append(f"{zh_page.relative_to(WEBSITE)}: {zh_targets} != {en_targets}")
     assert not guilty, guilty
+
+
+#: Репозиторий в ссылке: «owner/repo» из https://github.com/…
+_GITHUB_REPO = re.compile(r"https://github\.com/([A-Za-z0-9._-]+/[A-Za-z0-9._-]+)")
+
+#: Две страницы, где адрес есть только в переводе ЗАКОННО. Список намеренно
+#: короткий и с причиной у каждой строки: поблажка без причины через полгода
+#: неотличима от недосмотра. Устройство то же, что у COUNTEREXAMPLES сторожа
+#: обещаний на портале, и проверяется тоже в обе стороны — см. тест ниже.
+_ADDRESS_ONLY_IN_TRANSLATION = {
+    # Абзац про закрытый апстримовый PR #12550 как про вытесненное решение.
+    # Английская страница этот абзац потеряла, перевод сохранил. Упоминать
+    # апстрим законно (см. FORBIDDEN выше: запрещено ОТПРАВЛЯТЬ туда читателя,
+    # а не называть), поэтому это недостача английской страницы, а не ложь
+    # перевода.
+    ("developer-guide/browser-supervisor.md", "NousResearch/hermes-agent"),
+    # Перевод старой редакции страницы: она не содержала материал, а отсылала
+    # к SKILL.md в нашем же репозитории. Адрес живой, ведёт к нам; английская
+    # страница с тех пор вобрала материал внутрь. Это недостача перевода —
+    # чинится переводом новой редакции, а не правкой ссылки.
+    ("user-guide/skills/bundled/productivity/productivity-powerpoint.md",
+     "digitable-lol/digit"),
+    # «Нашли баг — заведите issue» со ссылкой на НАШ трекер. Ровно то, чего
+    # добивался переезд; английская страница такой фразы просто не имеет.
+    ("getting-started/installation.md", "digitable-lol/digit"),
+    # Ссылка на skills/autonomous-ai-agents/computer-use/SKILL.md в нашем
+    # репозитории — путь проверен, существует. Английская страница ссылается
+    # только на сторонний trycua/cua.
+    ("user-guide/features/computer-use.md", "digitable-lol/digit"),
+}
+
+
+def test_перевод_не_называет_адреса_которого_нет_в_оригинале():
+    """Английская страница навыка порождается генератором из SKILL.md, то есть
+    она — источник истины; перевод правится руками и отстаёт молча. Поэтому
+    репозиторий, названный ТОЛЬКО в переводе, — это адрес, которого источник
+    уже не обещает, и читатель уходит по нему не глядя.
+
+    Обратное (в оригинале адрес есть, в переводе нет) намеренно НЕ требуется:
+    это недостача, а не ложь, — то же правило, что у строки о связанных
+    навыках выше.
+
+    Пойманное этим тестом при заведении, каждое — свой промах молчанием:
+    ``digit-ai/digit`` (организации не существует, 404) вместо
+    ``digitable-lol/digit``; ``nicholasgasior/gws`` под подписью «Google
+    Workspace CLI» вместо ``googleworkspace/cli``; ``outlines-dev/outlines``
+    после переезда в ``dottxt-ai``; ``NVIDIA/NeMo-Curator`` после переезда в
+    ``NVIDIA-NeMo/Curator``; ``blackboxaicode/cli`` вместе с чужим именем
+    npm-пакета; ``VoltAgent/awesome-agent-skills`` в списке tap «по
+    умолчанию», где его нет у продукта (``tools/skills_hub.py`` знает это имя
+    только как подпись, а не как tap).
+    """
+    guilty = []
+    for zh_page in sorted(ZH.rglob("*.md")):
+        rel = zh_page.relative_to(ZH).as_posix()
+        en_page = DOCS / zh_page.relative_to(ZH)
+        if not en_page.exists():
+            continue
+        zh_repos = set(_GITHUB_REPO.findall(zh_page.read_text(encoding="utf-8")))
+        en_repos = set(_GITHUB_REPO.findall(en_page.read_text(encoding="utf-8")))
+        for repo in sorted(zh_repos - en_repos):
+            if (rel, repo) in _ADDRESS_ONLY_IN_TRANSLATION:
+                continue
+            guilty.append(f"{rel}: «{repo}» есть в переводе и нет в оригинале")
+    assert not guilty, guilty
+
+
+def test_поблажка_не_переживает_причину():
+    """Поблажка выше держится ровно до тех пор, пока расхождение есть. Как
+    только английская страница вернёт адрес себе (или перевод его потеряет),
+    строка в списке станет мусором и начнёт покрывать уже настоящий промах —
+    поэтому список проверяется и с этой стороны."""
+    stale = []
+    for rel, repo in sorted(_ADDRESS_ONLY_IN_TRANSLATION):
+        zh_page, en_page = ZH / rel, DOCS / rel
+        if not zh_page.exists() or not en_page.exists():
+            stale.append(f"{rel}: страницы больше нет — поблажку пора убрать")
+            continue
+        zh_repos = set(_GITHUB_REPO.findall(zh_page.read_text(encoding="utf-8")))
+        en_repos = set(_GITHUB_REPO.findall(en_page.read_text(encoding="utf-8")))
+        if repo not in zh_repos - en_repos:
+            stale.append(f"{rel}: «{repo}» больше не расходится — поблажку пора убрать")
+    assert not stale, stale
 
 
 def test_удалённый_навык_не_упоминается_ни_в_одной_локали():
