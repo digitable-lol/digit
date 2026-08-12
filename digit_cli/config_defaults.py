@@ -154,6 +154,18 @@ DEFAULT_CONFIG = {
         # a human as chat noise. Doc/markdown/skill-only edits never fire it.
         # Set true to force on everywhere, or false to disable.
         "verify_on_stop": "auto",
+        # Claim check (DGT-DIGIT-13): after the model has written its answer,
+        # run the rule-shaped sentences in it through the real FTS compiler and
+        # return the turn with a counterexample when one of them is provably
+        # wrong. OFF by default, and deliberately not "auto": most installs have
+        # no FTS compiler at all (optional-mcps/fts-gate ships disabled), and a
+        # surface-aware default here would pretend to a measurement nobody took.
+        # "claim_gate_spec" names the specification to check against; without it
+        # the gate stays silent, because there is no agreed place for *.fts in a
+        # project and guessing one would check the answer against a stranger's
+        # rule. See agent/claim_gate.py.
+        "claim_gate": False,
+        "claim_gate_spec": "",
         # Staged inactivity warning: send a warning to the user at this
         # threshold before escalating to a full timeout.  The warning fires
         # once per run and does not interrupt the agent.  0 = disable warning.

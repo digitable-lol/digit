@@ -52,40 +52,15 @@ def _die(message: str, code: int) -> int:
     return code
 
 
-def _pick_utility(utilities: list[dict], wanted: str | None) -> dict:
-    """Какой расчёт дописываем.
-
-    Молчаливый выбор первой утилиты был бы догадкой о намерении там, где
-    спросить стоит одну строку, поэтому при нескольких объявленных расчётах и
-    неназванном имени команда перечисляет их и останавливается.
-    """
-    if not utilities:
-        raise ValueError("в спецификации не объявлено ни одной утилиты — дописывать нечего")
-    if wanted:
-        for utility in utilities:
-            if utility["name"] == wanted:
-                return utility
-        names = ", ".join(f"«{u['name']}»" for u in utilities)
-        raise ValueError(f"утилита «{wanted}» в спецификации не объявлена; есть: {names}")
-    if len(utilities) == 1:
-        return utilities[0]
-    names = ", ".join(f"«{u['name']}»" for u in utilities)
-    raise ValueError(f"в спецификации несколько утилит — назовите одну через --utility: {names}")
-
-
-def _split_optional(field: dict) -> dict:
-    """Развернуть «иногда является» обратно.
-
-    Компилятор хранит необязательность внутри имени типа («Деньги |
-    undefined»), а печать спецификации ждёт отдельный флаг. Без этого шага
-    необязательное поле уехало бы в спецификацию как поле состояния с именем
-    «Деньги | undefined» — то есть тихо превратилось бы в другой тип.
-    """
-    name, type_name = field["name"], field["type"]
-    optional = type_name.endswith(" | undefined")
-    if optional:
-        type_name = type_name[: -len(" | undefined")]
-    return {"name": name, "type": type_name, "optional": optional}
+# Перевод «документ компилятора -> схема» живёт в одном месте на всех
+# вызывающих: та же функция зовётся гейтом хода агента (agent/claim_gate.py).
+# Вторая реализация здесь означала бы вторую версию того, что значит
+# «необязательное поле», и расхождение, невидимое обоим.
+from digit_cli.claimcheck.document import (  # noqa: E402
+    pick_utility as _pick_utility,
+    schema_of_document as _schema_of_document,
+    split_optional as _split_optional,
+)
 
 
 def cmd_rule_check(args) -> int:
@@ -106,31 +81,15 @@ def cmd_rule_check(args) -> int:
         return _die(f"ПРОВЕРИТЬ НЕЧЕМ — {error}", EXIT_CANNOT_CHECK)
 
     try:
-        utility = _pick_utility(document["utilities"], args.utility)
+        schema, utility, document_category = _schema_of_document(document, args.utility)
     except ValueError as error:
         return _die(str(error), EXIT_CANNOT_CHECK)
-
-    structures = [
-        {"name": s["name"], "fields": [_split_optional(f) for f in s["fields"]]}
-        for s in document["structures"]
-    ]
-    schema = claimcheck.Schema(
-        structures,
-        {"name": utility["name"], "input": utility["input"],
-         "output": utility["output"], "initial": utility["initial"]},
-    )
-    if not schema.input_fields:
-        return _die(
-            f"структура «{utility['input']}» не объявлена или пуста — "
-            "разбирать правило не над чем",
-            EXIT_CANNOT_CHECK,
-        )
 
     try:
         result = claimcheck.answer(
             list(args.statement),
             schema,
-            args.category or document.get("category") or "Правила",
+            args.category or document_category,
             base_rules=utility["rules"],
             base_properties=utility["properties"],
             base_examples=utility["examples"],

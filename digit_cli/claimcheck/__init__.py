@@ -68,6 +68,7 @@
 """
 
 from .bridge import RuntimeMissing, runtime_available, schema_of
+from .document import schema_of_document
 from .claimparse import Refusal, Schema
 from .pipeline import LIMIT_NOTE, answer, render_answer
 
@@ -80,4 +81,5 @@ __all__ = [
     "render_answer",
     "runtime_available",
     "schema_of",
+    "schema_of_document",
 ]

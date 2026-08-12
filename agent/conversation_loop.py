@@ -7055,8 +7055,63 @@ def run_conversation(
                     final_response = None
                     continue
 
+                # Gate 4: claim check (DGT-DIGIT-13). The model has said what it
+                # is going to say; a real FTS compiler now checks the rule-shaped
+                # sentences in it. Placed last in the chain on purpose: the three
+                # gates above decide whether the turn may end at all, this one
+                # judges what the ended turn CLAIMS. Off by default — see
+                # agent/claim_gate.py for why the default is False and not "auto".
+                try:
+                    from agent.claim_gate import (
+                        build_claim_gate_nudge,
+                        claim_gate_enabled,
+                        spec_source_for_turn,
+                    )
+
+                    if claim_gate_enabled():
+                        _claim_nudge = build_claim_gate_nudge(
+                            answer_text=final_response or "",
+                            spec_source=spec_source_for_turn(agent),
+                            attempts=getattr(agent, "_claim_gate_nudges", 0),
+                        )
+                    else:
+                        _claim_nudge = None
+                except Exception:
+                    # Fail-open like the shell hooks: a broken gate must not be
+                    # able to end a turn that would otherwise have succeeded.
+                    logger.debug("claim gate check failed", exc_info=True)
+                    _claim_nudge = None
+
+                if _claim_nudge:
+                    agent._claim_gate_nudges = (
+                        getattr(agent, "_claim_gate_nudges", 0) + 1
+                    )
+                    final_msg["finish_reason"] = "claim_check_failed"
+                    final_msg["_claim_gate_synthetic"] = True
+                    agent._emit_interim_assistant_message(final_msg)
+                    messages.append(final_msg)
+                    try:
+                        agent._flush_messages_to_session_db(messages, conversation_history)
+                    except Exception:
+                        logger.debug("claim gate interim flush failed", exc_info=True)
+                    messages.append({
+                        "role": "user",
+                        "content": _claim_nudge,
+                        "_claim_gate_synthetic": True,
+                    })
+                    agent._session_messages = messages
+                    logger.debug("claim gate nudge issued (attempt %d)",
+                                 agent._claim_gate_nudges)
+                    # Same finalizer contract as the three gates above.
+                    _pending_verification_response = final_response
+                    _pending_verification_response_previewed = (
+                        agent._interim_content_was_streamed(final_response or "")
+                    )
+                    final_response = None
+                    continue
+
                 messages.append(final_msg)
-                
+
                 _turn_exit_reason = f"text_response(finish_reason={finish_reason})"
                 if not agent.quiet_mode:
                     agent._safe_print(f"🎉 Conversation completed after {api_call_count} OpenAI-compatible API call(s)")
