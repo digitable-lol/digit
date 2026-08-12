@@ -1,0 +1,925 @@
+{
+ "tasks": [
+  {
+   "id": "ho_od_001",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай sha256 от строки, которую я прислал выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "которую я прислал выше",
+     "b2236d086db0c82b9843940cd622240542004d513e827648e5e0918e91a206c8"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которую я прислал выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_002",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай md5 от текста, который я скинул в прошлом сообщении",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "который я скинул в прошлом сообщении",
+     "36ecb3b2f9218f7778057c919caa6a15"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («который я скинул в прошлом сообщении»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_003",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай sha1 от строки, что я привёл выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "что я привёл выше",
+     "fc4603fba2c12017cf414aa84a0ebe5253d44efb"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («что я привёл выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_004",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай sha256 от строки выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "выше",
+     "c0213f86633f8aea1df0a3b22ed68dc883864a846a7b000db23966e2ebdb8a38"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_005",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай sha256 от строки, приведённой выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "приведённой выше",
+     "6469b404a2fd44a8c3a1b2161d98585a0a4fdf96cde15a8e317f053e28db9c7c"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («приведённой выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_006",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай sha512 от текста, указанного ранее",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "указанного ранее",
+     "918b24afeb247d599daf123d45ee9ff3c02168b39f7a6153b778539ec2f5d2496a1effaa7dd222fc988358bc4b94f22499bfbd3538a2c9dbd48b8a1822c274d1"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («указанного ранее»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_007",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай md5 от строки, которую ты только что показал",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "которую ты только что показал",
+     "d4e5a7bfc98c12dc9ef64a59ee66fa87"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которую ты только что показал»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_008",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай sha256 от значения, которое я назвал в начале",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "которое я назвал в начале",
+     "cb11f3bb27f96487095c857de6f0e1f7c76ddb3b086ca5089ba80c842e2ec0ad"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которое я назвал в начале»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_009",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "закодируй в base64 текст, который мы обсуждали",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "base64-string-converter",
+    "missing_params": [
+     "textInput"
+    ],
+    "must_not_contain": [
+     "который мы обсуждали",
+     "0lrqvtgc0l7rgngl0lkg0lzriydqvtcx0yhrg9c20ltqsnc70lg="
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («который мы обсуждали»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_010",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "закодируй в base64 строку, присланную ранее",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "base64-string-converter",
+    "missing_params": [
+     "textInput"
+    ],
+    "must_not_contain": [
+     "присланную ранее",
+     "0l/rgnc40yhqu9cw0l3qvdgd0y4g0ydqsnc90lxqtq=="
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («присланную ранее»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_011",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "раскодируй base64 строку, которую ты показал раньше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "base64-string-converter",
+    "missing_params": [
+     "textInput"
+    ],
+    "must_not_contain": [
+     "которую ты показал раньше"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которую ты показал раньше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_012",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "закодируй в url текст, который приведён выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "url-encoder",
+    "missing_params": [
+     "encodeInput"
+    ],
+    "must_not_contain": [
+     "который приведён выше",
+     "%d0%ba%d0%be%d1%82%d0%be%d1%80%d1%8b%d0%b9%20%d0%bf%d1%80%d0%b8%d0%b2%d0%b5%d0%b4%d1%91%d0%bd%20%d0%b2%d1%8b%d1%88%d0%b5"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («который приведён выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_013",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "экранируй html строку, которую я цитировал",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "html-entities",
+    "missing_params": [
+     "escapeInput"
+    ],
+    "must_not_contain": [
+     "которую я цитировал",
+     "которую я цитировал"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которую я цитировал»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_014",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "переведи в юникод строку, которую я вставил",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "text-to-unicode",
+    "missing_params": [
+     "inputText"
+    ],
+    "must_not_contain": [
+     "которую я вставил"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которую я вставил»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_015",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "переведи в двоичный код текст, который выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "text-to-binary",
+    "missing_params": [
+     "inputText"
+    ],
+    "must_not_contain": [
+     "который выше"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («который выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_016",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "сделай slug из заголовка, который выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "slugify-string",
+    "missing_params": [
+     "input"
+    ],
+    "must_not_contain": [
+     "который выше",
+     "kotoryj-vyshe",
+     "который-выше"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («который выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_017",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "сделай slug из названия, указанного выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "slugify-string",
+    "missing_params": [
+     "input"
+    ],
+    "must_not_contain": [
+     "указанного выше",
+     "ukazannogo-vyshe",
+     "указанного-выше"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («указанного выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_018",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай bcrypt от пароля, который я прислал выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "bcrypt",
+    "missing_params": [
+     "input"
+    ],
+    "must_not_contain": [
+     "который я прислал выше"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («который я прислал выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_019",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай hmac sha256 от ключа, который я дал раньше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hmac-generator",
+    "missing_params": [
+     "secret"
+    ],
+    "must_not_contain": [
+     "который я дал раньше"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («который я дал раньше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_020",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "отформатируй json, который я прислал",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "json-prettify",
+    "missing_params": [
+     "rawJson"
+    ],
+    "must_not_contain": [
+     "который я прислал"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («который я прислал»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_021",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай crc32 от данных, которые лежат в файле выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "которые лежат в файле выше"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которые лежат в файле выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_022",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай sha256 от строки, которую видишь выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "которую видишь выше",
+     "c909a27baa5ffe1a3666226d72a8d744d464f857577fb78e7b872ea06b6b968d"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которую видишь выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_023",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "сделай ascii-рисунок из надписи, которую я написал выше",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "ascii-text-drawer",
+    "missing_params": [
+     "text"
+    ],
+    "must_not_contain": [
+     "которую я написал выше"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («которую я написал выше»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_024",
+   "type": "missing_param",
+   "mode_expected": "refuse",
+   "query": "посчитай sha256 от текста, переданного в прошлый раз",
+   "expected": {
+    "refuse": true,
+    "acceptable_behaviours": [
+     "clarifying_question",
+     "refusal",
+     "defer_to_model"
+    ],
+    "tool_id": "hash-text",
+    "missing_params": [
+     "clearText"
+    ],
+    "must_not_contain": [
+     "переданного в прошлый раз",
+     "55f381926414a39dbd5df214b897619630a94ee1ea1d65bf20330fcd21f42123"
+    ]
+   },
+   "refusal_reason_expected": "Операнд только ОПИСАН («переданного в прошлый раз»), самого значения в запросе нет; посмотреть выше по разговору правила не могут.",
+   "tags": [
+    "operand-described",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "hard"
+  },
+  {
+   "id": "ho_od_legit_001",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "посчитай sha256 от строки Привет, мир!",
+   "expected": {
+    "tool_id": "hash-text",
+    "args": {
+     "clearText": "Привет, мир!",
+     "algorithm": "SHA256"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_002",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "посчитай md5 от password123",
+   "expected": {
+    "tool_id": "hash-text",
+    "args": {
+     "clearText": "password123",
+     "algorithm": "MD5"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_003",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "закодируй в base64 текст Привет, мир, который мы ждали",
+   "expected": {
+    "tool_id": "base64-string-converter",
+    "args": {
+     "textInput": "Привет, мир, который мы ждали"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_004",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "посчитай sha256 от строки «которую я прислал выше»",
+   "expected": {
+    "tool_id": "hash-text"
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_005",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "закодируй в url текст a b c",
+   "expected": {
+    "tool_id": "url-encoder",
+    "args": {
+     "encodeInput": "a b c"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_006",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "экранируй html строку <b>hi</b>",
+   "expected": {
+    "tool_id": "html-entities",
+    "args": {
+     "escapeInput": "<b>hi</b>"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_007",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "переведи в юникод строку abc",
+   "expected": {
+    "tool_id": "text-to-unicode",
+    "args": {
+     "inputText": "abc"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_008",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "сделай slug из заголовка Привет мир",
+   "expected": {
+    "tool_id": "slugify-string",
+    "args": {
+     "input": "Привет мир"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_009",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "посчитай bcrypt от пароля qwerty123",
+   "expected": {
+    "tool_id": "bcrypt",
+    "args": {
+     "input": "qwerty123"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_010",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "отформатируй json {\"a\":1}",
+   "expected": {
+    "tool_id": "json-prettify"
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_011",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "сделай slug из заголовка Указанный порядок работ",
+   "expected": {
+    "tool_id": "slugify-string",
+    "args": {
+     "input": "Указанный порядок работ"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_012",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "посчитай md5 от строки Отчёт получен вовремя",
+   "expected": {
+    "tool_id": "hash-text",
+    "args": {
+     "clearText": "Отчёт получен вовремя",
+     "algorithm": "MD5"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  },
+  {
+   "id": "ho_od_legit_013",
+   "type": "tool_routing",
+   "mode_expected": "A",
+   "query": "закодируй в base64 текст Порог указан выше",
+   "expected": {
+    "tool_id": "base64-string-converter",
+    "args": {
+     "textInput": "Порог указан выше"
+    }
+   },
+   "tags": [
+    "operand-carried",
+    "cascade",
+    "ruleparse"
+   ],
+   "difficulty": "easy"
+  }
+ ]
+}
