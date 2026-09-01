@@ -2585,6 +2585,8 @@ def _run_single_child(
                 exit_reason=entry.get("exit_reason"),
                 duration_seconds=entry.get("duration_seconds"),
                 api_calls=entry.get("api_calls"),
+                tokens=entry.get("tokens"),
+                model=entry.get("model"),
                 files_written=_files_written,
                 summary=(entry.get("summary") or "")[:500],
             )
