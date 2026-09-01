@@ -2179,6 +2179,11 @@ def _run_single_child(
             role=getattr(child, "_delegate_role", None),
             task_index=task_index,
             goal=(goal or "")[:500],
+            # The instruction as issued, not a summary of it. A ledger that
+            # records only the goal cannot answer whether a lead briefed its
+            # worker or merely retold the task -- which is the whole question
+            # the brief contract exists to settle.
+            brief_text=(getattr(child, "_cluster_brief_text", "") or "")[:8000],
             write_root=list(_cb.get_write_roots(child_task_id)),
             requested_write_root=_requested_root,
             refused=_boundary_err,
@@ -2884,6 +2889,51 @@ def _recover_tasks_from_json_string(
     return parsed, None
 
 
+# A delegated child runs a short, non-interactive loop with no user to nudge it,
+# so "the skill lists its references, read them if you need them" reliably means
+# "never read them". The parts of a skill that carry the actual contract — the
+# brief form, the failure catalogue — live in those files. Inline them, capped,
+# and keep the paths when the cap bites.
+_SKILL_REFERENCE_BUDGET_CHARS = 24_000
+
+
+def _inline_skill_references(rendered: str, skill_names: List[str]) -> str:
+    """Append each loaded skill's ``references/`` files to its preloaded text."""
+    import glob as _glob
+
+    budget = _SKILL_REFERENCE_BUDGET_CHARS
+    blocks: List[str] = []
+    for name in skill_names:
+        try:
+            from tools.skills_tool import skill_view
+
+            payload = json.loads(skill_view(name))
+            skill_dir = payload.get("skill_dir")
+        except Exception:
+            continue
+        if not skill_dir:
+            continue
+        for path in sorted(_glob.glob(os.path.join(skill_dir, "references", "*.md"))):
+            rel = os.path.relpath(path, skill_dir)
+            try:
+                with open(path, "r", encoding="utf-8") as fh:
+                    body = fh.read()
+            except OSError:
+                continue
+            if len(body) > budget:
+                blocks.append(
+                    f"[{name} :: {rel} — not inlined, {len(body):,} chars over "
+                    f"budget; read it with skill_view(name={name!r}, "
+                    f"file_path={rel!r})]"
+                )
+                continue
+            budget -= len(body)
+            blocks.append(f"--- {name} :: {rel} ---\n{body.strip()}")
+    if not blocks:
+        return rendered
+    return rendered + "\n\n" + "\n\n".join(blocks)
+
+
 def delegate_task(
     goal: Optional[str] = None,
     context: Optional[str] = None,
@@ -2891,6 +2941,8 @@ def delegate_task(
     max_iterations: Optional[int] = None,
     role: Optional[str] = None,
     background: Optional[bool] = None,
+    brief: Optional[Any] = None,
+    skill: Optional[Any] = None,
     parent_agent=None,
 ) -> str:
     """
@@ -2989,7 +3041,36 @@ def delegate_task(
             )
         task_list = tasks
     elif goal and isinstance(goal, str) and goal.strip():
+        # The single-task form is the one small models actually reach for, so
+        # it has to carry the same fields as a task object -- a brief that only
+        # exists inside `tasks[]` is unreachable to a caller using `goal=`.
         task_list = [{"goal": goal, "context": context, "role": top_role}]
+        if brief is not None:
+            task_list[0]["brief"] = brief
+        if skill is not None:
+            task_list[0]["skill"] = skill
+    elif brief is not None:
+        # A brief without a goal is not an incomplete call: the brief's `task`
+        # field *is* the goal, and states it more completely. Measured on
+        # qwen2.5:7b-instruct, a lead told to "add a brief alongside goal"
+        # responds by sending the brief and dropping the goal -- twice in a
+        # row, identically. Deriving one costs nothing and unblocks the tree.
+        from agent import task_brief as _tb_early
+
+        _b = _tb_early.coerce(brief)
+        _derived = (
+            str(_b.get("task") or "").strip() if isinstance(_b, dict) else ""
+        )
+        if not _derived:
+            return tool_error(
+                "A `brief` was provided without a `goal`, and the brief has no "
+                "`task` field to use as one. Add either."
+            )
+        task_list = [{
+            "goal": _derived, "context": context, "role": top_role, "brief": _b,
+        }]
+        if skill is not None:
+            task_list[0]["skill"] = skill
     else:
         return tool_error("Provide either 'goal' (single task) or 'tasks' (batch).")
 
@@ -3011,16 +3092,80 @@ def delegate_task(
     # before any child is built, so an incomplete brief costs nothing.
     from agent import task_brief as _tb
 
+    # The contract propagates: an agent that was itself briefed must brief its
+    # own children. Without this the brief is merely available, and a lead that
+    # can pass a bare `goal` will -- measured on qwen2.5:14b-instruct, a lead
+    # holding the cluster-agent-setup skill still sent its worker a one-line
+    # retelling. Making it available is not the same as making it hold.
+    # Off by default, and deliberately so. Measured over 15 live runs on
+    # qwen2.5:7b-instruct (64K) and qwen2.5:14b-instruct (32K): with the
+    # contract enforced, a lead holding the cluster-agent-setup skill writes a
+    # correct RCTF brief in its reply and then calls delegate_task with a bare
+    # goal anyway, run after run -- so enforcement turned "a weak brief" into
+    # "no worker at all" and the tree stopped at depth 1. On a model that can
+    # emit a nested tool argument this is the right contract; on these it is a
+    # capability regression. So the operator chooses, per
+    # delegation.require_brief, and the rule that propagates is "if you were
+    # briefed, you brief".
+    _require_brief = bool(
+        cfg.get("require_brief", False)
+        and getattr(parent_agent, "_cluster_require_brief", False)
+    )
+
     for i, task in enumerate(task_list):
         brief = task.get("brief")
         if brief is None:
+            if _require_brief:
+                return tool_error(
+                    f"Task {i}: this delegation needs a `brief`, not just a "
+                    "goal. You were briefed under the same contract, so your "
+                    "own workers are briefed too.\n" + _tb.contract_hint()
+                    + "\nNothing was delegated. Call delegate_task again now, "
+                    "with the brief object filled in. Do not describe the "
+                    "brief in your reply -- send it as the tool argument."
+                )
             continue
+        brief = _tb.coerce(brief)
+        task["brief"] = brief
         err = _tb.validate(brief)
         if err:
             return tool_error(f"Task {i}: {err}")
         rendered = _tb.render(brief)
         extra = str(task.get("context") or "").strip()
         task["context"] = f"{rendered}\n\nADDITIONAL CONTEXT\n{extra}" if extra else rendered
+
+    # Skills handed down the tree. A child already inherits the `skills`
+    # toolset and could call skill_view itself, but that only makes the skill
+    # *reachable* — nothing says which one applies to the cell it was given. A
+    # named skill is loaded here and prepended to the child's context, in full,
+    # the same way a brief is: it arrives as standing guidance for the work,
+    # not as a catalogue entry the child may or may not look up. Missing names
+    # are refused before any child is built, so a typo costs nothing.
+    from agent.skill_commands import build_preloaded_skills_prompt
+
+    for i, task in enumerate(task_list):
+        requested = task.get("skill") or task.get("skills")
+        if not requested:
+            continue
+        names = [requested] if isinstance(requested, str) else list(requested)
+        names = [str(n).strip() for n in names if str(n).strip()]
+        if not names:
+            continue
+        try:
+            rendered, loaded, missing = build_preloaded_skills_prompt(names)
+        except Exception as exc:
+            return tool_error(f"Task {i}: could not load skill(s) {names}: {exc}")
+        if missing:
+            return tool_error(
+                f"Task {i}: no such skill: {', '.join(missing)}. "
+                "Call skills_list to see what is available; a skill outside "
+                "Digit's own directory must be declared in "
+                "skills.external_dirs first."
+            )
+        rendered = _inline_skill_references(rendered, loaded)
+        extra = str(task.get("context") or "").strip()
+        task["context"] = f"{rendered}\n\n{extra}" if extra else rendered
+        logger.info("Delegated task %d carries skill(s): %s", i, ", ".join(loaded))
 
     overall_start = time.monotonic()
     results = []
@@ -3103,6 +3248,11 @@ def delegate_task(
         # first place the child's task_id exists (the key the boundary is
         # registered under). Narrowing against the parent is enforced there.
         child._cluster_write_root = t.get("write_root")
+        # The instruction as issued, carried to the ledger for the same reason.
+        child._cluster_brief_text = t.get("context") or ""
+        # If you were briefed, you brief: carried to the child so its own
+        # delegate_task calls are held to the same contract.
+        child._cluster_require_brief = bool(t.get("brief"))
         children.append((i, t, child))
 
     def _execute_and_aggregate(*, honor_parent_interrupt: bool = True) -> dict:
@@ -4036,6 +4186,21 @@ DELEGATE_TASK_SCHEMA = {
                             ),
                         },
                         "brief": _TASK_BRIEF_SCHEMA_PROPERTY,
+                        "skill": {
+                            "type": ["string", "array"],
+                            "items": {"type": "string"},
+                            "description": (
+                                "Name of a skill (or a list of names) to load "
+                                "in full into this subagent's context, as "
+                                "standing guidance for the work. Use it when "
+                                "the subagent must follow a documented method "
+                                "rather than merely have it available -- e.g. "
+                                "give a lead 'cluster-agent-setup' so the "
+                                "briefs it writes follow the brief contract. "
+                                "An unknown name refuses the whole delegation; "
+                                "call skills_list first if unsure."
+                            ),
+                        },
                     },
                     "required": ["goal"],
                 },
@@ -4048,6 +4213,17 @@ DELEGATE_TASK_SCHEMA = {
                 "type": "string",
                 "enum": ["leaf", "orchestrator"],
                 "description": "(rebuilt at get_definitions() time)",
+            },
+            # Mirrors of the per-task fields, for the single-task form.
+            "brief": _TASK_BRIEF_SCHEMA_PROPERTY,
+            "skill": {
+                "type": ["string", "array"],
+                "items": {"type": "string"},
+                "description": (
+                    "Skill name (or names) to load in full into the "
+                    "subagent's context as standing guidance. Single-task "
+                    "form; use tasks[].skill for a batch."
+                ),
             },
             "background": {
                 "type": "boolean",
@@ -4121,6 +4297,8 @@ registry.register(
         max_iterations=args.get("max_iterations"),
         role=args.get("role"),
         background=_model_background_value(args, kw.get("parent_agent")),
+        brief=args.get("brief"),
+        skill=args.get("skill"),
         parent_agent=kw.get("parent_agent"),
     ),
     check_fn=check_delegate_requirements,

@@ -17,6 +17,7 @@ a retelling from reaching it.
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Optional
 
 # Field -> human name, in the order they are rendered.
@@ -38,6 +39,38 @@ OPTIONAL_FIELDS: Dict[str, str] = {
 # A brief must be a brief, not a shrug. These lengths are the shortest text that
 # can carry provenance; anything below is a retelling.
 _MIN_LEN = {"role": 12, "known": 20, "task": 20, "done": 10}
+
+
+def coerce(brief: Any) -> Any:
+    """Accept the shapes a model actually emits, without relaxing the contract.
+
+    Small local models reliably produce the brief's *content* and unreliably
+    produce its *container*: measured on qwen2.5:7b-instruct and 14b-instruct,
+    a lead handed the cluster-agent-setup skill wrote a complete, correct RCTF
+    brief as a JSON block in its reply, then called ``delegate_task`` with a
+    bare ``goal`` -- three times in a row against a refusal that named the
+    missing fields. Nested-object tool arguments are the failure, not the
+    brief.
+
+    So a brief arriving as a JSON string (or fenced in one) is parsed here and
+    then validated exactly like any other. Every required field is still
+    required; only the wrapper is forgiving.
+    """
+    if not isinstance(brief, str):
+        return brief
+    text = brief.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[-1] if "\n" in text else text
+        if text.endswith("```"):
+            text = text[: -3]
+    text = text.strip()
+    if not (text.startswith("{") and text.endswith("}")):
+        return brief
+    try:
+        parsed = json.loads(text)
+    except (ValueError, TypeError):
+        return brief
+    return parsed if isinstance(parsed, dict) else brief
 
 
 def validate(brief: Any) -> Optional[str]:
@@ -120,12 +153,53 @@ def schema_property() -> Dict[str, Any]:
     for key, label in OPTIONAL_FIELDS.items():
         props[key] = {"type": "string", "description": label}
     return {
-        "type": "object",
+        # A JSON string is accepted as well as an object -- see coerce(). Small
+        # models emit the brief's content correctly and its container badly, and
+        # a schema that only admits the container loses the brief entirely.
+        "type": ["object", "string"],
         "properties": props,
         "required": list(REQUIRED_FIELDS),
         "description": (
             "Structured RCTF brief for this subagent. When present it replaces "
             "free-text context: the subagent reads the rendered brief. A brief "
-            "missing a required key is refused and the subagent does not run."
+            "missing a required key is refused and the subagent does not run. "
+            "May be sent either as an object or as a JSON string with the same "
+            "keys, whichever your tool-calling handles reliably."
         ),
     }
+
+
+def contract_hint() -> str:
+    """One-screen restatement of the contract, for a refusal the model can act on.
+
+    A refusal that only names the rule makes the caller guess at the shape; this
+    gives the exact object to send back.
+    """
+    required = "\n".join(f"  {key}: {label}" for key, label in REQUIRED_FIELDS.items())
+    optional = "\n".join(f"  {key}: {label}" for key, label in OPTIONAL_FIELDS.items())
+    return (
+        "Add a `brief` to the task, alongside `goal`. Send it as an object, "
+        "or -- if nested objects are awkward -- as a JSON string with these "
+        "keys:\n"
+        "REQUIRED\n" + required + "\n"
+        "RECOMMENDED (a brief without a falsifier returns confirmation of "
+        "whatever was assumed)\n" + optional + "\n"
+        "Give measurements with provenance, not links to reports, and phrase "
+        "`done` as a number or the output of a command.\n"
+        "\nShape to copy and fill (keep `goal` as well):\n"
+        + json.dumps(
+            {
+                "goal": "<one line: what the worker delivers>",
+                "brief": {
+                    "role": "<what the worker is; what is reserved to you>",
+                    "known": "<facts with provenance: paths, numbers, commits>",
+                    "task": "<the one cell, phrased so completion is observable>",
+                    "done": "<a number, or the exit code of a named command>",
+                    "boundaries": "<what must not be touched>",
+                    "falsifier": "<what result would refute the assumption>",
+                },
+            },
+            ensure_ascii=False,
+            indent=1,
+        )
+    )
