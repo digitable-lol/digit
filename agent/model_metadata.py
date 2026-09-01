@@ -297,7 +297,83 @@ def _warn_context_length_fallback(model: str, base_url: str) -> None:
 # Minimum context length required to run Digit.  Models with fewer
 # tokens cannot maintain enough working memory for tool-calling workflows.
 # Sessions, model switches, and cron jobs should reject models below this.
+#
+# This is a *policy* default, not a measurement.  The thing it is meant to
+# protect — the fixed prefix Digit resends on every request — is far smaller:
+# measured with agent.context_breakdown.fixed_prefix_tokens on
+# qwen2.5:7b-instruct, 6,990 tokens for a delegation toolset (file + terminal +
+# delegation, 7 tools) and 15,491 for the full default toolset (28 tools).
+# 64,000 is therefore roughly 4x the largest realistic prefix and 9x a
+# subagent's.  Keeping it as the default is defensible — headroom for tool
+# results and history is what makes an agent useful rather than merely able to
+# send its own schemas — but it is a preference, and on hardware where the only
+# models that fit have 32K windows it is the difference between running and not.
+# So it is overridable, and the override is floored by a number that *is*
+# measured: see :func:`minimum_context_length_for`.
 MINIMUM_CONTEXT_LENGTH = 64_000
+
+# Env override, checked before config so a single run can be pinned without
+# editing a profile.
+ENV_MINIMUM_CONTEXT_LENGTH = "DIGIT_MINIMUM_CONTEXT_LENGTH"
+
+# Working room a run needs on top of its fixed prefix: one substantial tool
+# result plus the model's reply.  Below prefix + this, an agent cannot complete
+# a single tool-call round trip, so no configuration may go there.
+MINIMUM_WORKING_ROOM_TOKENS = 8_000
+
+
+def configured_minimum_context_length(model_config: Optional[Dict[str, Any]] = None) -> int:
+    """The operator's floor, defaulting to :data:`MINIMUM_CONTEXT_LENGTH`.
+
+    Read from ``DIGIT_MINIMUM_CONTEXT_LENGTH`` or ``model.minimum_context_length``.
+    Unset, invalid, or non-positive values leave the default in place, so an
+    existing install behaves exactly as before.
+    """
+    raw = os.getenv(ENV_MINIMUM_CONTEXT_LENGTH, "").strip()
+    if not raw and isinstance(model_config, dict):
+        raw = model_config.get("minimum_context_length")
+    if raw is None or raw == "":
+        return MINIMUM_CONTEXT_LENGTH
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "Ignoring invalid minimum_context_length %r; keeping %s.",
+            raw, f"{MINIMUM_CONTEXT_LENGTH:,}",
+        )
+        return MINIMUM_CONTEXT_LENGTH
+    return value if value > 0 else MINIMUM_CONTEXT_LENGTH
+
+
+def minimum_context_length_for(
+    agent: Any = None, model_config: Optional[Dict[str, Any]] = None
+) -> Tuple[int, int, int]:
+    """Resolve the floor for *agent* as ``(effective, requested, hard)``.
+
+    ``requested`` is what the operator asked for; ``hard`` is this agent's own
+    measured fixed prefix plus :data:`MINIMUM_WORKING_ROOM_TOKENS`; ``effective``
+    is the larger of the two.  Lowering the floor is allowed; lowering it below
+    the point where the agent cannot send its own tool schemas is not.
+    """
+    if model_config is None and agent is not None:
+        # agent_init resolved this from the profile at construction time; the
+        # runtime gate has the agent but not its config dict.
+        stored = getattr(agent, "_minimum_context_requested", None)
+        requested = int(stored) if isinstance(stored, int) and stored > 0 else (
+            configured_minimum_context_length(None)
+        )
+    else:
+        requested = configured_minimum_context_length(model_config)
+    prefix = 0
+    if agent is not None:
+        try:
+            from agent.context_breakdown import fixed_prefix_tokens
+
+            prefix = fixed_prefix_tokens(agent)
+        except Exception:  # pragma: no cover - measurement must never block
+            prefix = 0
+    hard = (prefix + MINIMUM_WORKING_ROOM_TOKENS) if prefix else 0
+    return max(requested, hard), requested, hard
 
 # Short-lived in-process cache for local-server context probes. Bounds the
 # probe rate when the new local-endpoint live-probe paths (reconcile-on-hit +

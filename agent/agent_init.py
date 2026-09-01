@@ -2560,15 +2560,35 @@ def init_agent(
         and not isinstance(agent._config_context_length, bool)
         and agent._config_context_length > 0
     )
-    if _ctx and _ctx < MINIMUM_CONTEXT_LENGTH and not _allow_lmstudio_explicit_below_floor:
+    # The floor is a policy default (64K) the operator may lower, clamped to
+    # this agent's measured fixed prefix plus one tool-call round trip. See
+    # agent.model_metadata.minimum_context_length_for.
+    from agent.model_metadata import minimum_context_length_for
+
+    _min_ctx, _min_requested, _min_hard = minimum_context_length_for(
+        agent, _model_cfg if isinstance(_model_cfg, dict) else None
+    )
+    agent._minimum_context_requested = _min_requested
+    agent._minimum_context_length = _min_ctx
+    if _ctx and _ctx < _min_ctx and not _allow_lmstudio_explicit_below_floor:
+        _floor_note = (
+            f"  That floor is this agent's measured hard minimum: a fixed "
+            f"prefix of {_min_hard - 8_000:,} tokens (system prompt, rules and "
+            f"tool schemas) plus 8,000 tokens of working room."
+            if _min_ctx > _min_requested and _min_hard
+            else (
+                f"  {_min_requested:,} is a policy floor, not a hard limit — "
+                f"lower it with model.minimum_context_length (or "
+                f"DIGIT_MINIMUM_CONTEXT_LENGTH) if the only models your "
+                f"hardware fits have smaller windows."
+            )
+        )
         raise ValueError(
             f"Model {agent.model} has a context window of {_ctx:,} tokens, "
-            f"which is below the minimum {MINIMUM_CONTEXT_LENGTH:,} required "
-            f"by Digit.  Choose a model with at least "
-            f"{MINIMUM_CONTEXT_LENGTH // 1000}K context.  If your server "
-            f"reports a window smaller than the model's true window, set "
-            f"model.context_length in config.yaml to the real value "
-            f"(this must be at least {MINIMUM_CONTEXT_LENGTH // 1000}K)."
+            f"which is below the minimum {_min_ctx:,} required "
+            f"by Digit.\n{_floor_note}\n"
+            f"  If your server reports a window smaller than the model's true "
+            f"window, set model.context_length in config.yaml to the real value."
         )
 
     # Nous Hermes 3/4 are chat models, not tool-call-tuned. The interactive

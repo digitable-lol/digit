@@ -281,7 +281,13 @@ def _ollama_context_limit_error(agent: Any, request_tokens: int) -> Optional[str
     runtime_ctx = getattr(agent, "_ollama_num_ctx", None)
     if not isinstance(runtime_ctx, int) or runtime_ctx <= 0:
         return None
-    if runtime_ctx >= MINIMUM_CONTEXT_LENGTH:
+
+    # The floor is the operator's, not a constant — but never below what this
+    # agent's own fixed prefix plus one tool-call round trip actually needs.
+    from agent.model_metadata import minimum_context_length_for
+
+    minimum, requested, hard = minimum_context_length_for(agent)
+    if runtime_ctx >= minimum:
         return None
 
     model = getattr(agent, "model", "") or "the selected model"
@@ -298,16 +304,37 @@ def _ollama_context_limit_error(agent: Any, request_tokens: int) -> Optional[str
         provider,
         base_url,
         runtime_ctx,
-        MINIMUM_CONTEXT_LENGTH,
+        minimum,
         request_tokens,
         tool_count,
         getattr(agent, "session_id", None) or "none",
     )
 
+    # Say which of the two floors was hit, and with which numbers. A refusal
+    # that quotes a constant teaches the operator nothing; one that quotes the
+    # measured prefix tells them exactly how much window they must buy.
+    if minimum > requested and hard:
+        why = (
+            f"That is below this agent's measured hard floor of {hard:,} tokens: "
+            f"its fixed prefix (system prompt + rules + tool schemas for "
+            f"{tool_count} tools) is {hard - 8_000:,} tokens, plus "
+            "8,000 tokens of working room for one tool result and a reply. "
+            "The floor cannot be configured below this — there would be no "
+            "room to complete a single tool call."
+        )
+    else:
+        why = (
+            f"The configured minimum is {requested:,} tokens "
+            "(`model.minimum_context_length`, or DIGIT_MINIMUM_CONTEXT_LENGTH). "
+            "Lower it if this model's window is all the hardware allows; it is "
+            "a policy floor, not a hard limit, and Digit will still refuse "
+            "below what its own prefix plus one tool call needs."
+        )
+
     return (
         f"Ollama loaded `{model}` with only {runtime_ctx:,} tokens of runtime "
-        f"context, but Digit needs at least {MINIMUM_CONTEXT_LENGTH:,} tokens "
-        "for reliable tool use.\n\n"
+        f"context, but Digit is configured to need at least {minimum:,} tokens "
+        f"for reliable tool use.\n\n{why}\n\n"
         "Increase the Ollama context for this model and restart/reload the "
         "model before trying again. A known-good starting point is 65,536 "
         "tokens. In Digit config, set `model.ollama_num_ctx: 65536` "

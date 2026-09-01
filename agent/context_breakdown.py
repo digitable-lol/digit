@@ -181,6 +181,25 @@ _GRID_ROWS = 5  # 100 cells → 1 cell per percent of the context window
 _DETAILS_TABLE_LIMIT = 15
 
 
+def fixed_prefix_tokens(agent: Any) -> int:
+    """Tokens this agent must resend on every request, whatever it is doing.
+
+    System prompt, rules, skills index, tool schemas, subagent definitions —
+    everything except the conversation itself.  This is the number a minimum
+    context window has to clear; see
+    ``agent.model_metadata.minimum_context_length_for``.
+    """
+    try:
+        payload = compute_session_context_breakdown(agent)
+    except Exception:  # pragma: no cover - never block a run on a measurement
+        return 0
+    return sum(
+        int(category.get("tokens") or 0)
+        for category in payload.get("categories") or ()
+        if category.get("id") != "conversation"
+    )
+
+
 def _bytes_to_tokens(size: Optional[int]) -> Optional[int]:
     if size is None:
         return None
