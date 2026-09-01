@@ -249,3 +249,12 @@ def test_force_does_not_lift_the_boundary(boxes):
     )
     assert result["status"] == "blocked"
     assert not os.path.exists(os.path.join(outside, "f"))
+
+
+def test_refusal_names_the_path_without_stray_quoting(boxes):
+    """`sh -c 'echo x > /out/f'` hands the scanner `/out/f'` -- the closing
+    quote belongs to the enclosing word, not to the path."""
+    _, outside = boxes
+    err = sc.check_command_allowed(f"sh -c 'echo x > {outside}/f'", "worker")
+    assert err is not None
+    assert f"path : {os.path.realpath(outside)}/f\n" in err

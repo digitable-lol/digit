@@ -357,6 +357,11 @@ _SPLIT = re.compile(r"[;&|]{1,2}|\n")
 
 
 def _dequote(token: str) -> Optional[str]:
+    # A redirection operand is grabbed as one whitespace-delimited run, so a
+    # command like `sh -c 'echo x > /out/f'` hands us `/out/f'` -- the closing
+    # quote belongs to the enclosing word, not the path. Trim stray quoting and
+    # separators before judging, or the refusal names a path that does not exist.
+    token = token.strip().rstrip("'\";)")
     if len(token) >= 2 and token[0] == token[-1] and token[0] in "'\"":
         token = token[1:-1]
         # Inside double quotes an expansion still expands; only single quotes
