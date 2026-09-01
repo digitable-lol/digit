@@ -2542,6 +2542,36 @@ def terminal_tool(
                     "status": "error",
                 }, ensure_ascii=False)
 
+        # Cluster write boundary (agent/cluster_boundary.py) over the shell.
+        # Unconditional, and deliberately above the `if not force:` block: force
+        # means "the user confirmed this command", not "this agent may leave the
+        # slice of filesystem its parent delegated to it".
+        #
+        # Two layers, both in agent/shell_confinement.py: this pre-check refuses
+        # the legible cases with the boundary's own wording, and the Landlock
+        # confinement opened below is what actually holds for everything a
+        # static read of a shell string cannot see.
+        from agent import shell_confinement as _confinement
+
+        _boundary_stop = _confinement.unavailable_reason(task_id)
+        if _boundary_stop is None:
+            _bcwd = get_session_cwd(session_key) or getattr(env, "cwd", None) or cwd
+            _boundary_stop = _confinement.check_command_allowed(
+                command, task_id,
+                cwd=_resolve_command_cwd(
+                    workdir=workdir, default_cwd=_bcwd, session_key=session_key,
+                ),
+            )
+        if _boundary_stop:
+            logger.warning("Blocked by cluster write boundary: %s",
+                           _safe_command_preview(command))
+            return json.dumps({
+                "output": "",
+                "exit_code": -1,
+                "error": _boundary_stop,
+                "status": "blocked",
+            }, ensure_ascii=False)
+
         # Pre-exec security checks (tirith + dangerous command detection)
         # Skip check if force=True (user has confirmed they want to run it)
         approval_note = None
@@ -2629,23 +2659,26 @@ def terminal_tool(
                 session_key=session_key,
             )
             try:
-                if env_type == "local":
-                    proc_session = process_registry.spawn_local(
-                        command=command,
-                        cwd=effective_cwd,
-                        task_id=effective_task_id,
-                        session_key=session_key,
-                        env_vars=env.env if hasattr(env, 'env') else None,
-                        use_pty=effective_pty,
-                    )
-                else:
-                    proc_session = process_registry.spawn_via_env(
-                        env=env,
-                        command=command,
-                        cwd=effective_cwd,
-                        task_id=effective_task_id,
-                        session_key=session_key,
-                    )
+                # A background job outlives this call, so the boundary has to
+                # be sealed into the process at exec, not checked around it.
+                with _confinement.confined(task_id):
+                    if env_type == "local":
+                        proc_session = process_registry.spawn_local(
+                            command=command,
+                            cwd=effective_cwd,
+                            task_id=effective_task_id,
+                            session_key=session_key,
+                            env_vars=env.env if hasattr(env, 'env') else None,
+                            use_pty=effective_pty,
+                        )
+                    else:
+                        proc_session = process_registry.spawn_via_env(
+                            env=env,
+                            command=command,
+                            cwd=effective_cwd,
+                            task_id=effective_task_id,
+                            session_key=session_key,
+                        )
 
                 result_data = {
                     "output": "Background process started",
@@ -2898,7 +2931,14 @@ def terminal_tool(
                         # reads, RPC reads) intentionally stay unbounded.
                         "bounded_capture": True,
                     }
-                    result = env.execute(command, **execute_kwargs)
+                    # Landlock-confine the shell to this agent's write roots
+                    # for the duration of the spawn (no boundary -> no-op).
+                    with _confinement.confined(task_id) as _hook:
+                        result = env.execute(command, **execute_kwargs)
+                    if _hook is not None and isinstance(result, dict):
+                        result["output"] = _confinement.explain_denial(
+                            result.get("output") or "", task_id
+                        )
                 except Exception as e:
                     error_str = str(e).lower()
                     if "timeout" in error_str:

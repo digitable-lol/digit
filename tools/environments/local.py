@@ -1529,6 +1529,17 @@ class LocalEnvironment(BaseEnvironment):
 
         _popen_kwargs = {"creationflags": windows_hide_flags()} if _IS_WINDOWS else {}
 
+        # Cluster write boundary over the shell. When the calling agent has one,
+        # the child is Landlock-confined between fork and exec, so bash and
+        # everything it spawns can write only under the agent's roots. No
+        # boundary registered -> no hook -> unchanged behaviour.
+        if not _IS_WINDOWS:
+            from agent.shell_confinement import preexec_for_current
+
+            _confine = preexec_for_current()
+            if _confine is not None:
+                _popen_kwargs["preexec_fn"] = _confine
+
         proc = subprocess.Popen(
             args,
             text=True,

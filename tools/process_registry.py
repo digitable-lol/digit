@@ -734,11 +734,23 @@ class ProcessRegistry:
                 user_shell = _find_shell()
                 pty_env = _sanitize_subprocess_env(os.environ, env_vars)
                 pty_env["PYTHONUNBUFFERED"] = "1"
+                pty_kwargs = {}
+                if not _IS_WINDOWS:
+                    from agent.shell_confinement import preexec_for_current
+
+                    _confine = preexec_for_current()
+                    if _confine is not None:
+                        # Confine the background job too. Applied at exec, it
+                        # also seals the `process` tool's stdin injection: keys
+                        # pushed into an already-confined shell inherit its
+                        # boundary.
+                        pty_kwargs["preexec_fn"] = _confine
                 pty_proc = _PtyProcessCls.spawn(
                     [user_shell, "-lic", f"set +m; {safe_command}"],
                     cwd=session.cwd,
                     env=pty_env,
                     dimensions=(30, 120),
+                    **pty_kwargs,
                 )
                 session.pid = pty_proc.pid
                 session.host_start_time = self._safe_host_start_time(session.pid)
@@ -777,6 +789,12 @@ class ProcessRegistry:
         bg_env = _sanitize_subprocess_env(os.environ, env_vars)
         bg_env["PYTHONUNBUFFERED"] = "1"
         _popen_kwargs = {"creationflags": windows_hide_flags()} if _IS_WINDOWS else {}
+        if not _IS_WINDOWS:
+            from agent.shell_confinement import preexec_for_current
+
+            _confine = preexec_for_current()
+            if _confine is not None:
+                _popen_kwargs["preexec_fn"] = _confine
 
         proc = subprocess.Popen(
             [user_shell, "-lic", f"set +m; {safe_command}"],
