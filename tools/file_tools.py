@@ -699,6 +699,19 @@ def _check_sensitive_path(filepath: str, task_id: str = "default") -> str | None
             "Agent cannot modify security-sensitive configuration. "
             "Edit ~/.digit/config.yaml directly or use 'digit config' instead."
         )
+    # Cluster write boundary: a delegated agent may hold a narrower slice of the
+    # filesystem than its parent. Unlike DIGIT_WRITE_SAFE_ROOT (process-global),
+    # this is keyed by task_id, so each level of a delegation tree is bounded
+    # separately. Returns None when no boundary is registered, which is the
+    # default and preserves the pre-existing behaviour.
+    try:
+        from agent.cluster_boundary import check_write_allowed
+
+        boundary_err = check_write_allowed(resolved, task_id)
+        if boundary_err:
+            return boundary_err
+    except ImportError:
+        pass
     return None
 
 

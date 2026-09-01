@@ -792,6 +792,7 @@ def _build_child_system_prompt(
     role: str = "leaf",
     max_spawn_depth: int = 2,
     child_depth: int = 1,
+    write_root: Optional[str] = None,
 ) -> str:
     """Build a focused system prompt for a child agent.
 
@@ -813,6 +814,15 @@ def _build_child_system_prompt(
             "\nWORKSPACE PATH:\n"
             f"{workspace_path}\n"
             "Use this exact path for local repository/workdir operations unless the task explicitly says otherwise."
+        )
+    if write_root and str(write_root).strip():
+        parts.append(
+            "\nWRITE BOUNDARY:\n"
+            f"{write_root}\n"
+            "You may create or modify files only at or under this path. Writes "
+            "elsewhere are refused by the file tools, not merely discouraged. "
+            "If the task appears to require writing outside this boundary, stop "
+            "and say so in your summary -- do not try to work around it."
         )
     parts.append(
         "\nComplete this task using the tools available to you. "
@@ -1212,6 +1222,10 @@ def _build_child_agent(
     # 'leaf' (default) cannot; 'orchestrator' retains the delegation
     # toolset subject to depth/kill-switch bounds applied below.
     role: str = "leaf",
+    # Absolute directory the child is confined to for file writes. Enforced in
+    # _run_single_child (which owns the task_id the boundary is keyed by);
+    # passed here only so the child's prompt can state its own boundary.
+    write_root: Optional[str] = None,
 ):
     """
     Build a child AIAgent on the main thread (thread-safe construction).
@@ -1321,6 +1335,7 @@ def _build_child_agent(
         role=effective_role,
         max_spawn_depth=max_spawn,
         child_depth=child_depth,
+        write_root=write_root,
     )
     # Extract parent's API key so subagents inherit auth (e.g. Nous Portal).
     parent_api_key = getattr(parent_agent, "api_key", None)
@@ -2107,6 +2122,10 @@ def _run_single_child(
             }
         )
 
+    # Declared before the try so the finally can release the write boundary
+    # even when the child raises before its task_id is assigned.
+    child_task_id = None
+
     try:
         _heartbeat_thread.start()
         if child_progress_cb:
@@ -2135,6 +2154,46 @@ def _run_single_child(
             record_session_cwd(child_task_id, get_session_cwd(parent_task_id))
         except Exception as e:
             logger.debug("Child cwd seed failed: %s", e)
+
+        # ------------------------------------------------------------------
+        # Cluster write boundary + ledger.
+        #
+        # The child's boundary is registered under its task_id, so each level
+        # of the tree is bounded separately. A requested root that is not a
+        # subset of the parent's is refused here and the child never runs --
+        # a lead cannot hand a worker more filesystem than the lead holds.
+        # ------------------------------------------------------------------
+        from agent import cluster_boundary as _cb
+
+        _requested_root = getattr(child, "_cluster_write_root", None)
+        _boundary_err = _cb.set_write_root(
+            child_task_id,
+            [_requested_root] if _requested_root else [],
+            parent_task_id=parent_task_id,
+        )
+        _cb.record(
+            "spawn",
+            parent_task_id=parent_task_id,
+            child_task_id=child_task_id,
+            depth=getattr(child, "_delegate_depth", None),
+            role=getattr(child, "_delegate_role", None),
+            task_index=task_index,
+            goal=(goal or "")[:500],
+            write_root=list(_cb.get_write_roots(child_task_id)),
+            requested_write_root=_requested_root,
+            refused=_boundary_err,
+        )
+        if _boundary_err:
+            _cb.clear_write_root(child_task_id)
+            return {
+                "task_index": task_index,
+                "status": "error",
+                "summary": None,
+                "error": _boundary_err,
+                "api_calls": 0,
+                "duration_seconds": round(time.monotonic() - child_start, 2),
+                "exit_reason": "write_boundary_refused",
+            }
         wall_start = time.time()
         parent_reads_snapshot = (
             list(file_state.known_reads(parent_task_id)) if parent_task_id else []
@@ -2512,6 +2571,26 @@ def _run_single_child(
             except Exception as e:
                 logger.debug("Progress callback completion failed: %s", e)
 
+        try:
+            from agent import cluster_boundary as _cb
+
+            _cb.record(
+                "finish",
+                parent_task_id=parent_task_id,
+                child_task_id=child_task_id,
+                depth=getattr(child, "_delegate_depth", None),
+                role=getattr(child, "_delegate_role", None),
+                task_index=task_index,
+                status=entry.get("status"),
+                exit_reason=entry.get("exit_reason"),
+                duration_seconds=entry.get("duration_seconds"),
+                api_calls=entry.get("api_calls"),
+                files_written=_files_written,
+                summary=(entry.get("summary") or "")[:500],
+            )
+        except Exception as e:
+            logger.debug("cluster ledger finish record failed: %s", e)
+
         return entry
 
     except Exception as exc:
@@ -2528,6 +2607,23 @@ def _run_single_child(
                 )
             except Exception as e:
                 logger.debug("Progress callback failure relay failed: %s", e)
+        try:
+            from agent import cluster_boundary as _cb
+
+            _cb.record(
+                "finish",
+                parent_task_id=getattr(parent_agent, "_current_task_id", None),
+                child_task_id=child_task_id,
+                depth=getattr(child, "_delegate_depth", None),
+                role=getattr(child, "_delegate_role", None),
+                task_index=task_index,
+                status="error",
+                exit_reason="exception",
+                duration_seconds=duration,
+                error=str(exc)[:500],
+            )
+        except Exception as e:
+            logger.debug("cluster ledger error record failed: %s", e)
         return {
             "task_index": task_index,
             "status": "error",
@@ -2580,6 +2676,17 @@ def _run_single_child(
                     parent_agent._active_children.remove(child)
             except (ValueError, UnboundLocalError) as e:
                 logger.debug("Could not remove child from active_children: %s", e)
+
+        # Release the child's write boundary. task_ids are uuid-derived and
+        # never reused, but leaving entries behind would grow the registry for
+        # the life of the process.
+        if child_task_id:
+            try:
+                from agent import cluster_boundary as _cb
+
+                _cb.clear_write_root(child_task_id)
+            except Exception:
+                logger.debug("Failed to clear child write boundary")
 
         # Close tool resources (terminal sandboxes, browser daemons,
         # background processes, httpx clients) so subagent subprocesses
@@ -2896,6 +3003,23 @@ def delegate_task(
         if not task.get("goal", "").strip():
             return tool_error(f"Task {i} is missing a 'goal'.")
 
+    # Structured RCTF briefs. When a task carries one it is validated against
+    # the brief contract and rendered into the child's context, so a worker
+    # receives a brief rather than the lead's retelling. Refusal happens here,
+    # before any child is built, so an incomplete brief costs nothing.
+    from agent import task_brief as _tb
+
+    for i, task in enumerate(task_list):
+        brief = task.get("brief")
+        if brief is None:
+            continue
+        err = _tb.validate(brief)
+        if err:
+            return tool_error(f"Task {i}: {err}")
+        rendered = _tb.render(brief)
+        extra = str(task.get("context") or "").strip()
+        task["context"] = f"{rendered}\n\nADDITIONAL CONTEXT\n{extra}" if extra else rendered
+
     overall_start = time.monotonic()
     results = []
 
@@ -2960,6 +3084,7 @@ def delegate_task(
             override_acp_command=creds.get("command"),
             override_acp_args=creds.get("args"),
             role=effective_role,
+            write_root=t.get("write_root"),
         )
         # Tee the child's progress events into its live transcript log.
         # wrap_progress_callback preserves the inner callback contract
@@ -2972,6 +3097,10 @@ def delegate_task(
                 getattr(child, "tool_progress_callback", None), _writer
             )
             child._live_transcript_path = str(_writer.path)
+        # Carry the requested write boundary to _run_single_child, which is the
+        # first place the child's task_id exists (the key the boundary is
+        # registered under). Narrowing against the parent is enforced there.
+        child._cluster_write_root = t.get("write_root")
         children.append((i, t, child))
 
     def _execute_and_aggregate(*, honor_parent_interrupt: bool = True) -> dict:
@@ -3832,6 +3961,19 @@ def _build_dynamic_schema_overrides() -> dict:
     }
 
 
+def _task_brief_schema_property() -> Dict[str, Any]:
+    """RCTF brief fragment, resolved lazily so a broken import can't stop
+    delegate_task from loading with its other fields intact."""
+    try:
+        from agent.task_brief import schema_property
+
+        return schema_property()
+    except Exception:  # pragma: no cover - defensive
+        return {"type": "object", "description": "Structured RCTF brief."}
+
+
+_TASK_BRIEF_SCHEMA_PROPERTY = _task_brief_schema_property()
+
 DELEGATE_TASK_SCHEMA = {
     "name": "delegate_task",
     # NOTE: description / tasks.description / role.description are placeholder
@@ -3881,6 +4023,17 @@ DELEGATE_TASK_SCHEMA = {
                             "enum": ["leaf", "orchestrator"],
                             "description": "Per-task role override. See top-level 'role' for semantics.",
                         },
+                        "write_root": {
+                            "type": "string",
+                            "description": (
+                                "Absolute directory this subagent is allowed to "
+                                "write in. Must be inside your own write "
+                                "boundary -- a wider path is refused and the "
+                                "subagent does not run. Omit to give the "
+                                "subagent your own boundary unchanged."
+                            ),
+                        },
+                        "brief": _TASK_BRIEF_SCHEMA_PROPERTY,
                     },
                     "required": ["goal"],
                 },
