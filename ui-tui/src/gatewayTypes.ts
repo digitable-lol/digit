@@ -348,6 +348,138 @@ export interface SecretRespondResponse {
   ok?: boolean
 }
 
+// ── digitdisk machine snapshot (`/machine`) ──────────────────────────
+
+/**
+ * Reply from the `digitdisk.status` RPC.  digit does not measure the machine
+ * itself — it runs the installed `digitdisk` CLI and renders the JSON.
+ *
+ * `state` is always present and always renderable: a missing or too-old
+ * external tool is something the panel SHOWS (with the version it needs, by
+ * number), not an error that blanks it.  `snapshot` is set only when
+ * `state === 'ok'`; its shape is digitdisk's `status --json` payload.
+ */
+export interface DigitdiskStatusResponse {
+  /** Absolute path of the binary that was run. Absent when state is 'missing'. */
+  binary?: string
+  /** Set on 'failed': the first line of what went wrong. */
+  error?: string
+  /** Set on 'missing' / 'outdated': what the user should do about it. */
+  hint?: string
+  /** Minimum digitdisk version this panel can read, e.g. "0.6.0". */
+  required: string
+  /** The parsed `status --json` payload. Only when state is 'ok'. */
+  snapshot?: DigitdiskSnapshot
+  state: 'failed' | 'missing' | 'ok' | 'outdated'
+  /** Detected version, e.g. "0.6.0"; null for a source build ("dev"). */
+  version?: null | string
+  /** False when the binary reports "dev" — running, but version unverified. */
+  version_known?: boolean
+  /** Raw first line of `digitdisk --version`. */
+  version_line?: string
+}
+
+export interface DigitdiskSnapshot {
+  disks?: DigitdiskDisk[]
+  gpus?: DigitdiskGpu[]
+  host?: DigitdiskHost
+  load?: DigitdiskLoad
+  memory?: DigitdiskMemory
+  /** What digitdisk could not measure, and why. Keys are human phrases. */
+  missing?: Record<string, string>
+  network?: DigitdiskNet[]
+  processes?: DigitdiskProcesses
+  sensors?: DigitdiskSensor[]
+  taken_at?: string
+}
+
+export interface DigitdiskHost {
+  cpu_model?: string
+  distro?: string
+  hostname?: string
+  kernel_release?: string
+  machine?: string
+  model?: string
+  uptime_human?: string
+}
+
+export interface DigitdiskCore {
+  busy_percent?: number
+  index?: number
+  name?: string
+}
+
+export interface DigitdiskLoad {
+  '15min'?: number
+  '1min'?: number
+  '5min'?: number
+  busy_percent?: number
+  cores?: DigitdiskCore[]
+  cpu_count?: number
+  sample_millis?: number
+}
+
+export interface DigitdiskMemory {
+  available_bytes?: number
+  buff_cache_bytes?: number
+  free_bytes?: number
+  swap_total_bytes?: number
+  swap_used_bytes?: number
+  total_bytes?: number
+  used_bytes?: number
+}
+
+export interface DigitdiskProc {
+  cmdline?: string
+  comm?: string
+  cpu_percent?: number
+  pid?: number
+  rss_bytes?: number
+  user?: string
+}
+
+export interface DigitdiskProcesses {
+  running?: number
+  threads?: number
+  top_by_cpu?: DigitdiskProc[]
+  top_by_memory?: DigitdiskProc[]
+  total?: number
+}
+
+export interface DigitdiskDisk {
+  available_bytes?: number
+  fs_type?: string
+  mount_point?: string
+  source?: string
+  total_bytes?: number
+  use_percent?: number
+  used_bytes?: number
+}
+
+export interface DigitdiskNet {
+  name?: string
+  oper_state?: string
+  rx_bytes?: number
+  tx_bytes?: number
+}
+
+export interface DigitdiskGpu {
+  busy_percent?: null | number
+  celsius?: null | number
+  driver?: string
+  memory_total_bytes?: null | number
+  memory_used_bytes?: null | number
+  name?: string
+  vendor?: string
+}
+
+export interface DigitdiskSensor {
+  celsius?: number
+  chip?: string
+  crit_celsius?: null | number
+  label?: string
+}
+
 // ── Shell / clipboard / input ────────────────────────────────────────
 
 export interface ShellExecResponse {

@@ -292,6 +292,8 @@ export interface OverlayState {
   /** Modal widget app — owns input, blocks the composer. */
   widget: ActiveWidget | null
   journey: boolean
+  /** `/machine` — full-screen host snapshot rendered from digitdisk. */
+  machine: boolean
   modelPicker: boolean | { refresh?: boolean }
   pager: null | PagerState
   petPicker: boolean

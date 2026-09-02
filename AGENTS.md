@@ -453,6 +453,7 @@ Newline-delimited JSON-RPC over stdio. Requests from Ink, events from Python. Se
 | Approvals | `prompts.tsx` | `approval.respond` ← `approval.request` |
 | Clarify/sudo/secret | `prompts.tsx`, `maskedPrompt.tsx` | `clarify/sudo/secret.respond` |
 | Session picker | `sessionPicker.tsx` | `session.list/resume` |
+| Machine snapshot (`/machine`) | `machinePanel.tsx` + `lib/digitdiskView.ts` | `digitdisk.status` |
 | Slash commands | Local handler + fallthrough | `slash.exec` → `_SlashWorker`, `command.dispatch` |
 | Completions | `useCompletion` hook | `complete.slash`, `complete.path` |
 | Theming | `theme.ts` + `branding.tsx` | `gateway.ready` with skin data |
@@ -461,6 +462,32 @@ Newline-delimited JSON-RPC over stdio. Requests from Ink, events from Python. Se
 
 1. Built-in client commands (`/help`, `/quit`, `/clear`, `/resume`, `/copy`, `/paste`, etc.) handled locally in `app.tsx`
 2. Everything else → `slash.exec` (runs in persistent `_SlashWorker` subprocess) → `command.dispatch` fallback
+
+### Machine Snapshot (`/machine`) — digitdisk is called, never copied
+
+`/machine` renders CPU (per core), memory, disks, network and GPUs. **Digit does
+not measure any of it.** The gateway shells out to the separately-installed
+[`digitdisk`](https://github.com/digitable-lol/digitdisk) CLI and renders its
+JSON, so the two tools can never disagree about the same machine. Do not grow a
+second implementation with `psutil` — extend digitdisk instead.
+
+- **Invocation is `digitdisk status --json`, in that order.** digitdisk reads a
+  bare word in the subcommand slot as a *path*, so `digitdisk --json status`
+  fails with "подкоманда status не принимает путей". Do not "tidy" the flag
+  order.
+- **The version gate is mandatory.** `status --json` carries no
+  `contract_version` field (only `analyze --json` does), so the tool's own
+  version is the only thing that can be checked before trusting the keys.
+  `MIN_VERSION` in `tui_gateway/digitdisk_probe.py` is the floor; raise it and
+  the renderer together when the payload shape changes. Below the floor the
+  panel says so by number and renders nothing, rather than parsing an older
+  shape blind. A source build (`digitdisk dev`) is allowed but flagged
+  unverified.
+- **Discovery order:** `$DIGITDISK_BIN` → `PATH` → Homebrew / `~/.local/bin`.
+  Absent, outdated and broken are all *rendered states*, not RPC errors — the
+  panel must never be blank.
+- `digitdisk.status` is in `_LONG_HANDLERS` (`server.py`): a snapshot takes
+  ~1.6 s and would otherwise stall the stdin reader thread.
 
 ### Dev Commands
 

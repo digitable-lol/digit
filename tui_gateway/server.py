@@ -209,6 +209,12 @@ _LONG_HANDLERS = frozenset(
         "billing.step_up",
         "browser.manage",
         "cli.exec",
+        # digitdisk.status shells out to the digitdisk CLI, which walks /proc
+        # for every process and samples CPU over a 200 ms window — ~1.6s on a
+        # busy 256-core host, and the handler also runs `--version` first.
+        # Inline that would hold the reader thread for seconds on every open
+        # of the /machine panel (same class as #21123).
+        "digitdisk.status",
         # Completion RPCs run inline on the reader thread by default, but both
         # can block it for seconds: complete.path spawns `git ls-files` and
         # fuzzy-ranks the whole repo (slow on large repos / WSL2 mounts), and

@@ -336,6 +336,16 @@ export const opsCommands: SlashCommand[] = [
   },
 
   {
+    aliases: ['digitdisk', 'sysinfo'],
+    help: 'open the machine snapshot — cpu, memory, disks, network, gpus (needs digitdisk)',
+    name: 'machine',
+    run: (_arg, ctx) => {
+      void ctx
+      patchOverlayState({ machine: true })
+    }
+  },
+
+  {
     help: 'replay a completed spawn tree · `/replay [N|last|list|load <path>]`',
     name: 'replay',
     run: (arg, ctx) => {

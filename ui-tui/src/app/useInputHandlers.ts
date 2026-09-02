@@ -223,6 +223,10 @@ export function useInputHandlers(ctx: InputHandlerContext): InputHandlerResult {
       return patchOverlayState({ journey: false })
     }
 
+    if (overlay.machine) {
+      return patchOverlayState({ machine: false })
+    }
+
     if (overlay.widget) {
       return closeWidget()
     }

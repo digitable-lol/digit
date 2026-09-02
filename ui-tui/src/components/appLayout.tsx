@@ -31,6 +31,7 @@ import { Banner, Panel, SessionPanel } from './branding.js'
 import { FpsOverlay } from './fpsOverlay.js'
 import { HelpHint } from './helpHint.js'
 import { Journey } from './journey.js'
+import { MachinePanel } from './machinePanel.js'
 import { MessageLine } from './messageLine.js'
 import { PetKitty, PetSprite } from './petSprite.js'
 import { QueuedMessages } from './queuedMessages.js'
@@ -479,6 +480,13 @@ const JourneyPane = memo(function JourneyPane() {
   return <Journey gw={gw} onClose={() => patchOverlayState({ journey: false })} t={ui.theme} />
 })
 
+const MachinePane = memo(function MachinePane() {
+  const { gw } = useGateway()
+  const ui = useStore($uiState)
+
+  return <MachinePanel gw={gw} onClose={() => patchOverlayState({ machine: false })} t={ui.theme} />
+})
+
 const StatusRulePane = memo(function StatusRulePane({
   at,
   composer,
@@ -540,7 +548,7 @@ export const AppLayout = memo(function AppLayout({
     <Shell {...shellProps}>
       <Box flexDirection="column" flexGrow={1} position="relative">
         <Box flexDirection="row" flexGrow={1}>
-          {!overlay.agents && !overlay.journey && <AmbientRail side="left" />}
+          {!overlay.agents && !overlay.journey && !overlay.machine && <AmbientRail side="left" />}
           {overlay.agents ? (
             <PerfPane id="agents">
               <AgentsOverlayPane />
@@ -549,15 +557,19 @@ export const AppLayout = memo(function AppLayout({
             <PerfPane id="journey">
               <JourneyPane />
             </PerfPane>
+          ) : overlay.machine ? (
+            <PerfPane id="machine">
+              <MachinePane />
+            </PerfPane>
           ) : (
             <PerfPane id="transcript">
               <TranscriptPane actions={actions} composer={composer} progress={progress} transcript={transcript} />
             </PerfPane>
           )}
-          {!overlay.agents && !overlay.journey && <AmbientRail side="right" />}
+          {!overlay.agents && !overlay.journey && !overlay.machine && <AmbientRail side="right" />}
         </Box>
 
-        {!overlay.agents && !overlay.journey && (
+        {!overlay.agents && !overlay.journey && !overlay.machine && (
           <>
             <PerfPane id="prompt">
               <PromptZone

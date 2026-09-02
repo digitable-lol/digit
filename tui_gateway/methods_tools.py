@@ -36,6 +36,30 @@ def _(rid, params: dict) -> dict:
         return _ok(rid, {"available": False, "percent": None, "plugged": None, "category": "dim"})
 
 
+@method("digitdisk.status")
+def _(rid, params: dict) -> dict:
+    """Return a digitdisk machine snapshot for the `/machine` panel.
+
+    digit shells out to the installed digitdisk rather than growing its own
+    copy of the same measurements; the discovery, version gate and JSON parse
+    all live in ``digitdisk_probe`` so they can be tested without a binary.
+
+    Always resolves with a payload — ``state`` is ``ok`` / ``missing`` /
+    ``outdated`` / ``failed`` and the panel renders each of them.  An absent
+    external tool is something to tell the user about, not an RPC error that
+    leaves the panel blank.
+
+    Slow by nature (a full /proc sweep plus a 200 ms CPU sample), so the
+    method name is in ``_LONG_HANDLERS``.
+    """
+    try:
+        from .digitdisk_probe import probe
+
+        return _ok(rid, probe())
+    except Exception as e:
+        return _err(rid, 5004, f"digitdisk probe failed: {e}")
+
+
 @method("process.stop")
 def _(rid, params: dict) -> dict:
     try:

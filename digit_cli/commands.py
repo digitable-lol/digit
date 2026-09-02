@@ -147,6 +147,8 @@ COMMAND_REGISTRY: list[CommandDef] = [
                "Session", aliases=("learning", "memory-graph"), cli_only=True,
                args_hint="[list|delete <id>|edit <id>]",
                subcommands=("list", "delete", "edit")),
+    CommandDef("machine", "Show the machine snapshot: cpu, memory, disks, network, gpus",
+               "Session", aliases=("digitdisk", "sysinfo"), cli_only=True),
     CommandDef("queue", "Queue a prompt for the next turn (doesn't interrupt)", "Session",
                aliases=("q",), args_hint="<prompt>",
                busy_policy="dispatch", busy_handler="queue"),
