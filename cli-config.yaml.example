@@ -1281,6 +1281,20 @@ delegation:
                                               # a whole worker on a model that will not make the corrected
                                               # second call, which is exactly what was measured on
                                               # qwen2.5:7b/14b-instruct when the whole brief was demanded.
+  # -- Supervision (OTP) ---------------------------------------------------
+  # delegate_task takes a `supervisor` argument: {strategy, max_restarts,
+  # max_seconds}. The supervisor is code (agent/supervisor.py), not a model
+  # call -- the dispatcher declares the policy, the harness starts the
+  # children, restarts an abnormal termination by the strategy, gives up when
+  # the restart intensity is exceeded, and ends when no child needs restarting.
+  #   strategy:     one_for_one (default) | one_for_all | rest_for_one
+  #   max_restarts: 3 by default
+  #   max_seconds:  300 by default. Elixir's default window is 5s; agent
+  #                 children run for minutes, so 5s would let an unbounded
+  #                 restart loop through unnoticed.
+  # Per task: restart = transient (default) | temporary | permanent.
+  # Restarts are appended to the cluster ledger as supervisor_start /
+  # child_started / child_terminated / child_restart / supervisor_exit.
   # orchestrator_enabled: true                # Kill switch for role="orchestrator" children (default: true).
   # subagent_auto_approve: false              # When a subagent hits a dangerous-command approval prompt, auto-deny (default: false)
                                               # or auto-approve "once" (true) instead of blocking on stdin.

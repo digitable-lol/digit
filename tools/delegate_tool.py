@@ -2984,6 +2984,7 @@ def delegate_task(
     brief_falsifier: Optional[str] = None,
     brief_known: Optional[str] = None,
     skill: Optional[Any] = None,
+    supervisor: Optional[Any] = None,
     parent_agent=None,
 ) -> str:
     """
@@ -3140,6 +3141,31 @@ def delegate_task(
             )
         if not task.get("goal", "").strip():
             return tool_error(f"Task {i} is missing a 'goal'.")
+
+    # ------------------------------------------------------------------
+    # Supervision. A level that only starts children, watches them, restarts
+    # them by a declared rule and then ends is exactly what OTP's supervisor
+    # behaviour is -- and OTP makes it library code, not a process that
+    # reasons. Doing it with a model call would spend a turn re-deriving a
+    # policy that was already written down, and get it wrong differently every
+    # run. So the model supplies the child specs (this task list, plus a
+    # strategy) and agent/supervisor.py does the supervising.
+    #
+    # Refused here, before any child exists: a misspelled strategy would
+    # otherwise supervise nothing the way the caller meant.
+    # ------------------------------------------------------------------
+    _sup_flags = None
+    if supervisor is not None and not (
+        supervisor is False or supervisor == "" or supervisor == {}
+    ):
+        from agent import supervisor as _supmod
+
+        try:
+            _sup_flags = _supmod.normalize_flags(supervisor)
+            for i, task in enumerate(task_list):
+                task["restart"] = _supmod.normalize_restart(task.get("restart"))
+        except ValueError as exc:
+            return tool_error(f"supervisor: {exc}")
 
     # ------------------------------------------------------------------
     # RCTF briefs, composed rather than requested.
@@ -3354,7 +3380,16 @@ def delegate_task(
     # toolset resolution never leaks into the parent (shared with the plugin
     # subagent-lifecycle API).
     children = []
-    for i, t in enumerate(task_list):
+
+    def _make_child(i: int, t: Dict[str, Any]):
+        """Build one child, fully wired. Called again, unchanged, on a restart.
+
+        A supervised restart must produce a *new* agent with a fresh
+        conversation rather than reuse the one that died -- OTP's "fail fast,
+        do not repair", which is the only sane rule for state nobody can
+        inspect from outside. Factoring the build out is what makes that
+        possible without duplicating the wiring.
+        """
         # Per-task role beats top-level; normalise again so unknown
         # per-task values warn and degrade to leaf uniformly.
         effective_role = _normalize_role(t.get("role") or top_role)
@@ -3404,7 +3439,113 @@ def delegate_task(
         # If you were briefed, you brief: carried to the child so its own
         # delegate_task calls are held to the same contract.
         child._cluster_require_brief = bool(t.get("brief"))
-        children.append((i, t, child))
+        return child
+
+    for i, t in enumerate(task_list):
+        children.append((i, t, _make_child(i, t)))
+
+    # Report from the supervisor run, folded into the tool's JSON so the
+    # dispatcher sees the restarts rather than only the final answers.
+    _sup_report: Dict[str, Any] = {}
+
+    def _run_supervised(flags) -> List[Dict[str, Any]]:
+        """Run this fan-out under an OTP supervisor and return the results.
+
+        The supervisor owns the lifecycle: it starts each child, waits, decides
+        per ``restart`` type and ``strategy`` whether a termination calls for a
+        restart, stops when the restart intensity is exceeded, and exits once
+        no child needs restarting -- which is when the work is done.
+        """
+        nonlocal _sup_report
+        from agent import supervisor as _supmod
+        from agent import cluster_boundary as _cb
+
+        child_by_index = {i: c for (i, _t, c) in children}
+        # Named after the delegation it supervises, so its journal rows line up
+        # with the live transcripts of the same fan-out.
+        sup_name = f"sup-{live_deleg_id or 'batch'}"
+
+        def _event(event: str, **fields: Any) -> None:
+            cid = fields.get("child_id")
+            if isinstance(cid, str) and cid.startswith("task-"):
+                try:
+                    idx = int(cid.split("-", 1)[1])
+                except ValueError:
+                    idx = None
+                if idx is not None and idx in child_by_index:
+                    fields["child_task_id"] = getattr(
+                        child_by_index[idx], "_subagent_id", None
+                    )
+                    fields["goal"] = (task_list[idx].get("goal") or "")[:200]
+            _cb.record(
+                event,
+                parent_task_id=getattr(parent_agent, "_current_task_id", None),
+                **fields,
+            )
+            _emit_parent_console(
+                parent_agent,
+                "  🌳 " + event + " " + json.dumps(
+                    {k: v for k, v in fields.items() if k != "supervisor"},
+                    ensure_ascii=False, default=str,
+                )[:300],
+            )
+
+        def _make_start(i: int, t: Dict[str, Any]):
+            def _start(attempt: int) -> Dict[str, Any]:
+                if attempt > 0:
+                    # Fail fast: a restart is a new agent with a fresh
+                    # conversation and the same brief, never the corpse of the
+                    # one that died.
+                    fresh = _make_child(i, t)
+                    child_by_index[i] = fresh
+                    for k, (j, tt, _old) in enumerate(children):
+                        if j == i:
+                            children[k] = (j, tt, fresh)
+                            break
+                return _run_single_child(
+                    i, t["goal"], child_by_index[i], parent_agent
+                )
+            return _start
+
+        def _make_terminate(i: int):
+            def _terminate() -> None:
+                agent_obj = child_by_index.get(i)
+                if agent_obj is not None and hasattr(agent_obj, "interrupt"):
+                    agent_obj.interrupt("Terminated by supervisor")
+            return _terminate
+
+        specs = [
+            _supmod.ChildSpec(
+                id=f"task-{i}",
+                start=_make_start(i, t),
+                restart=t.get("restart") or _supmod.TRANSIENT,
+                terminate=_make_terminate(i),
+            )
+            for (i, t, _c) in children
+        ]
+        _sup_report = _supmod.Supervisor(
+            flags, specs, on_event=_event, name=sup_name
+        ).run()
+
+        out: List[Dict[str, Any]] = []
+        for (i, _t, _c) in children:
+            entry = _sup_report["children"].get(f"task-{i}")
+            if not isinstance(entry, dict) or "task_index" not in entry:
+                entry = {
+                    "task_index": i,
+                    "status": (entry or {}).get("status", "error")
+                    if isinstance(entry, dict) else "error",
+                    "summary": None,
+                    "error": (entry or {}).get(
+                        "error", "supervisor produced no result"
+                    ) if isinstance(entry, dict) else "supervisor produced no result",
+                    "api_calls": 0,
+                    "duration_seconds": 0,
+                }
+            entry["attempts"] = _sup_report["attempts"].get(f"task-{i}", 0) + 1
+            out.append(entry)
+        out.sort(key=lambda r: r["task_index"])
+        return out
 
     def _execute_and_aggregate(*, honor_parent_interrupt: bool = True) -> dict:
         """Run all built children (1 or N), join on them, aggregate results,
@@ -3416,7 +3557,12 @@ def delegate_task(
         results block. That is the contract: fan-out runs in the background,
         waits on each other, and returns together.
         """
-        if n_tasks == 1:
+        if _sup_flags is not None:
+            # Supervised: the lifecycle belongs to agent/supervisor.py, for one
+            # child or many. The plain paths below stay exactly as they were,
+            # so an unsupervised delegation behaves identically to before.
+            results.extend(_run_supervised(_sup_flags))
+        elif n_tasks == 1:
             # Single task -- run directly (no thread pool overhead)
             _i, _t, child = children[0]
             result = _run_single_child(_i, _t["goal"], child, parent_agent)
@@ -3581,6 +3727,13 @@ def delegate_task(
             "results": results,
             "total_duration_seconds": total_duration,
         }
+        if _sup_report:
+            # The dispatcher needs to see restarts, not only final answers: a
+            # cell that only passed on the third attempt is a different fact
+            # from one that passed first time.
+            combined["supervisor"] = {
+                k: v for k, v in _sup_report.items() if k != "children"
+            }
         if live_paths:
             combined["live_transcripts"] = list(live_paths)
         return combined
@@ -4360,6 +4513,18 @@ DELEGATE_TASK_SCHEMA = {
                                 "re-derive. Flat string."
                             ),
                         },
+                        "restart": {
+                            "type": "string",
+                            "enum": ["permanent", "transient", "temporary"],
+                            "description": (
+                                "OTP restart type, used only when `supervisor` "
+                                "is set. transient (default) restarts this task "
+                                "only if it terminates abnormally; temporary is "
+                                "never restarted; permanent is always restarted "
+                                "and therefore always ends by exhausting the "
+                                "supervisor's restart intensity."
+                            ),
+                        },
                         "skill": {
                             "type": ["string", "array"],
                             "items": {"type": "string"},
@@ -4415,6 +4580,47 @@ DELEGATE_TASK_SCHEMA = {
                     "Facts you already established that the subagent must not "
                     "re-derive: paths, numbers, commits. Flat string, appended "
                     "to the boundary and neighbour facts the harness composes."
+                ),
+            },
+            "supervisor": {
+                "type": ["object", "string"],
+                "properties": {
+                    "strategy": {
+                        "type": "string",
+                        "enum": ["one_for_one", "one_for_all", "rest_for_one"],
+                        "description": (
+                            "OTP supervision strategy. one_for_one restarts "
+                            "only the task that terminated; one_for_all "
+                            "terminates the rest and restarts them all; "
+                            "rest_for_one restarts it and everything declared "
+                            "after it."
+                        ),
+                    },
+                    "max_restarts": {
+                        "type": "integer",
+                        "description": (
+                            "Restart intensity: more than this many restarts "
+                            "inside max_seconds and the supervisor gives up "
+                            "instead of looping. Default 3."
+                        ),
+                    },
+                    "max_seconds": {
+                        "type": "number",
+                        "description": (
+                            "The window the restart count is measured over, in "
+                            "seconds. Default 300 (agent children run for "
+                            "minutes, unlike OTP processes)."
+                        ),
+                    },
+                },
+                "description": (
+                    "Run this fan-out under a supervisor: it starts the tasks, "
+                    "restarts a task that terminates abnormally according to "
+                    "the strategy, stops when the restart intensity is "
+                    "exceeded, and ends when no task needs restarting. Nothing "
+                    "here costs a model call -- you declare the policy, the "
+                    "harness enforces it. May be sent as an object or as just "
+                    "the strategy name."
                 ),
             },
             "skill": {
@@ -4503,6 +4709,7 @@ registry.register(
         brief_falsifier=args.get("brief_falsifier"),
         brief_known=args.get("brief_known"),
         skill=args.get("skill"),
+        supervisor=args.get("supervisor"),
         parent_agent=kw.get("parent_agent"),
     ),
     check_fn=check_delegate_requirements,
