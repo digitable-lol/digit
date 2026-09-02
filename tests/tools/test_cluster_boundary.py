@@ -191,18 +191,40 @@ def test_delegate_schema_exposes_brief_and_write_root():
     assert "write_root" in item["properties"]
 
 
-def test_delegate_refuses_incomplete_brief():
-    """An unusable brief is refused before any child is constructed."""
+def test_delegate_completes_an_incomplete_brief_instead_of_refusing(monkeypatch):
+    """An incomplete brief is finished by the harness, not sent back.
+
+    This test asserted the opposite until the composed brief landed. Refusal
+    was measured to be the worse failure: on qwen2.5:7b/14b the lead never made
+    the corrected second call, so a partial brief became no worker at all.
+    What survives is the *contract* -- the child still reads a complete RCTF
+    brief; what changed is who finishes writing it.
+    """
     from tools import delegate_tool as D
 
     class Parent:
         _delegate_depth = 0
         session_id = None
+        model = "test-model"
 
-    out = D.delegate_task(
-        tasks=[{"goal": "x", "brief": {"role": "w"}}], parent_agent=Parent()
-    )
-    assert "Task brief rejected" in out
+    seen = {}
+
+    def _fake_build(**kwargs):
+        seen["context"] = kwargs.get("context")
+        raise RuntimeError("stop here")
+
+    monkeypatch.setattr(D, "_build_child_agent", _fake_build)
+    try:
+        D.delegate_task(
+            tasks=[{"goal": "x", "brief": {"role": "w"}}], parent_agent=Parent()
+        )
+    except RuntimeError:
+        pass  # reaching the builder is the point; the child itself is not
+    ctx = seen["context"]
+    assert "Task brief rejected" not in ctx
+    for heading in ("ROLE", "CONTEXT", "TASK", "DEFINITION OF DONE", "FORMAT"):
+        assert heading in ctx
+    assert "w" in ctx  # the lead's own role line survived composition
 
 
 def test_depth_cap_refuses_at_the_ceiling(monkeypatch):

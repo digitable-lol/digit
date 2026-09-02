@@ -477,6 +477,35 @@ def _normalize_role(r: Optional[str]) -> str:
     return "leaf"
 
 
+def _parent_write_roots(parent_agent) -> List[str]:
+    """The boundary the dispatching agent itself holds, for the composed brief.
+
+    A child that is not given its own ``write_root`` inherits the parent's; the
+    brief must name the boundary the worker will actually meet, not the one it
+    asked for.
+    """
+    try:
+        from agent import cluster_boundary as _cb
+
+        return list(_cb.get_write_roots(getattr(parent_agent, "_current_task_id", None)))
+    except Exception:  # pragma: no cover - a brief must not fail on this
+        return []
+
+
+def _shell_is_confined() -> bool:
+    """Whether the shell is actually held to the boundary on this machine.
+
+    Stated in the brief only when true: telling a worker the kernel stops it
+    when the kernel does not is worse than saying nothing.
+    """
+    try:
+        from agent import shell_confinement as _sc
+
+        return bool(_sc.available())
+    except Exception:
+        return False
+
+
 def _get_max_concurrent_children() -> int:
     """Read delegation.max_concurrent_children from config, falling back to
     DELEGATION_MAX_CONCURRENT_CHILDREN env var, then the default (3).
@@ -2184,6 +2213,15 @@ def _run_single_child(
             # worker or merely retold the task -- which is the whole question
             # the brief contract exists to settle.
             brief_text=(getattr(child, "_cluster_brief_text", "") or "")[:8000],
+            # Field by field: whose words these are. "the worker got a brief"
+            # and "the lead wrote one" are different claims, and a ledger that
+            # cannot tell them apart settles neither.
+            brief_source=getattr(child, "_cluster_brief_source", None) or None,
+            # The brief on its own, so it stays readable in the ledger even
+            # when a preloaded skill takes up most of the issued text.
+            brief_rendered=(
+                getattr(child, "_cluster_brief_rendered", "") or ""
+            )[:8000] or None,
             write_root=list(_cb.get_write_roots(child_task_id)),
             requested_write_root=_requested_root,
             refused=_boundary_err,
@@ -2942,6 +2980,9 @@ def delegate_task(
     role: Optional[str] = None,
     background: Optional[bool] = None,
     brief: Optional[Any] = None,
+    brief_done: Optional[str] = None,
+    brief_falsifier: Optional[str] = None,
+    brief_known: Optional[str] = None,
     skill: Optional[Any] = None,
     parent_agent=None,
 ) -> str:
@@ -3049,6 +3090,13 @@ def delegate_task(
             task_list[0]["brief"] = brief
         if skill is not None:
             task_list[0]["skill"] = skill
+        for _flat, _val in (
+            ("brief_done", brief_done),
+            ("brief_falsifier", brief_falsifier),
+            ("brief_known", brief_known),
+        ):
+            if _val is not None:
+                task_list[0][_flat] = _val
     elif brief is not None:
         # A brief without a goal is not an incomplete call: the brief's `task`
         # field *is* the goal, and states it more completely. Measured on
@@ -3071,6 +3119,13 @@ def delegate_task(
         }]
         if skill is not None:
             task_list[0]["skill"] = skill
+        for _flat, _val in (
+            ("brief_done", brief_done),
+            ("brief_falsifier", brief_falsifier),
+            ("brief_known", brief_known),
+        ):
+            if _val is not None:
+                task_list[0][_flat] = _val
     else:
         return tool_error("Provide either 'goal' (single task) or 'tasks' (batch).")
 
@@ -3086,53 +3141,145 @@ def delegate_task(
         if not task.get("goal", "").strip():
             return tool_error(f"Task {i} is missing a 'goal'.")
 
-    # Structured RCTF briefs. When a task carries one it is validated against
-    # the brief contract and rendered into the child's context, so a worker
-    # receives a brief rather than the lead's retelling. Refusal happens here,
-    # before any child is built, so an incomplete brief costs nothing.
+    # ------------------------------------------------------------------
+    # RCTF briefs, composed rather than requested.
+    #
+    # Asking the lead for the brief does not work, for three measured reasons
+    # on qwen2.5:7b-instruct (64K) and 14b-instruct (32K) -- and only the third
+    # is the model's fault:
+    #   1. run_agent._dispatch_delegate_task, the only path a model can reach,
+    #      never forwarded `brief` (or `skill`). A lead that did send one had
+    #      it dropped silently: issued brief 0 chars on 7b, and on 14b a
+    #      486-char retelling that arrived only because it was sent as
+    #      `context`. Fixed; the 7b lead then sends a 702-char RCTF object.
+    #   2. Refusing a thin brief cost the whole worker. Handed back "role is 12
+    #      chars, need >= 12", the lead rewrote the brief in its reply and
+    #      never made the corrected call. 1 run of 3.
+    #   3. Sometimes the lead writes the instructions in prose and never calls
+    #      the tool. 1 run of 3. Nothing here fixes that.
+    #
+    # So the harness builds it. Three of the five required contents of
+    # references/task-brief.md are facts this function already holds and the
+    # model can only restate worse: the write boundary, the neighbours (the
+    # other tasks in this very fan-out), and the role with what is reserved to
+    # the dispatcher. The fourth, the cell, is `goal` -- an argument the model
+    # must send anyway. Only the definition of done is irreducibly the
+    # dispatcher's, and it is offered as one flat string (`brief_done`) rather
+    # than as a key inside a nested object, because flat strings are the shape
+    # these models emit reliably.
+    #
+    # Whatever the model supplies wins; whatever it omits is composed; nothing
+    # is refused for being incomplete, because refusing is what stopped the
+    # tree. The per-field provenance goes to the ledger, so "the worker got a
+    # brief" and "the lead wrote one" stay separate claims.
+    # ------------------------------------------------------------------
     from agent import task_brief as _tb
 
+    _compose_brief = is_truthy_value(cfg.get("compose_brief", True), default=True)
+
     # The contract propagates: an agent that was itself briefed must brief its
-    # own children. Without this the brief is merely available, and a lead that
-    # can pass a bare `goal` will -- measured on qwen2.5:14b-instruct, a lead
-    # holding the cluster-agent-setup skill still sent its worker a one-line
-    # retelling. Making it available is not the same as making it hold.
-    # Off by default, and deliberately so. Measured over 15 live runs on
-    # qwen2.5:7b-instruct (64K) and qwen2.5:14b-instruct (32K): with the
-    # contract enforced, a lead holding the cluster-agent-setup skill writes a
-    # correct RCTF brief in its reply and then calls delegate_task with a bare
-    # goal anyway, run after run -- so enforcement turned "a weak brief" into
-    # "no worker at all" and the tree stopped at depth 1. On a model that can
-    # emit a nested tool argument this is the right contract; on these it is a
-    # capability regression. So the operator chooses, per
-    # delegation.require_brief, and the rule that propagates is "if you were
-    # briefed, you brief".
+    # own children. With composition every child is briefed, so this flag no
+    # longer asks for a brief -- it asks the dispatcher for the one field the
+    # harness cannot derive. Still off by default: any refusal at this point
+    # costs a whole worker on a model that cannot retry cleanly.
     _require_brief = bool(
         cfg.get("require_brief", False)
         and getattr(parent_agent, "_cluster_require_brief", False)
     )
 
+    _parent_depth = depth
+    # The parent's *brief*, not everything its context happened to contain: a
+    # preloaded skill in front of the brief would otherwise be excerpted into
+    # every grandchild instead of the provenance the excerpt is there for.
+    _parent_brief_text = str(
+        getattr(parent_agent, "_cluster_brief_rendered", "")
+        or getattr(parent_agent, "_cluster_brief_text", "")
+        or ""
+    )
+    _parent_roots = _parent_write_roots(parent_agent)
+    _shell_confined = _shell_is_confined()
+    _site_rules = str(cfg.get("site_rules") or "").strip()
+
     for i, task in enumerate(task_list):
-        brief = task.get("brief")
-        if brief is None:
-            if _require_brief:
-                return tool_error(
-                    f"Task {i}: this delegation needs a `brief`, not just a "
-                    "goal. You were briefed under the same contract, so your "
-                    "own workers are briefed too.\n" + _tb.contract_hint()
-                    + "\nNothing was delegated. Call delegate_task again now, "
-                    "with the brief object filled in. Do not describe the "
-                    "brief in your reply -- send it as the tool argument."
-                )
+        supplied = task.get("brief")
+        flat = _tb.collect_flat(task)
+        if flat:
+            merged = dict(supplied) if isinstance(supplied, dict) else {}
+            if not merged and supplied is not None:
+                coerced = _tb.coerce(supplied)
+                merged = dict(coerced) if isinstance(coerced, dict) else {}
+                if not merged:
+                    flat.setdefault("known", str(supplied).strip())
+            merged.update(flat)
+            supplied = merged
+
+        supplied = _tb.coerce(supplied) if supplied is not None else None
+        _model_done = (
+            str(supplied.get("done") or "").strip()
+            if isinstance(supplied, dict) else ""
+        )
+        if _require_brief and not _model_done:
+            return tool_error(
+                f"Task {i}: this delegation needs its definition of done. "
+                "Everything else in the brief is composed for you -- role, "
+                "boundary, neighbours, the cell -- but only you know what "
+                "would prove this cell finished.\n"
+                "Send it as the flat argument `brief_done`: one command whose "
+                "exit code, or one number, settles it.\n"
+                "Nothing was delegated; call delegate_task again with "
+                "brief_done filled in."
+            )
+
+        if not _compose_brief:
+            # Operator opted out: keep the pre-composition behaviour exactly,
+            # so a tree tuned against it does not change under an upgrade.
+            if supplied is None:
+                continue
+            err = _tb.validate(supplied)
+            if err:
+                return tool_error(f"Task {i}: {err}")
+            task["brief"] = supplied
+            rendered = _tb.render(supplied)
+            extra = str(task.get("context") or "").strip()
+            task["context"] = (
+                f"{rendered}\n\nADDITIONAL CONTEXT\n{extra}" if extra else rendered
+            )
             continue
-        brief = _tb.coerce(brief)
-        task["brief"] = brief
-        err = _tb.validate(brief)
+
+        _roots = [task["write_root"]] if task.get("write_root") else list(_parent_roots)
+        built, source = _tb.compose(
+            goal=task.get("goal") or "",
+            depth=_parent_depth + 1,
+            role=_normalize_role(task.get("role") or top_role),
+            task_index=i,
+            task_count=len(task_list),
+            write_roots=_roots,
+            shell_confined=_shell_confined,
+            siblings=[
+                str(other.get("goal") or "")
+                for j, other in enumerate(task_list)
+                if j != i
+            ],
+            parent_brief=_parent_brief_text,
+            site_rules=_site_rules,
+            supplied=supplied,
+        )
+        # Presence only. The length floors catch a lead's retelling; a composed
+        # brief with a short `task` just means the caller wrote a short goal,
+        # and refusing that would reintroduce the failure this replaces.
+        err = _tb.validate(built, min_lengths=False)
         if err:
+            # Composition guarantees every required field; reaching here means
+            # the composer itself is broken, and a half-brief must not ship.
             return tool_error(f"Task {i}: {err}")
-        rendered = _tb.render(brief)
+        task["brief"] = built
+        task["_brief_source"] = source
+        rendered = _tb.render(built)
+        task["_brief_rendered"] = rendered
         extra = str(task.get("context") or "").strip()
-        task["context"] = f"{rendered}\n\nADDITIONAL CONTEXT\n{extra}" if extra else rendered
+        task["context"] = (
+            f"{rendered}\n\nADDITIONAL CONTEXT\n{extra}" if extra else rendered
+        )
 
     # Skills handed down the tree. A child already inherits the `skills`
     # toolset and could call skill_view itself, but that only makes the skill
@@ -3250,6 +3397,10 @@ def delegate_task(
         child._cluster_write_root = t.get("write_root")
         # The instruction as issued, carried to the ledger for the same reason.
         child._cluster_brief_text = t.get("context") or ""
+        # The brief alone, for the excerpt this child's own children receive.
+        child._cluster_brief_rendered = t.get("_brief_rendered") or ""
+        # Which half of the brief was the dispatcher's, field by field.
+        child._cluster_brief_source = t.get("_brief_source") or {}
         # If you were briefed, you brief: carried to the child so its own
         # delegate_task calls are held to the same contract.
         child._cluster_require_brief = bool(t.get("brief"))
@@ -4186,6 +4337,29 @@ DELEGATE_TASK_SCHEMA = {
                             ),
                         },
                         "brief": _TASK_BRIEF_SCHEMA_PROPERTY,
+                        "brief_done": {
+                            "type": "string",
+                            "description": (
+                                "Definition of done for this task, as one flat "
+                                "string: a command whose exit code settles it, "
+                                "or a number. The rest of the brief is composed "
+                                "from the delegation itself."
+                            ),
+                        },
+                        "brief_falsifier": {
+                            "type": "string",
+                            "description": (
+                                "What result would refute this task's "
+                                "assumption. Flat string."
+                            ),
+                        },
+                        "brief_known": {
+                            "type": "string",
+                            "description": (
+                                "Established facts this worker must not "
+                                "re-derive. Flat string."
+                            ),
+                        },
                         "skill": {
                             "type": ["string", "array"],
                             "items": {"type": "string"},
@@ -4216,6 +4390,33 @@ DELEGATE_TASK_SCHEMA = {
             },
             # Mirrors of the per-task fields, for the single-task form.
             "brief": _TASK_BRIEF_SCHEMA_PROPERTY,
+            "brief_done": {
+                "type": "string",
+                "description": (
+                    "Definition of done for this subagent, as one flat string: "
+                    "a command whose exit code settles it, or a number. This is "
+                    "the ONE part of the brief nobody but you knows -- the role, "
+                    "the write boundary, the neighbours and the cell are "
+                    "composed for you from the delegation itself. Send it here "
+                    "rather than describing it in your reply."
+                ),
+            },
+            "brief_falsifier": {
+                "type": "string",
+                "description": (
+                    "What result would refute the assumption behind this task. "
+                    "Flat string. Without one, a subagent returns confirmation "
+                    "of whatever was assumed."
+                ),
+            },
+            "brief_known": {
+                "type": "string",
+                "description": (
+                    "Facts you already established that the subagent must not "
+                    "re-derive: paths, numbers, commits. Flat string, appended "
+                    "to the boundary and neighbour facts the harness composes."
+                ),
+            },
             "skill": {
                 "type": ["string", "array"],
                 "items": {"type": "string"},
@@ -4298,6 +4499,9 @@ registry.register(
         role=args.get("role"),
         background=_model_background_value(args, kw.get("parent_agent")),
         brief=args.get("brief"),
+        brief_done=args.get("brief_done"),
+        brief_falsifier=args.get("brief_falsifier"),
+        brief_known=args.get("brief_known"),
         skill=args.get("skill"),
         parent_agent=kw.get("parent_agent"),
     ),

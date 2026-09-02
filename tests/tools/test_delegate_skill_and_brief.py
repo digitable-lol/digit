@@ -197,13 +197,31 @@ def test_brief_is_not_required_by_default(monkeypatch):
         D.delegate_task(goal="do it", parent_agent=_FakeParent(require_brief=True))
 
 
-def test_require_brief_refuses_a_bare_goal_when_enabled(monkeypatch):
+def test_require_brief_now_asks_only_for_the_definition_of_done(monkeypatch):
+    """The flag's job narrowed with composition.
+
+    Role, boundary, neighbours and the cell are composed, so demanding a whole
+    brief object would demand work already done. What is left to ask for is the
+    one field the harness cannot derive -- and it is asked for as a flat
+    string, the shape these models actually emit.
+    """
     monkeypatch.setattr(D, "_load_config", lambda: {"require_brief": True})
     out = json.loads(
         D.delegate_task(goal="do it", parent_agent=_FakeParent(require_brief=True))
     )
-    assert "needs a `brief`" in out["error"]
-    assert '"role"' in out["error"]  # the fillable shape, not just the rule
+    assert "definition of done" in out["error"]
+    assert "brief_done" in out["error"]
+
+
+def test_require_brief_is_satisfied_by_the_flat_field(monkeypatch):
+    monkeypatch.setattr(D, "_load_config", lambda: {"require_brief": True})
+    monkeypatch.setattr(D, "_build_child_agent", _raise_reached)
+    with pytest.raises(_ReachedChildBuild):
+        D.delegate_task(
+            goal="do it",
+            brief_done="`make check` exits 0",
+            parent_agent=_FakeParent(require_brief=True),
+        )
 
 
 def test_require_brief_does_not_apply_to_an_unbriefed_parent(monkeypatch):
