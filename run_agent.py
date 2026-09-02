@@ -7050,12 +7050,23 @@ class AIAgent:
         #     gateway session the async result would route back to.
         # The schema-level `background` param is intentionally ignored here.
         _is_subagent = getattr(self, "_delegate_depth", 0) > 0
+        # brief / skill were added to DELEGATE_TASK_SCHEMA without being added
+        # here, so until now a model that DID send a brief had it dropped
+        # silently on the only path a model can reach. Any conclusion about
+        # "the lead does not brief its worker" measured before this fix cannot
+        # tell a model that omitted the field from a harness that discarded it.
         return _delegate_task(
             goal=function_args.get("goal"),
             context=function_args.get("context"),
             tasks=_strip_model_hidden_task_fields(function_args.get("tasks")),
             max_iterations=function_args.get("max_iterations"),
             role=function_args.get("role"),
+            brief=function_args.get("brief"),
+            brief_done=function_args.get("brief_done"),
+            brief_falsifier=function_args.get("brief_falsifier"),
+            brief_known=function_args.get("brief_known"),
+            skill=function_args.get("skill"),
+            supervisor=function_args.get("supervisor"),
             background=(not _is_subagent),
             parent_agent=self,
         )
