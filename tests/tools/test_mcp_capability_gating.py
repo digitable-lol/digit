@@ -187,9 +187,13 @@ class TestKeepaliveInterval:
 
 def _mcp_error(code, message="boom"):
     """Build a real McpError carrying a JSON-RPC error code."""
-    from mcp.shared.exceptions import McpError
     from mcp.types import ErrorData
-    return McpError(ErrorData(code=code, message=message))
+
+    from tools.mcp_sdk_compat import MCPErrorType
+
+    # mcp 2.x: MCPError(code=, message=) / from_error_data; mcp 1.x: McpError(ErrorData)
+    build = getattr(MCPErrorType, "from_error_data", MCPErrorType)
+    return build(ErrorData(code=code, message=message))
 
 
 class TestMethodNotFoundDetection:

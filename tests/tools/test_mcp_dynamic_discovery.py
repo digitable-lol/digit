@@ -85,7 +85,7 @@ class TestMessageHandler:
         if not _MCP_NOTIFICATION_TYPES:
             pytest.skip("MCP SDK ToolListChangedNotification not available")
 
-        from mcp.types import ServerNotification, ToolListChangedNotification
+        from mcp.types import ToolListChangedNotification
 
         server = MCPServerTask("notif_srv")
         # Product now schedules the refresh as a background task (see
@@ -95,9 +95,9 @@ class TestMessageHandler:
         # reaching into asyncio.create_task internals.
         with patch.object(MCPServerTask, "_schedule_tools_refresh") as mock_schedule:
             handler = server._make_message_handler()
-            notification = ServerNotification(
-                root=ToolListChangedNotification(method="notifications/tools/list_changed")
-            )
+            # mcp 2.x hands the bare notification to message_handler
+            # (ServerNotification is a Union, not a RootModel wrapper).
+            notification = ToolListChangedNotification(method="notifications/tools/list_changed")
             await handler(notification)
             mock_schedule.assert_called_once()
 

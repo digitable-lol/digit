@@ -510,10 +510,26 @@ def mcp_server_e2e(populated_sessions_dir, mock_session_db, monkeypatch):
 
 
 def _run_tool(server, name, args=None):
-    """Call an MCP tool through FastMCP's tool manager and return parsed JSON."""
-    result = asyncio.get_event_loop().run_until_complete(
-        server._tool_manager.call_tool(name, args or {})
-    )
+    """Call an MCP tool through the server's public ``call_tool`` and return parsed JSON.
+
+    mcp 2.x ``MCPServer.call_tool`` returns a ``CallToolResult``; mcp 1.x
+    ``FastMCP.call_tool`` returns the content blocks (optionally paired with
+    structured output). The tool's text payload is the first text block.
+    """
+    call = getattr(server, "call_tool", None)
+    # The real server's public call_tool; the module's _FakeFastMCP keeps the
+    # old tool-manager seam instead.
+    pending = call(name, args or {}) if call else server._tool_manager.call_tool(name, args or {})
+    result = asyncio.get_event_loop().run_until_complete(pending)
+    content = getattr(result, "content", result)
+    if isinstance(content, tuple):
+        content = content[0]
+    if isinstance(content, (list, tuple)) and content and hasattr(content[0], "text"):
+        text = content[0].text
+        try:
+            return json.loads(text)
+        except ValueError:
+            return text
     return json.loads(result) if isinstance(result, str) else result
 
 

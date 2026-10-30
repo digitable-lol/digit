@@ -115,6 +115,8 @@ from tools.registry import tool_error
 
 logger = logging.getLogger(__name__)
 
+from tools.mcp_sdk_compat import has_sdk_field, sdk_field  # noqa: E402
+
 # Upper bound for the OSV malware preflight during stdio MCP startup. The
 # check makes a blocking urllib HTTPS call whose own timeout can fail to
 # interrupt a stalled SSL handshake, which froze the asyncio event loop and
@@ -207,6 +209,7 @@ _MCP_SAMPLING_TYPES = False
 _MCP_NOTIFICATION_TYPES = False
 _MCP_ELICITATION_TYPES = False
 _MCP_MESSAGE_HANDLER_SUPPORTED = False
+_MCP_MODERN_ERA = False
 # Conservative fallback for SDK builds that don't export LATEST_PROTOCOL_VERSION.
 # Streamable HTTP was introduced by 2025-03-26, so this remains valid for the
 # HTTP transport path even on older-but-supported SDK versions.
@@ -215,18 +218,19 @@ try:
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
     _MCP_AVAILABLE = True
-    try:
-        from mcp.client.streamable_http import streamablehttp_client
-        _MCP_HTTP_AVAILABLE = True
-    except ImportError:
-        _MCP_HTTP_AVAILABLE = False
-    # Prefer the non-deprecated API (mcp >= 1.24.0); fall back to the
-    # deprecated wrapper for older SDK versions.
+    # Prefer the non-deprecated API (mcp >= 1.24.0, the only one in mcp 2.x);
+    # fall back to the deprecated wrapper for older SDK versions. HTTP is
+    # available when either exists -- mcp 2.x removed the old name.
     try:
         from mcp.client.streamable_http import streamable_http_client
         _MCP_NEW_HTTP = True
     except ImportError:
         _MCP_NEW_HTTP = False
+    try:
+        from mcp.client.streamable_http import streamablehttp_client
+    except ImportError:
+        streamablehttp_client = None
+    _MCP_HTTP_AVAILABLE = _MCP_NEW_HTTP or streamablehttp_client is not None
     try:
         from mcp.types import LATEST_PROTOCOL_VERSION
     except ImportError:
@@ -251,6 +255,17 @@ try:
         _MCP_SAMPLING_TYPES = True
     except ImportError:
         logger.debug("MCP sampling types not available -- sampling disabled")
+    # Protocol 2026-07-28 (mcp >= 2): connect-time era negotiation
+    # (server/discover with the SDK's own fallback policy) and the
+    # multi-round-trip driver that resolves an InputRequiredResult.
+    try:
+        from mcp.client._input_required import run_input_required_driver
+        from mcp.client._probe import negotiate_auto
+        from mcp.client.session import ClientRequestContext
+        from mcp.types import DiscoverResult, InputRequiredResult
+        _MCP_MODERN_ERA = True
+    except ImportError:
+        logger.debug("MCP protocol 2026-07-28 not available -- initialize handshake only")
     # Elicitation types -- gated separately for the same reason as sampling.
     # Added in mcp Python SDK 1.11.0 (Jul 2025); servers use elicitation to
     # ask the client for structured input mid-tool-call (e.g. payment
@@ -638,7 +653,7 @@ async def _paginate_full_list(list_method, items_attr: str, server_name: str):
     for _ in range(_MCP_LIST_MAX_PAGES):
         result = await (list_method(cursor=cursor) if cursor else list_method())
         items.extend(getattr(result, items_attr, None) or [])
-        cursor = getattr(result, "nextCursor", None)
+        cursor = sdk_field(result, "nextCursor")
         # Per the MCP spec the cursor is an opaque string; anything else
         # (including mock objects in tests) means "no more pages".
         if not isinstance(cursor, str) or not cursor:
@@ -754,7 +769,7 @@ def _cache_mcp_image_block(block) -> str:
     import base64
 
     data = getattr(block, "data", None)
-    mime_type = getattr(block, "mimeType", None)
+    mime_type = sdk_field(block, "mimeType")
     normalized_mime = str(mime_type or "").split(";", 1)[0].strip().lower()
     if data is None or not normalized_mime.startswith("image/"):
         return ""
@@ -842,7 +857,7 @@ def _cache_mcp_audio_block(block) -> str:
     import base64
 
     data = getattr(block, "data", None)
-    mime_type = str(getattr(block, "mimeType", None) or "").split(";", 1)[0].strip().lower()
+    mime_type = str(sdk_field(block, "mimeType") or "").split(";", 1)[0].strip().lower()
     if data is None or not mime_type.startswith("audio/"):
         return ""
     if len(data) > _MCP_RESOURCE_MAX_B64_CHARS:
@@ -896,7 +911,7 @@ def _render_mcp_resource_block(block, server_name: str = "") -> str:
         if not uri:
             return ""
         name = getattr(block, "name", "") or ""
-        mime = getattr(block, "mimeType", "") or ""
+        mime = sdk_field(block, "mimeType", "") or ""
         details = f"uri={uri}"
         if name:
             details += f", name={name}"
@@ -924,7 +939,7 @@ def _render_mcp_resource_block(block, server_name: str = "") -> str:
     import base64
 
     uri = str(getattr(resource, "uri", "") or "")
-    mime = str(getattr(resource, "mimeType", "") or "")
+    mime = str(sdk_field(resource, "mimeType", "") or "")
     if len(blob) > _MCP_RESOURCE_MAX_B64_CHARS:
         return f"[MCP embedded resource too large to cache: ~{len(blob) * 3 // 4} bytes, uri={uri}]"
     try:
@@ -1345,15 +1360,15 @@ class SamplingHandler:
             )
 
             # Separate blocks by kind
-            tool_results = [b for b in blocks if hasattr(b, "toolUseId")]
-            tool_uses = [b for b in blocks if hasattr(b, "name") and hasattr(b, "input") and not hasattr(b, "toolUseId")]
-            content_blocks = [b for b in blocks if not hasattr(b, "toolUseId") and not (hasattr(b, "name") and hasattr(b, "input"))]
+            tool_results = [b for b in blocks if has_sdk_field(b, "toolUseId")]
+            tool_uses = [b for b in blocks if hasattr(b, "name") and hasattr(b, "input") and not has_sdk_field(b, "toolUseId")]
+            content_blocks = [b for b in blocks if not has_sdk_field(b, "toolUseId") and not (hasattr(b, "name") and hasattr(b, "input"))]
 
             # Emit tool result messages (role: tool)
             for tr in tool_results:
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": tr.toolUseId,
+                    "tool_call_id": sdk_field(tr, "toolUseId"),
                     "content": self._extract_tool_result_text(tr),
                 })
 
@@ -1384,10 +1399,10 @@ class SamplingHandler:
                     for block in content_blocks:
                         if hasattr(block, "text"):
                             parts.append({"type": "text", "text": block.text})
-                        elif hasattr(block, "data") and hasattr(block, "mimeType"):
+                        elif hasattr(block, "data") and has_sdk_field(block, "mimeType"):
                             parts.append({
                                 "type": "image_url",
-                                "image_url": {"url": f"data:{block.mimeType};base64,{block.data}"},
+                                "image_url": {"url": f"data:{sdk_field(block, 'mimeType')};base64,{block.data}"},
                             })
                         else:
                             logger.warning(
@@ -1519,7 +1534,7 @@ class SamplingHandler:
             )
 
         # Resolve model
-        model = self._resolve_model(getattr(params, "modelPreferences", None))
+        model = self._resolve_model(sdk_field(params, "modelPreferences"))
 
         # Get auxiliary LLM client via centralized router
         from agent.auxiliary_client import call_llm
@@ -1540,11 +1555,11 @@ class SamplingHandler:
 
         # Convert messages
         messages = self._convert_messages(params)
-        if hasattr(params, "systemPrompt") and params.systemPrompt:
-            messages.insert(0, {"role": "system", "content": params.systemPrompt})
+        if sdk_field(params, "systemPrompt"):
+            messages.insert(0, {"role": "system", "content": sdk_field(params, "systemPrompt")})
 
         # Build LLM call kwargs
-        max_tokens = min(params.maxTokens, self.max_tokens_cap)
+        max_tokens = min(sdk_field(params, "maxTokens"), self.max_tokens_cap)
         call_temperature = None
         if hasattr(params, "temperature") and params.temperature is not None:
             call_temperature = params.temperature
@@ -1560,7 +1575,7 @@ class SamplingHandler:
                         "name": getattr(t, "name", ""),
                         "description": getattr(t, "description", "") or "",
                         "parameters": _normalize_mcp_input_schema(
-                            getattr(t, "inputSchema", None)
+                            sdk_field(t, "inputSchema")
                         ),
                     },
                 }
@@ -1718,19 +1733,42 @@ class ElicitationHandler:
         # the initial implementation. Decline cleanly so the server does
         # not hang.
         mode = getattr(params, "mode", "form")
+        message = getattr(params, "message", "") or (
+            f"MCP server '{self.server_name}' is requesting your approval"
+        )
+        # mcp.types.ElicitRequestFormParams names the field ``requestedSchema``
+        # (no snake_case attribute exists on the model); duck-typed callers
+        # may still pass ``requested_schema``.
+        schema = getattr(params, "requestedSchema", None) or getattr(params, "requested_schema", None) or {}
+        captured = getattr(self.owner, "_pending_call_context", None) if self.owner else None
+
+        # Full elicitation (form fields, review, URL consent) runs on the
+        # question surface of the agent turn that issued the tool call --
+        # see tools.mcp_elicitation_form. The SDK advertises form AND url
+        # once a callback exists, so both modes must be honoured there.
+        surface = self._surface(captured)
+        if surface is not None:
+            return await self._collect(surface, mode, params, message, schema, captured)
+
         if mode == "url":
             logger.info(
-                "MCP server '%s' requested URL-mode elicitation; "
-                "declining (URL-mode elicitation not implemented)",
+                "MCP server '%s' requested URL-mode elicitation; declining "
+                "(no interactive surface in this session to show the URL)",
                 self.server_name,
             )
             self.metrics["declined"] += 1
             return ElicitResult(action="decline")
 
-        message = getattr(params, "message", "") or (
-            f"MCP server '{self.server_name}' is requesting your approval"
-        )
-        schema = getattr(params, "requested_schema", {}) or {}
+        if (schema.get("properties") if isinstance(schema, dict) else None):
+            # Answering accept with empty content would not satisfy the
+            # requestedSchema; without a surface to collect it, decline.
+            logger.info(
+                "MCP server '%s' requested form fields; declining "
+                "(no interactive surface in this session to collect them)",
+                self.server_name,
+            )
+            self.metrics["declined"] += 1
+            return ElicitResult(action="decline")
         description = _format_elicitation_schema_summary(schema, self.server_name)
 
         logger.info(
@@ -1738,6 +1776,8 @@ class ElicitationHandler:
             self.server_name, _sanitize_error(message)[:200],
         )
 
+        # No surface and nothing to fill in: a plain confirmation through the
+        # approval system (gateway notify_cb or CLI prompt).
         # Lazy import: tools.approval is imported very early during process
         # bootstrap; matching the lazy pattern used by _fire_approval_hook
         # avoids any chance of import-order coupling.
@@ -1764,8 +1804,6 @@ class ElicitationHandler:
         # owner._pending_call_context we replay it here via
         # contextvars.Context.run so the gateway-platform detection in
         # request_elicitation_consent picks up the right session.
-        captured = getattr(self.owner, "_pending_call_context", None) if self.owner else None
-
         def _invoke_consent() -> str:
             if captured is None:
                 return request_elicitation_consent(
@@ -1813,6 +1851,68 @@ class ElicitationHandler:
         self.metrics["declined"] += 1
         return ElicitResult(action="decline")
 
+    @staticmethod
+    def _surface(captured):
+        """Question surface of the calling agent turn (process fallback for the CLI)."""
+        from tools.mcp_elicitation_form import resolve_surface
+
+        return captured.copy().run(resolve_surface) if captured is not None else resolve_surface()
+
+    async def _collect(self, surface, mode, params, message, schema, captured):
+        """Run form or URL elicitation on ``surface`` off the event loop."""
+        from tools.mcp_elicitation_form import (
+            SchemaNotSupported,
+            collect_form,
+            collect_url,
+            parse_requested_schema,
+        )
+
+        if mode == "url":
+            questions = 1
+
+            def work():
+                return collect_url(surface, self.server_name, message, getattr(params, "url", "") or "")
+        else:
+            try:
+                questions = len(parse_requested_schema(schema)) + 1
+            except SchemaNotSupported as exc:
+                logger.warning(
+                    "MCP server '%s' requested a form outside the elicitation schema subset; declining: %s",
+                    self.server_name, exc,
+                )
+                self.metrics["declined"] += 1
+                return ElicitResult(action="decline")
+
+            def work():
+                return collect_form(surface, self.server_name, message, schema)
+
+        # Replay the agent context so gateway surfaces resolve their session.
+        def run():
+            return captured.copy().run(work) if captured is not None else work()
+
+        try:
+            outcome = await asyncio.wait_for(
+                asyncio.to_thread(run),
+                timeout=self.timeout * questions + self._OUTER_TIMEOUT_GRACE_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("MCP server '%s' elicitation timed out", self.server_name)
+            self.metrics["errors"] += 1
+            return ElicitResult(action="cancel")
+        except Exception as exc:
+            logger.error("MCP server '%s' elicitation failed: %s", self.server_name, exc, exc_info=True)
+            self.metrics["errors"] += 1
+            return ElicitResult(action="decline")
+
+        if outcome.action == "accept":
+            self.metrics["accepted"] += 1
+            return ElicitResult(action="accept", content=outcome.content if mode != "url" else None)
+        if outcome.action == "cancel":
+            self.metrics["errors"] += 1
+            return ElicitResult(action="cancel")
+        self.metrics["declined"] += 1
+        return ElicitResult(action="decline")
+
 
 # ---------------------------------------------------------------------------
 # Server task -- each MCP server lives in one long-lived asyncio Task
@@ -1838,7 +1938,7 @@ class MCPServerTask:
         "_pending_call_context",
         "_lifecycle_started_at", "_last_tool_call_at",
         "_idle_timeout_seconds", "_max_lifetime_seconds", "_recycled_reason",
-        "initialize_result", "_ping_unsupported",
+        "initialize_result", "_ping_unsupported", "_legacy_after_probe_failure", "_listen_task",
         "_reconnect_retries", "_session_proven", "_was_parked",
     )
 
@@ -1906,6 +2006,13 @@ class MCPServerTask:
         # ``.capabilities.prompts``) instead of assuming every ``ClientSession``
         # method attribute corresponds to a supported server method. See #18051.
         self.initialize_result: Optional[Any] = None
+        # Set when a server/discover probe broke the transport (a stdio
+        # server that exits on an unknown pre-initialize request): every
+        # later connect of this server goes straight to initialize.
+        self._legacy_after_probe_failure = False
+        # 2026-07-28 servers deliver notifications/tools/list_changed only on
+        # a subscriptions/listen stream; one background listener per session.
+        self._listen_task: Optional[asyncio.Task] = None
         # Set True the first time a keepalive ``ping`` returns JSON-RPC
         # -32601 (method not found): the server is tool-capable but doesn't
         # implement the optional ``ping`` utility. Subsequent keepalives fall
@@ -1936,6 +2043,73 @@ class MCPServerTask:
         if caps is None:
             return True
         return getattr(caps, "tools", None) is not None
+
+    async def _negotiate(self, session, config: dict):
+        """Open ``session`` on protocol 2026-07-28 when the server speaks it, else via ``initialize``.
+
+        ``protocol: legacy`` in the server config skips the probe. In the
+        default ``auto`` mode the SDK's own policy (``negotiate_auto``) probes
+        ``server/discover`` and falls back to ``initialize`` on any JSON-RPC
+        error. Returns the result holding ``.capabilities`` (an
+        ``InitializeResult`` or a ``DiscoverResult``).
+        """
+        mode = str(config.get("protocol", "auto")).strip().lower()
+        probe = (
+            mode != "legacy"
+            and _MCP_MODERN_ERA
+            and not self._legacy_after_probe_failure
+            and hasattr(session, "discover")  # a session of an SDK that speaks 2026-07-28
+        )
+        if not probe:
+            return await session.initialize()
+        try:
+            await negotiate_auto(session)
+        except Exception as exc:
+            from tools.mcp_sdk_compat import MCPErrorType
+
+            if isinstance(exc, MCPErrorType):
+                raise  # the server answered: modern-only and no mutual version
+            # Not an answer -- the probe broke on this peer. Try the legacy
+            # handshake on the same session now; if the transport is gone
+            # that fails too, and the flag keeps later connects probe-free.
+            self._legacy_after_probe_failure = True
+            logger.info(
+                "MCP server '%s': server/discover probe failed (%s); "
+                "falling back to the initialize handshake",
+                self.name, exc,
+            )
+            return await session.initialize()
+        if session.discover_result is not None:
+            self._start_list_change_listener(session)
+        return session.discover_result or session.initialize_result
+
+    def _start_list_change_listener(self, session) -> None:
+        """Subscribe to tool-list changes on a 2026-07-28 session.
+
+        Unsolicited notifications do not exist on that protocol: change
+        events arrive only on an open ``subscriptions/listen`` stream. Each
+        event schedules the same refresh a 2025-era
+        ``notifications/tools/list_changed`` triggers.
+        """
+        previous = self._listen_task
+        if previous is not None and not previous.done():
+            previous.cancel()
+        self._listen_task = asyncio.ensure_future(self._listen_for_tool_changes(session))
+
+    async def _listen_for_tool_changes(self, session) -> None:
+        try:
+            from mcp.client.subscriptions import listen
+
+            async with listen(session, tools_list_changed=True) as subscription:
+                async for _event in subscription:
+                    logger.info("MCP server '%s': tools list changed (subscriptions/listen)", self.name)
+                    self._schedule_tools_refresh()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            # The stream ends with its session (close, reconnect, a server
+            # without subscriptions); tools are refetched on reconnect.
+            logger.debug("MCP server '%s': subscriptions/listen ended: %s", self.name, exc)
 
     def _is_recycled_stdio(self) -> bool:
         """Return True when a stdio server was intentionally recycled."""
@@ -2048,8 +2222,12 @@ class MCPServerTask:
                 if isinstance(message, Exception):
                     logger.debug("MCP message handler (%s): exception: %s", self.name, message)
                     return
-                if _MCP_NOTIFICATION_TYPES and isinstance(message, ServerNotification):
-                    match message.root:
+                # mcp 1.x wraps notifications in a ServerNotification RootModel
+                # (``.root``); mcp 2.x hands over the bare notification and
+                # ServerNotification is a plain Union.
+                notification = getattr(message, "root", message)
+                if _MCP_NOTIFICATION_TYPES:
+                    match notification:
                         case ToolListChangedNotification():
                             logger.info(
                                 "MCP server '%s': received tools/list_changed notification",
@@ -2522,7 +2700,7 @@ class MCPServerTask:
                         config.get("connect_timeout", _DEFAULT_CONNECT_TIMEOUT)
                     )
                     self.initialize_result = await asyncio.wait_for(
-                        session.initialize(), timeout=connect_timeout
+                        self._negotiate(session, config), timeout=connect_timeout
                     )
                     self.session = session
                     self._mark_lifecycle_started()
@@ -2830,7 +3008,7 @@ class MCPServerTask:
                 # defaults (follow_redirects=True) and adds our TLS settings.
                 # The SDK calls the factory with (headers, auth, timeout); we
                 # forward all of those and layer verify/cert on top.
-                import httpx as _httpx_mod
+                from tools.mcp_sdk_compat import sdk_httpx as _httpx_mod
 
                 _cert_for_factory = client_cert
                 _verify_for_factory = ssl_verify
@@ -2865,7 +3043,7 @@ class MCPServerTask:
                         # connection but never answers ``initialize`` parks this
                         # coroutine forever on the background loop.
                         self.initialize_result = await asyncio.wait_for(
-                            session.initialize(), timeout=float(connect_timeout)
+                            self._negotiate(session, config), timeout=float(connect_timeout)
                         )
                         self.session = session
                         await self._discover_tools()
@@ -2891,7 +3069,8 @@ class MCPServerTask:
         if _MCP_NEW_HTTP:
             # New API (mcp >= 1.24.0): build an explicit httpx.AsyncClient
             # matching the SDK's own create_mcp_http_client defaults.
-            import httpx
+            from tools.mcp_sdk_compat import sdk_follows_redirects_within_origin
+            from tools.mcp_sdk_compat import sdk_httpx as httpx
 
             _original_url = httpx.URL(url)
 
@@ -2906,11 +3085,15 @@ class MCPServerTask:
                         response.next_request.headers.pop("Authorization", None)
 
             client_kwargs: dict = {
-                "follow_redirects": True,
                 "timeout": httpx.Timeout(float(connect_timeout), read=300.0),
                 "verify": ssl_verify,
-                "event_hooks": {"response": [_strip_auth_on_cross_origin_redirect]},
             }
+            if not sdk_follows_redirects_within_origin():
+                # mcp 1.x: the client follows redirects; strip credentials
+                # when they leave the origin. mcp 2.x transports follow only
+                # same-origin redirects themselves (stream_within_origin).
+                client_kwargs["follow_redirects"] = True
+                client_kwargs["event_hooks"] = {"response": [_strip_auth_on_cross_origin_redirect]}
             if headers:
                 client_kwargs["headers"] = headers
             if _oauth_auth is not None:
@@ -2922,13 +3105,13 @@ class MCPServerTask:
             # http_client is provided, so we wrap in async-with.
             try:
                 async with httpx.AsyncClient(**client_kwargs) as http_client:
-                    async with streamable_http_client(url, http_client=http_client) as (
-                        read_stream, write_stream, _get_session_id,
-                    ):
+                    # mcp 2.x yields (read, write); 1.x also yields a session-id getter.
+                    async with streamable_http_client(url, http_client=http_client) as streams:
+                        read_stream, write_stream = streams[0], streams[1]
                         async with ClientSession(read_stream, write_stream, **sampling_kwargs) as session:
                             # Bound the handshake (#59349) — see stdio path.
                             self.initialize_result = await asyncio.wait_for(
-                                session.initialize(), timeout=float(connect_timeout)
+                                self._negotiate(session, config), timeout=float(connect_timeout)
                             )
                             self.session = session
                             await self._discover_tools()
@@ -2966,7 +3149,7 @@ class MCPServerTask:
                     async with ClientSession(read_stream, write_stream, **sampling_kwargs) as session:
                         # Bound the handshake (#59349) — see stdio path.
                         self.initialize_result = await asyncio.wait_for(
-                            session.initialize(), timeout=float(connect_timeout)
+                            self._negotiate(session, config), timeout=float(connect_timeout)
                         )
                         self.session = session
                         await self._discover_tools()
@@ -3803,8 +3986,9 @@ def _get_auth_error_types() -> tuple:
     except ImportError:
         pass
     try:
-        import httpx
-        types.append(httpx.HTTPStatusError)
+        from tools.mcp_sdk_compat import http_status_error_types
+
+        types.extend(http_status_error_types())
     except ImportError:
         pass
     _AUTH_ERROR_TYPES = tuple(types)
@@ -3822,8 +4006,9 @@ def _is_auth_error(exc: BaseException) -> bool:
     if not types or not isinstance(exc, types):
         return False
     try:
-        import httpx
-        if isinstance(exc, httpx.HTTPStatusError):
+        from tools.mcp_sdk_compat import http_status_error_types
+
+        if isinstance(exc, http_status_error_types()):
             return getattr(exc.response, "status_code", None) == 401
     except ImportError:
         pass
@@ -4776,6 +4961,34 @@ def _mark_server_call_started(server: Any) -> None:
         mark_tool_call()
 
 
+async def _call_tool_any_era(session, name: str, args: dict):
+    """``tools/call`` on either protocol era.
+
+    On a 2026-07-28 session the server may answer ``input_required``
+    (multi-round-trip requests): the embedded requests go through the
+    session's own callbacks (elicitation, sampling, roots) -- the same ones
+    that serve 2025-era server-to-client requests -- and the call is retried
+    with the responses and the echoed ``request_state`` until it completes.
+    """
+    if not _MCP_MODERN_ERA or not isinstance(getattr(session, "discover_result", None), DiscoverResult):
+        return await session.call_tool(name, arguments=args)
+    first = await session.call_tool(name, arguments=args, allow_input_required=True)
+    if not isinstance(first, InputRequiredResult):
+        return first
+
+    async def dispatch(key, request):
+        params = getattr(request, "params", None)
+        ctx = ClientRequestContext(session=session, request_id=key, meta=getattr(params, "meta", None))
+        return await session.dispatch_input_request(ctx, request)
+
+    async def retry(responses, state):
+        return await session.call_tool(
+            name, arguments=args, input_responses=responses, request_state=state, allow_input_required=True,
+        )
+
+    return await run_input_required_driver(first, dispatch=dispatch, retry=retry)
+
+
 def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
     """Return a sync handler that calls an MCP tool via the background loop.
 
@@ -4852,7 +5065,7 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
                 # it and detect the gateway platform / session for routing.
                 server._pending_call_context = contextvars.copy_context()
                 try:
-                    result = await server.session.call_tool(tool_name, arguments=args)
+                    result = await _call_tool_any_era(server.session, tool_name, args)
                 finally:
                     server._pending_call_context = None
             # The RPC round-trip completed — the session is demonstrably
@@ -4862,7 +5075,7 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
             if _mark_proven is not None:
                 _mark_proven()
             # MCP CallToolResult has .content (list of content blocks) and .isError
-            if result.isError:
+            if sdk_field(result, "isError"):
                 error_text = ""
                 for block in (result.content or []):
                     if getattr(block, "text", None):
@@ -4931,7 +5144,7 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
             # MCP spec: content is model-oriented (text), structuredContent
             # is machine-oriented (JSON metadata).  For an AI agent, content
             # is the primary payload; structuredContent supplements it.
-            structured = getattr(result, "structuredContent", None)
+            structured = sdk_field(result, "structuredContent")
             if structured is not None:
                 if text_result:
                     return json.dumps({
@@ -5014,8 +5227,8 @@ def _make_list_resources_handler(server_name: str, tool_timeout: float):
                     entry["name"] = r.name
                 if hasattr(r, "description") and r.description:
                     entry["description"] = r.description
-                if hasattr(r, "mimeType") and r.mimeType:
-                    entry["mimeType"] = r.mimeType
+                if sdk_field(r, "mimeType"):
+                    entry["mimeType"] = sdk_field(r, "mimeType")
                 resources.append(entry)
             return json.dumps({"resources": resources}, ensure_ascii=False)
 
@@ -5439,7 +5652,7 @@ def _convert_mcp_schema(server_name: str, mcp_tool) -> dict:
     return {
         "name": prefixed_name,
         "description": mcp_tool.description or f"MCP tool {mcp_tool.name} from {server_name}",
-        "parameters": _normalize_mcp_input_schema(getattr(mcp_tool, "inputSchema", None)),
+        "parameters": _normalize_mcp_input_schema(sdk_field(mcp_tool, "inputSchema")),
     }
 
 

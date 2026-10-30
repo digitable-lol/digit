@@ -812,7 +812,7 @@ async def _wait_for_callback() -> tuple[str, str | None]:
     return await _make_callback_waiter(_oauth_port)()
 
 
-def _make_callback_waiter(port: int):
+def _make_callback_waiter(port: int, timeout: float = 300.0):
     """Return a callback waiter bound to a single OAuth flow's port.
 
     Closing over the port (instead of reading the module-level
@@ -913,7 +913,6 @@ def _make_callback_waiter(port: int):
             )
             paste_thread.start()
 
-        timeout = 300.0
         poll_interval = 0.5
         elapsed = 0.0
         try:
@@ -1357,13 +1356,21 @@ def build_oauth_auth(
     redirect_handler = _make_redirect_handler(
         resolved_port, redirect_uri=cfg.get("redirect_uri") or None
     )
-    callback_handler = _make_callback_waiter(resolved_port)
+    flow_timeout = float(cfg.get("timeout", 300))
+    callback_handler = _make_callback_waiter(resolved_port, timeout=flow_timeout)
 
-    return OAuthClientProvider(
-        server_url=server_url,
-        client_metadata=client_metadata,
-        storage=storage,
-        redirect_handler=redirect_handler,
-        callback_handler=callback_handler,
-        timeout=float(cfg.get("timeout", 300)),
-    )
+    provider_kwargs: dict[str, Any] = {
+        "server_url": server_url,
+        "client_metadata": client_metadata,
+        "storage": storage,
+        "redirect_handler": redirect_handler,
+        "callback_handler": callback_handler,
+    }
+    # mcp 1.x took the whole-flow timeout on the provider; mcp 2.x dropped
+    # the parameter and leaves waiting to the callback handler, which now
+    # carries the same configured timeout either way.
+    from tools.mcp_sdk_compat import oauth_provider_accepts_timeout
+
+    if oauth_provider_accepts_timeout():
+        provider_kwargs["timeout"] = flow_timeout
+    return OAuthClientProvider(**provider_kwargs)

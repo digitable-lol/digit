@@ -49,7 +49,12 @@ logger = logging.getLogger("digit.mcp_serve")
 
 _MCP_SERVER_AVAILABLE = False
 try:
-    from mcp.server.fastmcp import FastMCP
+    try:
+        # mcp 2.x renamed FastMCP to MCPServer; the surface Digit uses
+        # (name, instructions=, @tool(), run_stdio_async()) is unchanged.
+        from mcp.server.mcpserver import MCPServer as FastMCP
+    except ImportError:
+        from mcp.server.fastmcp import FastMCP
 
     _MCP_SERVER_AVAILABLE = True
 except ImportError:

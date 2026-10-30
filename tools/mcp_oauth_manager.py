@@ -34,6 +34,7 @@ Design reference:
 
 from __future__ import annotations
 
+from tools.mcp_sdk_compat import oauth_provider_accepts_timeout
 import asyncio
 import logging
 import re
@@ -233,7 +234,9 @@ def _make_digit_provider_class() -> Optional[type]:
             builders and response handlers so we track whatever the SDK
             version we're pinned to expects.
             """
-            import httpx  # local import: httpx is an MCP SDK dependency
+            # The SDK's own HTTP module: create_oauth_metadata_request builds
+            # requests of it (httpx2 on mcp 2.x), so the client must match.
+            from tools.mcp_sdk_compat import sdk_httpx as httpx
             from mcp.client.auth.utils import (
                 build_oauth_authorization_server_metadata_discovery_urls,
                 build_protected_resource_metadata_discovery_urls,
@@ -574,18 +577,23 @@ class MCPOAuthManager:
 
         resolved_port = cfg.get("_resolved_port", 0)
         redirect_handler = _make_redirect_handler(resolved_port)
-        callback_handler = _make_callback_waiter(resolved_port)
+        flow_timeout = float(cfg.get("timeout", 300))
+        callback_handler = _make_callback_waiter(resolved_port, timeout=flow_timeout)
 
-        return _DIGIT_PROVIDER_CLS(
-            server_name=server_name,
-            preregistered=bool(cfg.get("client_id")),
-            server_url=entry.server_url,
-            client_metadata=client_metadata,
-            storage=storage,
-            redirect_handler=redirect_handler,
-            callback_handler=callback_handler,
-            timeout=float(cfg.get("timeout", 300)),
-        )
+        provider_kwargs: dict[str, Any] = {
+            "server_name": server_name,
+            "preregistered": bool(cfg.get("client_id")),
+            "server_url": entry.server_url,
+            "client_metadata": client_metadata,
+            "storage": storage,
+            "redirect_handler": redirect_handler,
+            "callback_handler": callback_handler,
+        }
+        # mcp 2.x dropped the provider-level flow timeout; the callback
+        # waiter carries it on every SDK.
+        if oauth_provider_accepts_timeout():
+            provider_kwargs["timeout"] = flow_timeout
+        return _DIGIT_PROVIDER_CLS(**provider_kwargs)
 
     def remove(
         self,

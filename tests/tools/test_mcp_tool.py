@@ -1800,7 +1800,7 @@ class TestSamplingCallbackText:
         assert result.content.text == "Hello from LLM"
         assert result.model == "test-model"
         assert result.role == "assistant"
-        assert result.stopReason == "endTurn"
+        assert result.stop_reason == "endTurn"
 
     def test_server_tools_with_object_schema_are_normalized(self):
         """Server-provided tools should gain empty properties for object schemas."""
@@ -1850,7 +1850,7 @@ class TestSamplingCallbackToolUse:
             result = asyncio.run(self.handler(None, params))
 
         assert isinstance(result, CreateMessageResultWithTools)
-        assert result.stopReason == "toolUse"
+        assert result.stop_reason == "toolUse"
         assert result.model == "test-model"
         assert len(result.content) == 1
         tc = result.content[0]

@@ -123,7 +123,7 @@ class TestHTTPClientCert:
         async def _drive():
             with patch("tools.mcp_tool._MCP_HTTP_AVAILABLE", True), \
                  patch("tools.mcp_tool._MCP_NEW_HTTP", True), \
-                 patch("httpx.AsyncClient", DummyAsyncClient), \
+                 patch.object(__import__("tools.mcp_sdk_compat", fromlist=["sdk_httpx"]).sdk_httpx, "AsyncClient", DummyAsyncClient), \
                  patch("tools.mcp_tool.streamable_http_client",
                        return_value=DummyTransportCtx()), \
                  patch("tools.mcp_tool.ClientSession", DummySession), \
@@ -271,7 +271,7 @@ class TestSSEClientCert:
             def __init__(self, **kwargs):
                 captured_client_kwargs.update(kwargs)
 
-        import httpx
+        from tools.mcp_sdk_compat import sdk_httpx as httpx
         with patch.object(httpx, "AsyncClient", DummyAsyncClient):
             factory(headers={"x": "y"}, timeout=httpx.Timeout(30.0), auth=None)
 
@@ -318,7 +318,7 @@ class TestSSEClientCert:
             def __init__(self, **kwargs):
                 captured_client_kwargs.update(kwargs)
 
-        import httpx
+        from tools.mcp_sdk_compat import sdk_httpx as httpx
         with patch.object(httpx, "AsyncClient", DummyAsyncClient):
             factory(headers=None, timeout=None, auth=None)
 
