@@ -396,6 +396,18 @@ def build_turn_context(
     except Exception:
         pass
 
+    # Question surface for MCP elicitation (tools.mcp_elicitation_form). The
+    # MCP tool wrapper snapshots this context before each call, so a server's
+    # elicitation/create reaches the session whose tool call caused it; a
+    # turn without a clarify callback (cron, background) gets None -- no
+    # prompts on someone else's screen.
+    try:
+        from tools.mcp_elicitation_form import current_surface
+
+        current_surface.set(getattr(agent, "clarify_callback", None))
+    except Exception:
+        logger.debug("MCP elicitation surface not set for this turn", exc_info=True)
+
     # Between-turns MCP refresh: an MCP server that finished connecting since
     # the previous turn (slow HTTP/OAuth servers routinely take 2-6s on a cold
     # connect, missing the bounded startup wait) lands in THIS turn's tool

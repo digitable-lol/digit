@@ -70,11 +70,10 @@ class TestSchemaSummary:
 
 class TestElicitationHandlerFormMode:
     def test_user_accepts_once_returns_accept(self):
+        # Nothing to fill in and no interactive surface: a plain
+        # confirmation through the approval system is enough.
         handler = ElicitationHandler("pay", {"timeout": 5})
-        params = _form_params(
-            "authorize a payment of $0.50",
-            {"properties": {"approved": {"type": "boolean"}}},
-        )
+        params = _form_params("authorize a payment of $0.50", {"type": "object", "properties": {}})
 
         with patch("tools.approval.request_elicitation_consent", return_value="accept"):
             result = asyncio.run(handler(context=None, params=params))

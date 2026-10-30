@@ -1718,19 +1718,42 @@ class ElicitationHandler:
         # the initial implementation. Decline cleanly so the server does
         # not hang.
         mode = getattr(params, "mode", "form")
+        message = getattr(params, "message", "") or (
+            f"MCP server '{self.server_name}' is requesting your approval"
+        )
+        # mcp.types.ElicitRequestFormParams names the field ``requestedSchema``
+        # (no snake_case attribute exists on the model); duck-typed callers
+        # may still pass ``requested_schema``.
+        schema = getattr(params, "requestedSchema", None) or getattr(params, "requested_schema", None) or {}
+        captured = getattr(self.owner, "_pending_call_context", None) if self.owner else None
+
+        # Full elicitation (form fields, review, URL consent) runs on the
+        # question surface of the agent turn that issued the tool call --
+        # see tools.mcp_elicitation_form. The SDK advertises form AND url
+        # once a callback exists, so both modes must be honoured there.
+        surface = self._surface(captured)
+        if surface is not None:
+            return await self._collect(surface, mode, params, message, schema, captured)
+
         if mode == "url":
             logger.info(
-                "MCP server '%s' requested URL-mode elicitation; "
-                "declining (URL-mode elicitation not implemented)",
+                "MCP server '%s' requested URL-mode elicitation; declining "
+                "(no interactive surface in this session to show the URL)",
                 self.server_name,
             )
             self.metrics["declined"] += 1
             return ElicitResult(action="decline")
 
-        message = getattr(params, "message", "") or (
-            f"MCP server '{self.server_name}' is requesting your approval"
-        )
-        schema = getattr(params, "requested_schema", {}) or {}
+        if (schema.get("properties") if isinstance(schema, dict) else None):
+            # Answering accept with empty content would not satisfy the
+            # requestedSchema; without a surface to collect it, decline.
+            logger.info(
+                "MCP server '%s' requested form fields; declining "
+                "(no interactive surface in this session to collect them)",
+                self.server_name,
+            )
+            self.metrics["declined"] += 1
+            return ElicitResult(action="decline")
         description = _format_elicitation_schema_summary(schema, self.server_name)
 
         logger.info(
@@ -1738,6 +1761,8 @@ class ElicitationHandler:
             self.server_name, _sanitize_error(message)[:200],
         )
 
+        # No surface and nothing to fill in: a plain confirmation through the
+        # approval system (gateway notify_cb or CLI prompt).
         # Lazy import: tools.approval is imported very early during process
         # bootstrap; matching the lazy pattern used by _fire_approval_hook
         # avoids any chance of import-order coupling.
@@ -1764,8 +1789,6 @@ class ElicitationHandler:
         # owner._pending_call_context we replay it here via
         # contextvars.Context.run so the gateway-platform detection in
         # request_elicitation_consent picks up the right session.
-        captured = getattr(self.owner, "_pending_call_context", None) if self.owner else None
-
         def _invoke_consent() -> str:
             if captured is None:
                 return request_elicitation_consent(
@@ -1808,6 +1831,68 @@ class ElicitationHandler:
             self.metrics["accepted"] += 1
             return ElicitResult(action="accept", content={})
         if answer == "cancel":
+            self.metrics["errors"] += 1
+            return ElicitResult(action="cancel")
+        self.metrics["declined"] += 1
+        return ElicitResult(action="decline")
+
+    @staticmethod
+    def _surface(captured):
+        """Question surface of the calling agent turn (process fallback for the CLI)."""
+        from tools.mcp_elicitation_form import resolve_surface
+
+        return captured.copy().run(resolve_surface) if captured is not None else resolve_surface()
+
+    async def _collect(self, surface, mode, params, message, schema, captured):
+        """Run form or URL elicitation on ``surface`` off the event loop."""
+        from tools.mcp_elicitation_form import (
+            SchemaNotSupported,
+            collect_form,
+            collect_url,
+            parse_requested_schema,
+        )
+
+        if mode == "url":
+            questions = 1
+
+            def work():
+                return collect_url(surface, self.server_name, message, getattr(params, "url", "") or "")
+        else:
+            try:
+                questions = len(parse_requested_schema(schema)) + 1
+            except SchemaNotSupported as exc:
+                logger.warning(
+                    "MCP server '%s' requested a form outside the elicitation schema subset; declining: %s",
+                    self.server_name, exc,
+                )
+                self.metrics["declined"] += 1
+                return ElicitResult(action="decline")
+
+            def work():
+                return collect_form(surface, self.server_name, message, schema)
+
+        # Replay the agent context so gateway surfaces resolve their session.
+        def run():
+            return captured.copy().run(work) if captured is not None else work()
+
+        try:
+            outcome = await asyncio.wait_for(
+                asyncio.to_thread(run),
+                timeout=self.timeout * questions + self._OUTER_TIMEOUT_GRACE_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("MCP server '%s' elicitation timed out", self.server_name)
+            self.metrics["errors"] += 1
+            return ElicitResult(action="cancel")
+        except Exception as exc:
+            logger.error("MCP server '%s' elicitation failed: %s", self.server_name, exc, exc_info=True)
+            self.metrics["errors"] += 1
+            return ElicitResult(action="decline")
+
+        if outcome.action == "accept":
+            self.metrics["accepted"] += 1
+            return ElicitResult(action="accept", content=outcome.content if mode != "url" else None)
+        if outcome.action == "cancel":
             self.metrics["errors"] += 1
             return ElicitResult(action="cancel")
         self.metrics["declined"] += 1

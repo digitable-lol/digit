@@ -7174,6 +7174,12 @@ class DigitCLI(CLIAgentSetupMixin, CLICommandsMixin, CLIBillingMixin):
         set_approval_callback(self._approval_callback)
         set_secret_capture_callback(self._secret_capture_callback)
         try:
+            from tools.mcp_elicitation_form import set_process_surface
+
+            set_process_surface(self._clarify_callback)
+        except ImportError:
+            pass
+        try:
             from tools.computer_use_tool import set_approval_callback as _set_cu_cb
 
             _set_cu_cb(self._computer_use_approval_callback)
